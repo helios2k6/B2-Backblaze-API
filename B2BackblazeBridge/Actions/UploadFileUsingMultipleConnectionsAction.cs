@@ -19,10 +19,13 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+using B2BackblazeBridge.Connection;
 using B2BackblazeBridge.Core;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Net;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
@@ -35,7 +38,21 @@ namespace B2BackblazeBridge.Actions
     public sealed class UploadFileUsingMultipleConnectionsActions : BaseAction<BackblazeB2UploadFileResult>
     {
         #region inner classes
-        private sealed class GetUploadPartURLResult
+        [Serializable]
+        [JsonObject(MemberSerialization.OptIn)]
+        private sealed class StartLargeFileRequest
+        {
+            [JsonProperty(PropertyName = "bucketId")]
+            public string BucketID { get; set;  }
+
+            [JsonProperty(PropertyName = "fileName")]
+            public string FileName { get; set; }
+
+            [JsonProperty(PropertyName = "contentType")]
+            public string ContentType { get; set; }
+        }
+
+        private sealed class GetUploadPartURLResponse
         {
             public string AuthorizationToken { get; set; }
 
@@ -55,6 +72,10 @@ namespace B2BackblazeBridge.Actions
         #endregion
 
         #region private fields
+        private static readonly string StartLargeFileURL = "/b2api/v1/b2_start_large_file";
+
+        private static readonly string GetUploadPartURLURL = "/b2api/v1/b2_get_upload_part_url";
+
         private readonly BackblazeB2AuthorizationSession _authorizationSession;
 
         private readonly string _bucketID;
@@ -167,17 +188,63 @@ namespace B2BackblazeBridge.Actions
 
         private async Task<long> GetFileID()
         {
-            throw new NotImplementedException();
+            try
+            {
+                StartLargeFileRequest request = new StartLargeFileRequest
+                {
+                    BucketID = _bucketID,
+                    ContentType = "b2/x-auto",
+                    FileName = GetSafeFileName(_filePath),
+                };
+
+                byte[] jsonBodyBytes = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(request));
+                HttpWebRequest webRequest = GetHttpWebRequest(_authorizationSession.APIURL + StartLargeFileURL);
+                webRequest.Method = "POST";
+                webRequest.Headers.Add("Authorization", _authorizationSession.AuthorizationToken);
+                webRequest.ContentLength = jsonBodyBytes.Length;
+
+                Dictionary<string, dynamic> jsonResponse = await SendWebRequestAsync(webRequest, jsonBodyBytes);
+                return (long)jsonResponse["fileId"];
+            }
+            catch (BaseActionWebRequestException ex)
+            {
+                throw new UploadFileActionException(ex.StatusCode);
+            }
         }
 
-        private async Task<GetUploadPartURLResult> GetUploadPartURL()
+        private async Task<GetUploadPartURLResponse> GetUploadPartURL(long fileID)
         {
-            throw new NotImplementedException();
+            try
+            {
+                byte[] jsonPayloadBytes = Encoding.UTF8.GetBytes("{\"fileId\":\"" + fileID + "\"}");
+                HttpWebRequest webRequest = GetHttpWebRequest(_authorizationSession.APIURL + GetUploadPartURLURL);
+                webRequest.Method = "POST";
+                webRequest.Headers.Add("Authorization", _authorizationSession.AuthorizationToken);
+                webRequest.ContentLength = jsonPayloadBytes.Length;
+
+                Dictionary<string, dynamic> jsonResponse = await SendWebRequestAsync(webRequest, jsonPayloadBytes);
+                return new GetUploadPartURLResponse
+                {
+                    AuthorizationToken = jsonResponse["authorizationToken"],
+                    UploadURL = jsonResponse["uploadUrl"],
+                };
+            }
+            catch (BaseActionWebRequestException ex)
+            {
+                throw new UploadFileActionException(ex.StatusCode);
+            }
         }
 
-        private async Task<bool> UploadFilePart()
+        private async Task<bool> UploadFilePart(GetUploadPartURLResponse getUploadPartUrl)
         {
-            throw new NotImplementedException();
+            try
+            {
+
+            }
+            catch (BaseActionWebRequestException ex)
+            {
+
+            }
         }
 
         private async Task<BackblazeB2UploadFileResult> FinishUploadingLargeFile()

@@ -19,6 +19,7 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+using B2BackblazeBridge.Connection;
 using B2BackblazeBridge.Core;
 using Newtonsoft.Json;
 using System;
@@ -54,7 +55,11 @@ namespace B2BackblazeBridge.Actions
         #endregion
 
         #region ctor
-        public UploadFileAction(string filePath, string bucketID, BackblazeB2AuthorizationSession authorizationSession) : base()
+        public UploadFileAction(
+            string filePath,
+            string bucketID,
+            BackblazeB2AuthorizationSession authorizationSession
+        ) : base()
         {
             _authorizationSession = authorizationSession ?? throw new ArgumentNullException("The authorization session object must not be null");
             _bucketID = bucketID;
@@ -72,32 +77,24 @@ namespace B2BackblazeBridge.Actions
         #region private methods
         private async Task<BackblazeB2UploadFileResult> UploadFileAsync(GetUploadFileURLResult getUploadFileUrlResult)
         {
-            string sha1Hash = ComputeSHA1Hash();
-            FileInfo info = new FileInfo(_filePath);
-            HttpWebRequest webRequest = (HttpWebRequest)WebRequest.Create(getUploadFileUrlResult.UploadURL);
-            webRequest.Method = "POST";
-            webRequest.Headers.Add("Authorization", getUploadFileUrlResult.AuthorizationToken);
-            webRequest.Headers.Add("X-Bz-File-Name", _filePath);
-            webRequest.Headers.Add("X-Bz-Content-Sha1", sha1Hash);
-            webRequest.ContentType = "b2/x-auto";
-            webRequest.ContentLength = info.Length;
-            using (Stream uploadStream = await webRequest.GetRequestStreamAsync())
+            try
             {
-                byte[] allBytes = File.ReadAllBytes(_filePath);
-                await uploadStream.WriteAsync(allBytes, 0, allBytes.Length);
-                uploadStream.Close();
-            }
+                string sha1Hash = ComputeSHA1Hash();
+                FileInfo info = new FileInfo(_filePath);
+                HttpWebRequest webRequest = (HttpWebRequest)WebRequest.Create(getUploadFileUrlResult.UploadURL);
+                webRequest.Method = "POST";
+                webRequest.Headers.Add("Authorization", getUploadFileUrlResult.AuthorizationToken);
+                webRequest.Headers.Add("X-Bz-File-Name", GetSafeFileName(_filePath));
+                webRequest.Headers.Add("X-Bz-Content-Sha1", sha1Hash);
+                webRequest.ContentType = "b2/x-auto";
+                webRequest.ContentLength = info.Length;
 
-            using (HttpWebResponse response = await webRequest.GetResponseAsync() as HttpWebResponse)
+                byte[] allBytes = File.ReadAllBytes(_filePath);
+                return DecodeUploadFileResponse(await SendWebRequestAsync(webRequest, allBytes));
+            }
+            catch (BaseActionWebRequestException ex)
             {
-                if (response.StatusCode != HttpStatusCode.OK)
-                {
-                    throw new UploadFileActionException(response.StatusCode);
-                }
-                using (StreamReader streamReader = new StreamReader(response.GetResponseStream()))
-                {
-                    return DecodeUploadFileResponse(await streamReader.ReadToEndAsync());
-                }
+                throw new UploadFileActionException(ex.StatusCode);
             }
         }
 
@@ -117,58 +114,46 @@ namespace B2BackblazeBridge.Actions
             }
         }
 
-        private BackblazeB2UploadFileResult DecodeUploadFileResponse(string jsonPayload)
+        private BackblazeB2UploadFileResult DecodeUploadFileResponse(Dictionary<string, dynamic> jsonPayload)
         {
-            Dictionary<string, dynamic> decodedJsonPayload = JsonConvert.DeserializeObject<Dictionary<string, dynamic>>(jsonPayload);
             return new BackblazeB2UploadFileResult
             {
-                AccountID = decodedJsonPayload["accountId"],
-                BucketID = decodedJsonPayload["bucketId"],
-                ContentLength = decodedJsonPayload["contentLength"],
-                ContentSHA1 = decodedJsonPayload["contentSha1"],
-                FileID = decodedJsonPayload["fileId"],
-                FileName = decodedJsonPayload["fileName"],
-                UploadTimeStamp = decodedJsonPayload["uploadTimestamp"],
+                AccountID = jsonPayload["accountId"],
+                BucketID = jsonPayload["bucketId"],
+                ContentLength = jsonPayload["contentLength"],
+                ContentSHA1 = jsonPayload["contentSha1"],
+                FileID = jsonPayload["fileId"],
+                FileName = jsonPayload["fileName"],
+                UploadTimeStamp = jsonPayload["uploadTimestamp"],
             };
         }
 
         private async Task<GetUploadFileURLResult> GetUploadURLAsync()
         {
-            HttpWebRequest webRequest = GetHttpWebRequest(_authorizationSession.APIURL);
-            webRequest.Headers.Add("Authorization", _authorizationSession.AuthorizationToken);
-            webRequest.Method = "POST";
-
-            string body = "{\"bucketId\":\"" + _bucketID + "\"}";
-            byte[] encodedBody = Encoding.UTF8.GetBytes(body);
-            webRequest.ContentLength = encodedBody.Length;
-
-            using (Stream webrequestStream = await webRequest.GetRequestStreamAsync())
+            try
             {
-                await webrequestStream.WriteAsync(encodedBody, 0, encodedBody.Length);
-                webrequestStream.Close();
-                using (HttpWebResponse response = (HttpWebResponse)webRequest.GetResponse())
-                {
-                    if (response.StatusCode != HttpStatusCode.OK)
-                    {
-                        throw new UploadFileActionException(response.StatusCode);
-                    }
+                HttpWebRequest webRequest = GetHttpWebRequest(_authorizationSession.APIURL);
+                webRequest.Headers.Add("Authorization", _authorizationSession.AuthorizationToken);
+                webRequest.Method = "POST";
 
-                    using (StreamReader streamReader = new StreamReader(response.GetResponseStream()))
-                    {
-                        return DecodeGetUploadURLJson(await streamReader.ReadToEndAsync());
-                    }
-                }
+                string body = "{\"bucketId\":\"" + _bucketID + "\"}";
+                byte[] encodedBody = Encoding.UTF8.GetBytes(body);
+                webRequest.ContentLength = encodedBody.Length;
+                return DecodeGetUploadURLJson(await SendWebRequestAsync(webRequest, encodedBody));
+            }
+            catch (BaseActionWebRequestException ex)
+            {
+                throw new UploadFileActionException(ex.StatusCode);
             }
         }
 
-        private GetUploadFileURLResult DecodeGetUploadURLJson(string jsonPayload)
+        private GetUploadFileURLResult DecodeGetUploadURLJson(Dictionary<string, dynamic> jsonPayload)
         {
-            Dictionary<string, dynamic> decodedJsonPayload = JsonConvert.DeserializeObject<Dictionary<string, dynamic>>(jsonPayload);
             return new GetUploadFileURLResult
             {
-                AuthorizationToken = decodedJsonPayload["authorizationToken"],
-                BucketID = decodedJsonPayload["bucketId"],
-                UploadURL = decodedJsonPayload["uploadUrl"],
+                AuthorizationToken = jsonPayload["authorizationToken"],
+                BucketID = jsonPayload["bucketId"],
+                UploadURL = jsonPayload["uploadUrl"],
             };
         }
         #endregion

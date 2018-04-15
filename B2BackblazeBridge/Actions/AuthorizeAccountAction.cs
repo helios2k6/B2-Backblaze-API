@@ -19,11 +19,10 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+using B2BackblazeBridge.Connection;
 using B2BackblazeBridge.Core;
-using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Net;
 using System.Text;
 using System.Threading.Tasks;
@@ -63,30 +62,25 @@ namespace B2BackblazeBridge.Actions
                 Encoding.UTF8.GetBytes(_acccountID + ":" + _applicationKey)
             );
             webRequest.Headers.Add("Authorization", "Basic " + credentialsHeader);
-            using (HttpWebResponse response = await webRequest.GetResponseAsync() as HttpWebResponse)
+            try
             {
-                if (response.StatusCode != HttpStatusCode.OK)
-                {
-                    throw new AuthorizeAccountActionException(response.StatusCode);
-                }
-                using (StreamReader streamReader = new StreamReader(response.GetResponseStream()))
-                {
-                    return DecodePayload(await streamReader.ReadToEndAsync());
-                }
+                return DecodePayload(await SendWebRequestAsync(webRequest));
+            }
+            catch (BaseActionWebRequestException ex)
+            {
+                throw new AuthorizeAccountActionException(ex.StatusCode);
             }
         }
         #endregion
 
         #region private methods
-        private BackblazeB2AuthorizationSession DecodePayload(string jsonPayload)
+        private BackblazeB2AuthorizationSession DecodePayload(Dictionary<string, dynamic> jsonPayload)
         {
-            Dictionary<string, dynamic> decodedJsonPayload = JsonConvert.DeserializeObject<Dictionary<string, dynamic>>(jsonPayload);
-
-            long absoluteMinimumPartSize = decodedJsonPayload["absoluteMinimumPartSize"];
-            string apiUrl = decodedJsonPayload["apiUrl"];
-            string authorizationToken = decodedJsonPayload["authorizationToken"];
-            string downloadUrl = decodedJsonPayload["downloadUrl"];
-            long recommendedPartSize = decodedJsonPayload["recommendedPartSize"];
+            long absoluteMinimumPartSize = jsonPayload["absoluteMinimumPartSize"];
+            string apiUrl = jsonPayload["apiUrl"];
+            string authorizationToken = jsonPayload["authorizationToken"];
+            string downloadUrl = jsonPayload["downloadUrl"];
+            long recommendedPartSize = jsonPayload["recommendedPartSize"];
 
             return new BackblazeB2AuthorizationSession(
                 absoluteMinimumPartSize,
