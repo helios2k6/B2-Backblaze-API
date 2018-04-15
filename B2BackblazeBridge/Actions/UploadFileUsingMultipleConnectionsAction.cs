@@ -23,10 +23,15 @@ using B2BackblazeBridge.Core;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Security.Cryptography;
+using System.Text;
 using System.Threading.Tasks;
 
 namespace B2BackblazeBridge.Actions
 {
+    /// <summary>
+    /// Represents uploading a single file using multiple connections in parallel
+    /// </summary>
     public sealed class UploadFileUsingMultipleConnectionsActions : BaseAction<BackblazeB2UploadFileResult>
     {
         #region inner classes
@@ -52,24 +57,43 @@ namespace B2BackblazeBridge.Actions
         #region private fields
         private readonly BackblazeB2AuthorizationSession _authorizationSession;
 
+        private readonly string _bucketID;
+
         private readonly string _filePath;
 
         private readonly int _numberOfConnections;
+
+        private readonly int _fileChunkSizesInBytes;
         #endregion
 
         #region ctor
         public UploadFileUsingMultipleConnectionsActions(
             BackblazeB2AuthorizationSession authorizationSession,
             string filePath,
+            string bucketID,
+            int fileChunkSizesInBytes,
             int numberOfConnections
         )
         {
+            if (File.Exists(filePath) == false)
+            {
+                throw new ArgumentException(string.Format("{0} does not exist", filePath));
+            }
+
+            if (fileChunkSizesInBytes < 1048576)
+            {
+                throw new ArgumentException("The file chunk sizes must be larger than 1 mebibyte");
+            }
+
             if (numberOfConnections < 1)
             {
                 throw new ArgumentException("You must specify a positive, non-zero number of connections", "numberOfConnections");
             }
-            _authorizationSession = authorizationSession;
+
+            _authorizationSession = authorizationSession ?? throw new ArgumentNullException("The authorization session object must not be mull");
+            _bucketID = bucketID;
             _filePath = filePath;
+            _fileChunkSizesInBytes = fileChunkSizesInBytes;
             _numberOfConnections = numberOfConnections;
         }
         #endregion
@@ -77,19 +101,67 @@ namespace B2BackblazeBridge.Actions
         #region public methods
         public async override Task<BackblazeB2UploadFileResult> ExecuteAsync()
         {
-            
+            IEnumerable<UploadPartJob> jobs = await GenerateUploadPartsAsync();
+            throw new NotImplementedException();
         }
         #endregion
 
         #region private methods
-        private IEnumerable<UploadPartJob> GenerateUploadParts()
+        private async Task<IEnumerable<UploadPartJob>> GenerateUploadPartsAsync()
         {
+            IList<UploadPartJob> jobs = new List<UploadPartJob>();
             FileInfo fileInfo = new FileInfo(_filePath);
-            long fileChunkLengths = fileInfo.Length / _numberOfConnections;
-            long fileChunkLengthOfLastItem = fileInfo.Length % _numberOfConnections;
-            for (int i = 0; i < _numberOfConnections; i++)
+            int numberOfChunks = (int)(fileInfo.Length / _fileChunkSizesInBytes); // We can't have more than 4 billion chunks per file. 
+            for (int currentChunk = 0; currentChunk < numberOfChunks; currentChunk++)
             {
-                
+                long cursorPosition = currentChunk * _fileChunkSizesInBytes;
+                jobs.Add(new UploadPartJob
+                {
+                    ContentLength = _fileChunkSizesInBytes,
+                    FileCursorPosition = cursorPosition,
+                    FilePartNumber = currentChunk,
+                    SHA1 = await ComputeSHA1HashOfChunkAsync(cursorPosition, _fileChunkSizesInBytes),
+                });
+            }
+
+            // There wasn't perfect division, which means we have to account for the last chunk
+            long remainderChunk = fileInfo.Length % _fileChunkSizesInBytes;
+            if (remainderChunk != 0)
+            {
+                long cursorPosition = numberOfChunks * _fileChunkSizesInBytes;
+                jobs.Add(new UploadPartJob
+                {
+                    ContentLength = remainderChunk,
+                    FileCursorPosition = numberOfChunks * _fileChunkSizesInBytes,
+                    FilePartNumber = numberOfChunks,
+                    SHA1 = await ComputeSHA1HashOfChunkAsync(cursorPosition, remainderChunk),
+                });
+            }
+
+            return jobs;
+        }
+
+        private async Task<string> ComputeSHA1HashOfChunkAsync(long fileCursorPosition, long length)
+        {
+            using (FileStream fileStream = new FileStream(_filePath, FileMode.Open))
+            using (SHA1 shaHash = SHA1.Create())
+            {
+                fileStream.Seek(fileCursorPosition, SeekOrigin.Begin);
+                byte[] buffer = new byte[length];
+                int bytesRead = await fileStream.ReadAsync(buffer, 0, (int)length);
+                if (bytesRead != length)
+                {
+                    throw new InvalidOperationException("The number of bytes read did not equal the expected number of bytes while computing the SHA1 hash");
+                }
+
+                byte[] hashBytes = shaHash.ComputeHash(buffer);
+                StringBuilder sb = new StringBuilder();
+                foreach (byte b in hashBytes)
+                {
+                    sb.Append(b.ToString("x2"));
+                }
+
+                return sb.ToString();
             }
         }
 

@@ -19,6 +19,7 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+using System;
 using System.Net;
 using System.Threading.Tasks;
 using B2BackblazeBridge.Connection;
@@ -36,6 +37,23 @@ public abstract class BaseAction<T> : IBackblazeB2Action<T>
         webRequest.ContentType = "application/json; charset=utf-8";
 
         return webRequest;
+    }
+
+    /// <summary>
+    /// This method sanitizes the the file path so that it can be used on B2. Here are the current set of rules:
+    /// 1. Max length is 1024 characters
+    /// 2. The characters must be in UTF-8
+    /// 3. Backslashes are not allowed
+    /// 4. DEL characters (127) are not allowed
+    /// 5. File names cannot start with a "/", end with a "/", or contain "//" anywhere
+    /// 6. For each segment of the file path, which is the part of the string between each "/", there can only be 
+    ///    250 bytes of UTF-8 characters (for multi-byte characters, that can reduce this down to less than 250 characters)
+    /// </summary>
+    /// <param name="filePath">The file path to sanitize</param>
+    /// <returns>A santitized file path</returns>
+    protected string GetSafeFileName(string filePath)
+    {
+        throw new NotImplementedException();
     }
     #endregion
 }

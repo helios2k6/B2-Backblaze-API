@@ -21,6 +21,7 @@
 
 using B2BackblazeBridge.Core;
 using Newtonsoft.Json;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Net;
@@ -30,6 +31,9 @@ using System.Threading.Tasks;
 
 namespace B2BackblazeBridge.Actions
 {
+    /// <summary>
+    /// Represents uploading a single file to B2 using only a single connection
+    /// </summary>
     public sealed class UploadFileAction : BaseAction<BackblazeB2UploadFileResult>
     {
         #region private classes
@@ -52,7 +56,7 @@ namespace B2BackblazeBridge.Actions
         #region ctor
         public UploadFileAction(string filePath, string bucketID, BackblazeB2AuthorizationSession authorizationSession) : base()
         {
-            _authorizationSession = authorizationSession;
+            _authorizationSession = authorizationSession ?? throw new ArgumentNullException("The authorization session object must not be null");
             _bucketID = bucketID;
             _filePath = filePath;
         }

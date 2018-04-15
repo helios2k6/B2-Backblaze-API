@@ -30,6 +30,9 @@ using System.Threading.Tasks;
 
 namespace B2BackblazeBridge.Actions
 {
+    /// <summary>
+    /// Authorizes an account to use the B2 API
+    /// </summary>
     public sealed class AuthorizeAccountAction : BaseAction<BackblazeB2AuthorizationSession>
     {
         #region private fields
@@ -40,6 +43,11 @@ namespace B2BackblazeBridge.Actions
         #endregion
 
         #region ctor
+        /// <summary>
+        /// Constructs a new AuthorizeAccountAction
+        /// </summary>
+        /// <param name="accountID">The B2 account ID</param>
+        /// <param name="applicationKey">The B2 application key</param>
         public AuthorizeAccountAction(string accountID, string applicationKey) : base()
         {
             _acccountID = accountID;

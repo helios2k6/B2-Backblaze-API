@@ -25,7 +25,7 @@ using System.Net;
 namespace B2BackblazeBridge.Actions
 {
     /// <summary>
-    /// This exception is thrown whenever authorizing an account action fails
+    /// This exception is thrown whenever uploading a file fails
     /// </summary>
     public sealed class UploadFileActionException : Exception
     {
