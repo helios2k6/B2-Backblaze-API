@@ -256,8 +256,6 @@ namespace B2BackblazeBridge.Actions
             {
                 throw new UploadFileActionException(ex.StatusCode);
             }
-
-            return false;
         }
 
         private async Task<BackblazeB2UploadFileResult> FinishUploadingLargeFile()
