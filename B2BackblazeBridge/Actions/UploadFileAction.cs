@@ -78,7 +78,8 @@ namespace B2BackblazeBridge.Actions
         {
             try
             {
-                string sha1Hash = ComputeSHA1Hash();
+                byte[] fileBytes = File.ReadAllBytes(_filePath);
+                string sha1Hash = ComputeSHA1Hash(fileBytes);
                 FileInfo info = new FileInfo(_filePath);
                 HttpWebRequest webRequest = (HttpWebRequest)WebRequest.Create(getUploadFileUrlResult.UploadURL);
                 webRequest.Method = "POST";
@@ -88,28 +89,11 @@ namespace B2BackblazeBridge.Actions
                 webRequest.ContentType = "b2/x-auto";
                 webRequest.ContentLength = info.Length;
 
-                byte[] allBytes = File.ReadAllBytes(_filePath);
-                return DecodeUploadFileResponse(await SendWebRequestAsync(webRequest, allBytes));
+                return DecodeUploadFileResponse(await SendWebRequestAsync(webRequest, fileBytes));
             }
             catch (BaseActionWebRequestException ex)
             {
                 throw new UploadFileActionException(ex.StatusCode);
-            }
-        }
-
-        private string ComputeSHA1Hash()
-        {
-            using (FileStream fileStream = new FileStream(_filePath, FileMode.Open))
-            using (SHA1 shaHash = SHA1.Create())
-            {
-                byte[] hashBytes = shaHash.ComputeHash(fileStream);
-                StringBuilder sb = new StringBuilder();
-                foreach (byte b in hashBytes)
-                {
-                    sb.Append(b.ToString("x2"));
-                }
-
-                return sb.ToString();
             }
         }
 

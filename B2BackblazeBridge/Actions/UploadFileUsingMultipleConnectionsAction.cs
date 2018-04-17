@@ -19,7 +19,6 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-using B2BackblazeBridge.Connection;
 using B2BackblazeBridge.Core;
 using Newtonsoft.Json;
 using System;
@@ -235,16 +234,30 @@ namespace B2BackblazeBridge.Actions
             }
         }
 
-        private async Task<bool> UploadFilePart(GetUploadPartURLResponse getUploadPartUrl)
+        private async Task<bool> UploadFilePart(
+            byte[] fileBytes,
+            int partNumber,
+            GetUploadPartURLResponse getUploadPartUrl
+        )
         {
             try
             {
-                
+                HttpWebRequest webRequest = GetHttpWebRequest(getUploadPartUrl.UploadURL);
+                webRequest.Headers.Add("Authorization", getUploadPartUrl.AuthorizationToken);
+                webRequest.Headers.Add("X-Bz-PartNumber", partNumber.ToString());
+                webRequest.Headers.Add("X-Bz-Content-Sha1", ComputeSHA1Hash(fileBytes));
+                webRequest.ContentLength = fileBytes.Length;
+
+                await SendWebRequestAsync(webRequest, fileBytes);
+
+                return true;
             }
             catch (BaseActionWebRequestException ex)
             {
-
+                throw new UploadFileActionException(ex.StatusCode);
             }
+
+            return false;
         }
 
         private async Task<BackblazeB2UploadFileResult> FinishUploadingLargeFile()

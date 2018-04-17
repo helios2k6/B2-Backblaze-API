@@ -24,6 +24,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Net;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -145,6 +146,24 @@ namespace B2BackblazeBridge.Actions
                     Dictionary<string, dynamic> decodedResponse = JsonConvert.DeserializeObject<Dictionary<string, dynamic>>(responseJson);
                     return decodedResponse["fileId"];
                 }
+            }
+        }
+
+        /// <summary>
+        /// Computes the SHA1 hash of the given set of bytes
+        /// </summary>
+        /// <returns>A string representing the SHA1 hash</returns>
+        protected string ComputeSHA1Hash(byte[] data)
+        {
+            using (SHA1 shaHash = SHA1.Create())
+            {
+                StringBuilder sb = new StringBuilder();
+                foreach (byte b in data)
+                {
+                    sb.Append(b.ToString("x2"));
+                }
+
+                return sb.ToString();
             }
         }
         #endregion
