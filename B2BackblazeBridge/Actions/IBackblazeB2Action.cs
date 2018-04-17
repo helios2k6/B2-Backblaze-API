@@ -21,7 +21,7 @@
 
 using System.Threading.Tasks;
 
-namespace B2BackblazeBridge.Connection
+namespace B2BackblazeBridge.Actions
 {
     /// <summary>
     /// Represents an action that can be taken on the Backblaze B2 platform

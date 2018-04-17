@@ -22,7 +22,7 @@
 using System;
 using System.Net;
 
-namespace B2BackblazeBridge.Connection
+namespace B2BackblazeBridge.Actions
 {
     /// <summary>
     /// Represents an exception thrown when a web request is sent from the BaseAction class. This exception is meant to be caught,

@@ -19,7 +19,6 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-using B2BackblazeBridge.Connection;
 using B2BackblazeBridge.Core;
 using System;
 using System.Collections.Generic;
