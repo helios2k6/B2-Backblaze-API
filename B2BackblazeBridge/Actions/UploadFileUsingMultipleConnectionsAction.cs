@@ -51,6 +51,17 @@ namespace B2BackblazeBridge.Actions
             public string ContentType { get; set; }
         }
 
+        [Serializable]
+        [JsonObject(MemberSerialization.OptIn)]
+        private sealed class FinishLargeFileRequest
+        {
+            [JsonProperty(PropertyName = "fileId")]
+            public string FileID { get; set; }
+
+            [JsonProperty(PropertyName = "partSha1Array")]
+            public IList<string> FilePartHashes { get; set; }
+        }
+
         private sealed class GetUploadPartURLResponse
         {
             public string AuthorizationToken { get; set; }
@@ -225,7 +236,7 @@ namespace B2BackblazeBridge.Actions
                 return new GetUploadPartURLResponse
                 {
                     AuthorizationToken = jsonResponse["authorizationToken"],
-                    UploadURL = jsonResponse["uploadUrl"],
+                    UploadURL = new Uri(_authorizationSession.APIURL, jsonResponse["uploadUrl"]).ToString(),
                 };
             }
             catch (BaseActionWebRequestException ex)
@@ -236,6 +247,7 @@ namespace B2BackblazeBridge.Actions
 
         private async Task<bool> UploadFilePart(
             byte[] fileBytes,
+            string sha1Hash,
             int partNumber,
             GetUploadPartURLResponse getUploadPartUrl
         )
@@ -245,7 +257,7 @@ namespace B2BackblazeBridge.Actions
                 HttpWebRequest webRequest = GetHttpWebRequest(getUploadPartUrl.UploadURL);
                 webRequest.Headers.Add("Authorization", getUploadPartUrl.AuthorizationToken);
                 webRequest.Headers.Add("X-Bz-PartNumber", partNumber.ToString());
-                webRequest.Headers.Add("X-Bz-Content-Sha1", ComputeSHA1Hash(fileBytes));
+                webRequest.Headers.Add("X-Bz-Content-Sha1", sha1Hash);
                 webRequest.ContentLength = fileBytes.Length;
 
                 await SendWebRequestAsync(webRequest, fileBytes);
@@ -258,9 +270,18 @@ namespace B2BackblazeBridge.Actions
             }
         }
 
-        private async Task<BackblazeB2UploadFileResult> FinishUploadingLargeFile()
+        private async Task<BackblazeB2UploadFileResult> FinishUploadingLargeFile(
+            IList<string> sha1Parts
+        )
         {
-            throw new NotImplementedException();
+            try
+            {
+                HttpWebRequest wenRequest = GetHttpWebRequest(_authorizationSession.APIURL);
+            }
+            catch (BaseActionWebRequestException ex)
+            {
+                throw new UploadFileActionException(ex.StatusCode);
+            }
         }
         #endregion
     }

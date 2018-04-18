@@ -136,7 +136,7 @@ namespace B2BackblazeBridge.Actions
             {
                 AuthorizationToken = jsonPayload["authorizationToken"],
                 BucketID = jsonPayload["bucketId"],
-                UploadURL = jsonPayload["uploadUrl"],
+                UploadURL = new Uri(_authorizationSession.APIURL, jsonPayload["uploadUrl"]).ToString(),
             };
         }
         #endregion
