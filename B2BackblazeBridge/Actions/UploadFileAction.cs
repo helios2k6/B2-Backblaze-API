@@ -115,7 +115,7 @@ namespace B2BackblazeBridge.Actions
         {
             try
             {
-                HttpWebRequest webRequest = GetHttpWebRequest(_authorizationSession.APIURL);
+                HttpWebRequest webRequest = GetHttpWebRequest(_authorizationSession.APIURL, true);
                 webRequest.Headers.Add("Authorization", _authorizationSession.AuthorizationToken);
                 webRequest.Method = "POST";
 

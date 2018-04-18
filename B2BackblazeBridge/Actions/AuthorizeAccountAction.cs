@@ -56,7 +56,7 @@ namespace B2BackblazeBridge.Actions
         #region public methods
         public async override Task<BackblazeB2AuthorizationSession> ExecuteAsync()
         {
-            HttpWebRequest webRequest = GetHttpWebRequest(APIURL);
+            HttpWebRequest webRequest = GetHttpWebRequest(APIURL, true);
             string credentialsHeader = Convert.ToBase64String(
                 Encoding.UTF8.GetBytes(_acccountID + ":" + _applicationKey)
             );

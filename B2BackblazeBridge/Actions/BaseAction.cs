@@ -40,10 +40,13 @@ namespace B2BackblazeBridge.Actions
         #endregion
 
         #region protected methods
-        protected HttpWebRequest GetHttpWebRequest(string apiUrl)
+        protected HttpWebRequest GetHttpWebRequest(string apiUrl, bool setToJson)
         {
             HttpWebRequest webRequest = (HttpWebRequest)WebRequest.Create(apiUrl);
-            webRequest.ContentType = "application/json; charset=utf-8";
+            if (setToJson)
+            {
+                webRequest.ContentType = "application/json; charset=utf-8";
+            }
 
             return webRequest;
         }

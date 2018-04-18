@@ -86,6 +86,8 @@ namespace B2BackblazeBridge.Actions
 
         private static readonly string GetUploadPartURLURL = "/b2api/v1/b2_get_upload_part_url";
 
+        private static readonly string FinishLargeFileURL = "/b2api/v1/b2_finish_large_file";
+
         private readonly BackblazeB2AuthorizationSession _authorizationSession;
 
         private readonly string _bucketID;
@@ -196,7 +198,7 @@ namespace B2BackblazeBridge.Actions
             }
         }
 
-        private async Task<long> GetFileID()
+        private async Task<string> GetFileID()
         {
             try
             {
@@ -208,13 +210,13 @@ namespace B2BackblazeBridge.Actions
                 };
 
                 byte[] jsonBodyBytes = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(request));
-                HttpWebRequest webRequest = GetHttpWebRequest(_authorizationSession.APIURL + StartLargeFileURL);
+                HttpWebRequest webRequest = GetHttpWebRequest(_authorizationSession.APIURL + StartLargeFileURL, true);
                 webRequest.Method = "POST";
                 webRequest.Headers.Add("Authorization", _authorizationSession.AuthorizationToken);
                 webRequest.ContentLength = jsonBodyBytes.Length;
 
                 Dictionary<string, dynamic> jsonResponse = await SendWebRequestAsync(webRequest, jsonBodyBytes);
-                return (long)jsonResponse["fileId"];
+                return (string)jsonResponse["fileId"];
             }
             catch (BaseActionWebRequestException ex)
             {
@@ -227,7 +229,7 @@ namespace B2BackblazeBridge.Actions
             try
             {
                 byte[] jsonPayloadBytes = Encoding.UTF8.GetBytes("{\"fileId\":\"" + fileID + "\"}");
-                HttpWebRequest webRequest = GetHttpWebRequest(_authorizationSession.APIURL + GetUploadPartURLURL);
+                HttpWebRequest webRequest = GetHttpWebRequest(_authorizationSession.APIURL + GetUploadPartURLURL, true);
                 webRequest.Method = "POST";
                 webRequest.Headers.Add("Authorization", _authorizationSession.AuthorizationToken);
                 webRequest.ContentLength = jsonPayloadBytes.Length;
@@ -254,7 +256,7 @@ namespace B2BackblazeBridge.Actions
         {
             try
             {
-                HttpWebRequest webRequest = GetHttpWebRequest(getUploadPartUrl.UploadURL);
+                HttpWebRequest webRequest = GetHttpWebRequest(getUploadPartUrl.UploadURL, true);
                 webRequest.Headers.Add("Authorization", getUploadPartUrl.AuthorizationToken);
                 webRequest.Headers.Add("X-Bz-PartNumber", partNumber.ToString());
                 webRequest.Headers.Add("X-Bz-Content-Sha1", sha1Hash);
@@ -271,12 +273,21 @@ namespace B2BackblazeBridge.Actions
         }
 
         private async Task<BackblazeB2UploadFileResult> FinishUploadingLargeFile(
+            string fileId,
             IList<string> sha1Parts
         )
         {
             try
             {
-                HttpWebRequest wenRequest = GetHttpWebRequest(_authorizationSession.APIURL);
+                FinishLargeFileRequest finishLargeFileRequest = new FinishLargeFileRequest
+                {
+                    FileID = fileId,
+                    FilePartHashes = sha1Parts,
+                };
+                string serializedFileRequest = JsonConvert.SerializeObject(finishLargeFileRequest);
+                HttpWebRequest webRequest = GetHttpWebRequest(_authorizationSession.APIURL + FinishLargeFileURL, true);
+                webRequest.Method = "POST";
+                webRequest.Headers.Add("Authorization", _authorizationSession.AuthorizationToken);
             }
             catch (BaseActionWebRequestException ex)
             {
