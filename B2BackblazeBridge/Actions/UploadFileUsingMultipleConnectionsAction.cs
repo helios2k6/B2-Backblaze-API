@@ -285,9 +285,24 @@ namespace B2BackblazeBridge.Actions
                     FilePartHashes = sha1Parts,
                 };
                 string serializedFileRequest = JsonConvert.SerializeObject(finishLargeFileRequest);
+                byte[] requestBytes = Encoding.UTF8.GetBytes(serializedFileRequest);
+                 
                 HttpWebRequest webRequest = GetHttpWebRequest(_authorizationSession.APIURL + FinishLargeFileURL, true);
+                webRequest.ContentLength = requestBytes.Length;
                 webRequest.Method = "POST";
                 webRequest.Headers.Add("Authorization", _authorizationSession.AuthorizationToken);
+
+                Dictionary<string, dynamic> response = await SendWebRequestAsync(webRequest, requestBytes);
+
+                return new BackblazeB2UploadFileResult
+                {
+                    AccountID = _authorizationSession.AccountID,
+                    BucketID = response["bucketId"],
+                    ContentLength = response["contentLength"],
+                    FileID = response["fileId"],
+                    FileName = response["fileName"],
+                    UploadTimeStamp = response["uploadTimestamp"],
+                };
             }
             catch (BaseActionWebRequestException ex)
             {
