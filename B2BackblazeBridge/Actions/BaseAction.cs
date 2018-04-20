@@ -27,6 +27,7 @@ using System.Net;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
+using static B2BackblazeBridge.Actions.BaseActionWebRequestException;
 
 namespace B2BackblazeBridge.Actions
 {
@@ -113,8 +114,7 @@ namespace B2BackblazeBridge.Actions
             {
                 if (response.StatusCode != HttpStatusCode.OK)
                 {
-                    // TODO: handle specific HTTP codes and encode them in this exception
-                    throw new BaseActionWebRequestException(response.StatusCode);
+                    await HandleNonHttp200ErrorCodeAsync(response);
                 }
                 using (StreamReader streamReader = new StreamReader(response.GetResponseStream()))
                 {
@@ -141,7 +141,7 @@ namespace B2BackblazeBridge.Actions
             {
                 if (response.StatusCode != HttpStatusCode.OK)
                 {
-                    throw new BaseActionWebRequestException(response.StatusCode);
+                    await HandleNonHttp200ErrorCodeAsync(response);
                 }
                 using (StreamReader reader = new StreamReader(response.GetResponseStream()))
                 {
@@ -149,6 +149,22 @@ namespace B2BackblazeBridge.Actions
                     Dictionary<string, dynamic> decodedResponse = JsonConvert.DeserializeObject<Dictionary<string, dynamic>>(responseJson);
                     return decodedResponse["fileId"];
                 }
+            }
+        }
+
+        private async Task HandleNonHttp200ErrorCodeAsync(HttpWebResponse response)
+        {
+            if (response.StatusCode == HttpStatusCode.OK) {
+                // Handle the case when we actually have an OK code
+                return;
+            }
+
+            // Decode JSON error structure and rethrow
+            using (StreamReader reader = new StreamReader(response.GetResponseStream()))
+            {
+                string responseJson = await reader.ReadToEndAsync();
+                ErrorDetails errorDetails = JsonConvert.DeserializeObject<ErrorDetails>(responseJson);
+                throw new BaseActionWebRequestException(response.StatusCode, errorDetails);
             }
         }
 

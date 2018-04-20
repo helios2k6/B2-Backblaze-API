@@ -19,6 +19,7 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+using Newtonsoft.Json;
 using System;
 using System.Net;
 
@@ -28,16 +29,36 @@ namespace B2BackblazeBridge.Actions
     /// Represents an exception thrown when a web request is sent from the BaseAction class. This exception is meant to be caught,
     /// inspected, and then another exception is meant to be rethrown with an HttpsStatusCode
     /// </summary>
-    internal sealed class BaseActionWebRequestException : Exception
+    public sealed class BaseActionWebRequestException : Exception
     {
-        public BaseActionWebRequestException(HttpStatusCode statusCode) : base(string.Format("The status code {0} was returned", statusCode))
+        [Serializable]
+        [JsonObject(MemberSerialization.OptIn)]
+        public sealed class ErrorDetails
+        {
+            [JsonProperty(PropertyName = "status")]
+            public string Status { get; set; }
+
+            [JsonProperty(PropertyName = "code")]
+            public int Code { get; set; }
+
+            [JsonProperty(PropertyName = "message")]
+            public string Message { get; set; }
+        }
+
+        public BaseActionWebRequestException(HttpStatusCode statusCode, ErrorDetails details) : base(string.Format("The status code {0} was returned", statusCode))
         {
             StatusCode = statusCode;
+            Details = details;
         }
 
         /// <summary>
         /// The HTTP status code of the exception
         /// </summary>
         public HttpStatusCode StatusCode { get; }
+
+        /// <summary>
+        /// The details of this HTTP error
+        /// </summary>
+        public ErrorDetails Details { get; }
     }
 }
