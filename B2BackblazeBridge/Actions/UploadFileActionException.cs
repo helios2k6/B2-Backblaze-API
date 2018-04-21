@@ -27,10 +27,10 @@ namespace B2BackblazeBridge.Actions
     /// <summary>
     /// This exception is thrown whenever uploading a file fails
     /// </summary>
-    public sealed class UploadFileActionException : Exception
+    public sealed class UploadFileActionException : BaseActionWebRequestException
     {
         #region ctor
-        public UploadFileActionException(HttpStatusCode statusCode) : base(string.Format("The status code {0} was returned", statusCode))
+        public UploadFileActionException(HttpStatusCode statusCode, ErrorDetails details) : base(statusCode, details)
         {
         }
         #endregion

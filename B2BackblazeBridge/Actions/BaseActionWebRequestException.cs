@@ -29,7 +29,7 @@ namespace B2BackblazeBridge.Actions
     /// Represents an exception thrown when a web request is sent from the BaseAction class. This exception is meant to be caught,
     /// inspected, and then another exception is meant to be rethrown with an HttpsStatusCode
     /// </summary>
-    public sealed class BaseActionWebRequestException : Exception
+    public class BaseActionWebRequestException : Exception
     {
         [Serializable]
         [JsonObject(MemberSerialization.OptIn)]

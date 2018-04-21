@@ -27,10 +27,10 @@ namespace B2BackblazeBridge.Actions
     /// <summary>
     /// This exception is thrown whenever authorizing an account action fails
     /// </summary>
-    public sealed class AuthorizeAccountActionException : Exception
+    public sealed class AuthorizeAccountActionException : BaseActionWebRequestException
     {
         #region ctor
-        public AuthorizeAccountActionException(HttpStatusCode statusCode) : base(string.Format("The status code {0} was returned", statusCode))
+        public AuthorizeAccountActionException(HttpStatusCode statusCode, ErrorDetails details) : base(statusCode, details)
         {
         }
         #endregion

@@ -67,7 +67,7 @@ namespace B2BackblazeBridge.Actions
             }
             catch (BaseActionWebRequestException ex)
             {
-                throw new AuthorizeAccountActionException(ex.StatusCode);
+                throw new AuthorizeAccountActionException(ex.StatusCode, ex.Details);
             }
         }
         #endregion
