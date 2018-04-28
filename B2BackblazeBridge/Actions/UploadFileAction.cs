@@ -93,7 +93,7 @@ namespace B2BackblazeBridge.Actions
             }
             catch (BaseActionWebRequestException ex)
             {
-                throw new UploadFileActionException(ex.StatusCode);
+                throw new UploadFileActionException(ex.StatusCode, ex.Details);
             }
         }
 
@@ -126,7 +126,7 @@ namespace B2BackblazeBridge.Actions
             }
             catch (BaseActionWebRequestException ex)
             {
-                throw new UploadFileActionException(ex.StatusCode);
+                throw new UploadFileActionException(ex.StatusCode, ex.Details);
             }
         }
 
