@@ -36,6 +36,12 @@ namespace B2BackblazeBridge.Actions
     /// </summary>
     public abstract class BaseAction<T> : IBackblazeB2Action<T>
     {
+        #region private fields
+        private static readonly int TicksPerMicrosecond = 10;
+
+        private readonly Random _random = new Random();
+        #endregion
+
         #region public methods
         public abstract Task<T> ExecuteAsync();
         #endregion
@@ -154,7 +160,8 @@ namespace B2BackblazeBridge.Actions
 
         private async Task HandleNonHttp200ErrorCodeAsync(HttpWebResponse response)
         {
-            if (response.StatusCode == HttpStatusCode.OK) {
+            if (response.StatusCode == HttpStatusCode.OK)
+            {
                 // Handle the case when we actually have an OK code
                 return;
             }
@@ -184,6 +191,43 @@ namespace B2BackblazeBridge.Actions
 
                 return sb.ToString();
             }
+        }
+
+        /// <summary>
+        /// Calculate the amount of time to suspend the current thread 
+        /// </summary>
+        /// <param name="attemptNumber"></param>
+        /// <returns></returns>
+        protected TimeSpan CalculateExponentialBackoffSleepTime(int attemptNumber)
+        {
+            if (attemptNumber == 1)
+            {
+                return new TimeSpan(_random.Next(0, 52) * TicksPerMicrosecond);
+            }
+
+            if (attemptNumber == 2)
+            {
+                int timeFrameSelection = _random.Next(0, 4);
+
+                if (timeFrameSelection == 0)
+                {
+                    return new TimeSpan(0);
+                }
+
+                if (timeFrameSelection == 1)
+                {
+                    return new TimeSpan(52 * TicksPerMicrosecond);
+                }
+
+                if (timeFrameSelection == 2)
+                {
+                    return new TimeSpan(103 * TicksPerMicrosecond);
+                }
+
+                return new TimeSpan(154 * TicksPerMicrosecond);
+            }
+
+            return new TimeSpan(_random.Next(0, int.MaxValue) * TicksPerMicrosecond);
         }
         #endregion
     }

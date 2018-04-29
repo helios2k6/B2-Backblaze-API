@@ -23,13 +23,13 @@ using B2BackblazeBridge.Core;
 using B2BackblazeBridge.Processing;
 using Newtonsoft.Json;
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net;
 using System.Security.Cryptography;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace B2BackblazeBridge.Actions
@@ -46,7 +46,7 @@ namespace B2BackblazeBridge.Actions
 
         private static readonly string FinishLargeFileURL = "/b2api/v1/b2_finish_large_file";
 
-        private static readonly int MaxUploadAttempts = 5;
+        private static readonly int MaxUploadAttempts = 10;
 
         private readonly BackblazeB2AuthorizationSession _authorizationSession;
 
@@ -60,6 +60,14 @@ namespace B2BackblazeBridge.Actions
         #endregion
 
         #region ctor
+        /// <summary>
+        /// Constructs a new UploadFileUsingMultipleConnectionsActions
+        /// </summary>
+        /// <param name="authorizationSession">The authorization session</param>
+        /// <param name="filePath">The (local) path to the file you want to upload</param>
+        /// <param name="bucketID">The B2 bucket you want to upload to</param>
+        /// <param name="fileChunkSizesInBytes">The size (in bytes) of the file chunks you want to use when uploading</param>
+        /// <param name="numberOfConnections">The number of connections to use when uploading</param>
         public UploadFileUsingMultipleConnectionsActions(
             BackblazeB2AuthorizationSession authorizationSession,
             string filePath,
@@ -94,10 +102,11 @@ namespace B2BackblazeBridge.Actions
         #region public methods
         public override Task<BackblazeB2UploadMultipartFileResult> ExecuteAsync()
         {
-            return new Task<BackblazeB2UploadMultipartFileResult>(() => {
+            return new Task<BackblazeB2UploadMultipartFileResult>(() =>
+            {
                 Task<string> fileIDTask = GetFileIDAsync();
                 Task<IEnumerable<UploadPartJob>> jobsTask = GenerateUploadPartsAsync();
-                Task.WaitAll(new Task[] {fileIDTask, jobsTask});
+                Task.WaitAll(new Task[] { fileIDTask, jobsTask });
 
                 string fileID = fileIDTask.Result;
 
@@ -107,7 +116,7 @@ namespace B2BackblazeBridge.Actions
                 int unixTimestamp = (int)(DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1))).TotalSeconds;
 
                 return new BackblazeB2UploadMultipartFileResult
-                { 
+                {
                     FileHashes = jobs.Select(t => t.SHA1).ToList(),
                     FileID = fileID,
                     FileName = GetSafeFileName(_filePath),
@@ -145,8 +154,8 @@ namespace B2BackblazeBridge.Actions
 
             return
                 (from worker in workerArray.Cast<Task<IDictionary<UploadPartJob, bool>>>()
-                from kvp in worker.Result
-                select kvp).ToDictionary(elem => elem.Key, elem => elem.Value);
+                 from kvp in worker.Result
+                 select kvp).ToDictionary(elem => elem.Key, elem => elem.Value);
         }
 
         private async Task<IDictionary<UploadPartJob, bool>> ProcessJobs(GetUploadPartURLResponse url, IList<UploadPartJob> jobs)
@@ -265,7 +274,8 @@ namespace B2BackblazeBridge.Actions
         {
             object lock_object = new object();
             List<GetUploadPartURLResponse> urlEndpoints = new List<GetUploadPartURLResponse>();
-            Parallel.For(0, _numberOfConnections, async i => {
+            Parallel.For(0, _numberOfConnections, async i =>
+            {
                 GetUploadPartURLResponse response = await GetUploadPartURLAsync(fileID);
                 lock (lock_object)
                 {
@@ -318,6 +328,13 @@ namespace B2BackblazeBridge.Actions
                     throw new UploadFilePartFailureException();
                 }
 
+                // Sleep the current thread so that we can give the server some time to recover
+                if (attemptNumber > 0)
+                {
+                    TimeSpan backoffSleepTime = CalculateExponentialBackoffSleepTime(attemptNumber);
+                    Thread.Sleep(backoffSleepTime);
+                }
+
                 try
                 {
                     HttpWebRequest webRequest = GetHttpWebRequest(getUploadPartUrl.UploadURL, true);
@@ -355,7 +372,6 @@ namespace B2BackblazeBridge.Actions
 
                 attemptNumber++;
             }
-
         }
 
         private async Task<BackblazeB2UploadFileResult> FinishUploadingLargeFileAsync(
@@ -372,7 +388,7 @@ namespace B2BackblazeBridge.Actions
                 };
                 string serializedFileRequest = JsonConvert.SerializeObject(finishLargeFileRequest);
                 byte[] requestBytes = Encoding.UTF8.GetBytes(serializedFileRequest);
-                 
+
                 HttpWebRequest webRequest = GetHttpWebRequest(_authorizationSession.APIURL + FinishLargeFileURL, true);
                 webRequest.ContentLength = requestBytes.Length;
                 webRequest.Method = "POST";
