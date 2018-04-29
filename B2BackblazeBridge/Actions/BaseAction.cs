@@ -68,13 +68,15 @@ namespace B2BackblazeBridge.Actions
         /// 6. For each segment of the file path, which is the part of the string between each "/", there can only be 
         ///    250 bytes of UTF-8 characters (for multi-byte characters, that can reduce this down to less than 250 characters)
         ///
-        ///  The following encodings will be used to fix file names for the given rules above:
-        ///  1. An exception will be thrown for file paths above 1024 characters
-        ///  2. Nothing will be done to ensure UTF-8 encoding, since all strings in C# are UTF-16
-        ///  3. All backslashes will be replaced with forward slashes
-        ///  4. Nothing, since file paths can't have the DEL character anyways
-        ///  5. The very first "/" will be replaced with an empty string. An exception will be thrown for any file path that ends with a "/" or contains a "//"
-        ///  6. An exception will be thrown if any segment is longer than 250 bytes
+        /// The following encodings will be used to fix file names for the given rules above:
+        /// 1. An exception will be thrown for file paths above 1024 characters
+        /// 2. Nothing will be done to ensure UTF-8 encoding, since all strings in C# are UTF-16
+        /// 3. All backslashes will be replaced with forward slashes
+        /// 4. Nothing, since file paths can't have the DEL character anyways
+        /// 5. The very first "/" will be replaced with an empty string. An exception will be thrown for any file path that ends with a "/" or contains a "//"
+        /// 6. An exception will be thrown if any segment is longer than 250 bytes
+        /// 
+        /// Additionally, we will remove drive letters
         /// </summary>
         /// <param name="filePath">The file path to sanitize</param>
         /// <returns>A santitized file path</returns>
@@ -85,7 +87,14 @@ namespace B2BackblazeBridge.Actions
                 throw new InvalidOperationException("The file path cannot be longer than 1024 characters");
             }
 
-            string updatedString = filePath.Replace('\\', '/');
+            string updatedString = filePath;
+            // Drive letters cannot be more than 2 letters, so this is always true
+            if (filePath.IndexOf(":") == 1)
+            {
+                updatedString = updatedString.Substring(2);
+            }
+
+            updatedString = updatedString.Replace('\\', '/');
             if (updatedString[0] == '/')
             {
                 updatedString = updatedString.Substring(1);
@@ -138,24 +147,32 @@ namespace B2BackblazeBridge.Actions
         /// <returns></returns>
         protected async Task<Dictionary<string, dynamic>> SendWebRequestAsync(HttpWebRequest webRequest, byte[] payload)
         {
-            using (Stream stream = await webRequest.GetRequestStreamAsync())
+            try
             {
-                await stream.WriteAsync(payload, 0, payload.Length);
+                using (Stream stream = await webRequest.GetRequestStreamAsync())
+                {
+                    await stream.WriteAsync(payload, 0, payload.Length);
+                }
+
+                using (HttpWebResponse response = await webRequest.GetResponseAsync() as HttpWebResponse)
+                {
+                    if (response.StatusCode != HttpStatusCode.OK)
+                    {
+                        await HandleNonHttp200ErrorCodeAsync(response);
+                    }
+                    using (StreamReader reader = new StreamReader(response.GetResponseStream()))
+                    {
+                        string responseJson = await reader.ReadToEndAsync();
+                        return JsonConvert.DeserializeObject<Dictionary<string, dynamic>>(responseJson);
+                    }
+                }
+            }
+            catch (WebException ex)
+            {
+                await HandleNonHttp200ErrorCodeAsync(ex.Response as HttpWebResponse);
             }
 
-            using (HttpWebResponse response = await webRequest.GetResponseAsync() as HttpWebResponse)
-            {
-                if (response.StatusCode != HttpStatusCode.OK)
-                {
-                    await HandleNonHttp200ErrorCodeAsync(response);
-                }
-                using (StreamReader reader = new StreamReader(response.GetResponseStream()))
-                {
-                    string responseJson = await reader.ReadToEndAsync();
-                    Dictionary<string, dynamic> decodedResponse = JsonConvert.DeserializeObject<Dictionary<string, dynamic>>(responseJson);
-                    return decodedResponse["fileId"];
-                }
-            }
+            throw new InvalidOperationException("Impossible code path reached. This should never happen");
         }
 
         private async Task HandleNonHttp200ErrorCodeAsync(HttpWebResponse response)
@@ -183,8 +200,9 @@ namespace B2BackblazeBridge.Actions
         {
             using (SHA1 shaHash = SHA1.Create())
             {
+                byte[] hashData = shaHash.ComputeHash(data, 0, data.Length);
                 StringBuilder sb = new StringBuilder();
-                foreach (byte b in data)
+                foreach (byte b in hashData)
                 {
                     sb.Append(b.ToString("x2"));
                 }

@@ -20,12 +20,10 @@
  */
 
 using B2BackblazeBridge.Core;
-using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Net;
-using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -48,6 +46,8 @@ namespace B2BackblazeBridge.Actions
         #endregion
 
         #region private fields
+        private static readonly string GetUploadURIURI = "/b2api/v1/b2_get_upload_url";
+
         private readonly BackblazeB2AuthorizationSession _authorizationSession;
         private readonly string _bucketID;
         private readonly string _filePath;
@@ -55,11 +55,16 @@ namespace B2BackblazeBridge.Actions
 
         #region ctor
         public UploadFileAction(
+            BackblazeB2AuthorizationSession authorizationSession,
             string filePath,
-            string bucketID,
-            BackblazeB2AuthorizationSession authorizationSession
+            string bucketID
         ) : base()
         {
+            if (File.Exists(filePath) == false)
+            {
+                throw new ArgumentException("filePath");
+            }
+
             _authorizationSession = authorizationSession ?? throw new ArgumentNullException("The authorization session object must not be null");
             _bucketID = bucketID;
             _filePath = filePath;
@@ -115,7 +120,7 @@ namespace B2BackblazeBridge.Actions
         {
             try
             {
-                HttpWebRequest webRequest = GetHttpWebRequest(_authorizationSession.APIURL, true);
+                HttpWebRequest webRequest = GetHttpWebRequest(_authorizationSession.APIURL + GetUploadURIURI, true);
                 webRequest.Headers.Add("Authorization", _authorizationSession.AuthorizationToken);
                 webRequest.Method = "POST";
 
@@ -136,7 +141,7 @@ namespace B2BackblazeBridge.Actions
             {
                 AuthorizationToken = jsonPayload["authorizationToken"],
                 BucketID = jsonPayload["bucketId"],
-                UploadURL = new Uri(_authorizationSession.APIURL, jsonPayload["uploadUrl"]).ToString(),
+                UploadURL = jsonPayload["uploadUrl"],
             };
         }
         #endregion

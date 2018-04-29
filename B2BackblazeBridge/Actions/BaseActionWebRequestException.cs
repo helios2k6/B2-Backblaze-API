@@ -36,10 +36,10 @@ namespace B2BackblazeBridge.Actions
         public sealed class ErrorDetails
         {
             [JsonProperty(PropertyName = "status")]
-            public string Status { get; set; }
+            public int Status { get; set; }
 
             [JsonProperty(PropertyName = "code")]
-            public int Code { get; set; }
+            public string Code { get; set; }
 
             [JsonProperty(PropertyName = "message")]
             public string Message { get; set; }
