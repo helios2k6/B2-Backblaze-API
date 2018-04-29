@@ -20,29 +20,43 @@
  */
 
 using System;
-using System.Collections.Generic;
-using Newtonsoft.Json;
 
-namespace B2BackblazeBridge.Processing
+namespace B2BackblazeBridge.Actions
 {
     /// <summary>
-    /// Represents a Finish Large File Request on the B2 API
+    /// Represents a failure to upload a file part due to validation errors
     /// </summary>
-    [Serializable]
-    [JsonObject(MemberSerialization.OptIn)]
-    internal sealed class FinishLargeFileRequest
+    [System.Serializable]
+    public class UploadFilePartInconsistentException : System.Exception
     {
         /// <summary>
-        /// Gets or sets the File ID
+        /// The file ID that failed to upload correctly
         /// </summary>
-        [JsonProperty(PropertyName = "fileId")]
-        public string FileID { get; set; }
-
+        public string FileID { get; }
 
         /// <summary>
-        /// Gets or sets the File Part Hashes
+        /// The file part that didn't upload correctly
         /// </summary>
-        [JsonProperty(PropertyName = "partSha1Array")]
-        public IList<string> FilePartHashes { get; set; }
+        public int FilePart { get; }
+
+        /// <summary>
+        /// Constructs a new UploadFilePartInconsistentException
+        /// </summary>
+        /// <param name="fileID">The file ID that had the part that failed to upload</param>
+        /// <param name="filePart">The file part that failed to upload</param>
+        public UploadFilePartInconsistentException(string fileID, int filePart)
+        {
+            FileID = fileID;
+            FilePart = filePart;
+        }
+
+        protected UploadFilePartInconsistentException(
+            System.Runtime.Serialization.SerializationInfo info,
+            System.Runtime.Serialization.StreamingContext context
+        ) : base(info, context)
+         {
+             info.AddValue("FileID", FileID);
+             info.AddValue("FilePart", FilePart);
+         }
     }
 }

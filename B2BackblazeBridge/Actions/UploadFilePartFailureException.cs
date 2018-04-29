@@ -19,30 +19,20 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-using System;
-using System.Collections.Generic;
-using Newtonsoft.Json;
-
-namespace B2BackblazeBridge.Processing
+namespace B2BackblazeBridge.Actions
 {
     /// <summary>
-    /// Represents a Finish Large File Request on the B2 API
+    /// Represents an exception where we could not upload a file part, even after 
+    /// multiple attempts
     /// </summary>
-    [Serializable]
-    [JsonObject(MemberSerialization.OptIn)]
-    internal sealed class FinishLargeFileRequest
+    [System.Serializable]
+    public class UploadFilePartFailureException : System.Exception
     {
-        /// <summary>
-        /// Gets or sets the File ID
-        /// </summary>
-        [JsonProperty(PropertyName = "fileId")]
-        public string FileID { get; set; }
-
-
-        /// <summary>
-        /// Gets or sets the File Part Hashes
-        /// </summary>
-        [JsonProperty(PropertyName = "partSha1Array")]
-        public IList<string> FilePartHashes { get; set; }
+        public UploadFilePartFailureException() { }
+        public UploadFilePartFailureException(string message) : base(message) { }
+        public UploadFilePartFailureException(string message, System.Exception inner) : base(message, inner) { }
+        protected UploadFilePartFailureException(
+            System.Runtime.Serialization.SerializationInfo info,
+            System.Runtime.Serialization.StreamingContext context) : base(info, context) { }
     }
 }

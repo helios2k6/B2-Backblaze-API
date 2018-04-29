@@ -25,6 +25,8 @@ namespace B2BackblazeBridge.Processing
     {
         public string AuthorizationToken { get; set; }
 
+        public string FileID { get; set; }
+
         public string UploadURL { get; set; }
     }
 }
