@@ -19,6 +19,7 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+using Newtonsoft.Json;
 using System;
 
 namespace B2BackblazeBridge.Core
@@ -26,76 +27,50 @@ namespace B2BackblazeBridge.Core
     /// <summary>
     /// Represents the context required to interact with Backblaze B2 
     /// </summary>
+    [Serializable]
+    [JsonObject(MemberSerialization.OptIn)]
     public sealed class BackblazeB2AuthorizationSession : IEquatable<BackblazeB2AuthorizationSession>
     {
         #region public properties
         /// <summary>
-        /// Gets the absolute minimum part size for a large file
+        /// Gets or sets the absolute minimum part size for a large file
         /// </summary>
-        public long AbsoluteMinimumPartSize { get; }
+        [JsonProperty(PropertyName = "absoluteMinimumPartSize")]
+        public long AbsoluteMinimumPartSize { get; set; }
         /// <summary>
-        /// Gets the account ID being used with this session
+        /// Gets or sets the account ID being used with this session
         /// </summary>
-        public string AccountID { get; }
+        [JsonProperty(PropertyName = "accountId")]
+        public string AccountID { get; set; }
         /// <summary>
-        /// The base URL used for all API calls, except uploading and downloading files
+        /// Gets or sets the base URL used for all API calls, except uploading and downloading files
         /// </summary>
-        public string APIURL { get; }
+        [JsonProperty(PropertyName = "apiUrl")]
+        public string APIURL { get; set; }
         /// <summary>
-        /// Gets the secret application key that is being used to identify this session
+        /// Gets or sets the secret application key that is being used to identify this session
         /// </summary>
-        public string ApplicationKey { get; }
+        public string ApplicationKey { get; set; }
         /// <summary>
-        /// Gets the authorization token that was given back to us after authenticating 
+        /// Gets or sets the authorization token that was given back to us after authenticating 
         /// the session
         /// </summary>
-        public string AuthorizationToken { get; }
+        [JsonProperty(PropertyName = "authorizationToken")]
+        public string AuthorizationToken { get; set; }
         /// <summary>
-        /// Gets the base URL ussed for downloading files
+        /// Gets or sets the base URL ussed for downloading files
         /// </summary>
-        public string DownloadURL { get; }
+        [JsonProperty(PropertyName = "downloadUrl")]
+        public string DownloadURL { get; set; }
         /// <summary>
-        /// Gets the recommended part size of a large file upload
+        /// Gets or sets the recommended part size of a large file upload
         /// </summary>
-        public long RecommendedPartSize { get; }
+        [JsonProperty(PropertyName = "recommendedPartSize")]
+        public long RecommendedPartSize { get; set; }
         /// <summary>
-        /// The expiration date of the session
+        /// Gets or sets the expiration date of the session
         /// </summary>
-        public DateTime SessionExpirationDate { get; }
-        #endregion
-
-        #region ctor
-        /// <summary>
-        /// Constructs a new BackblazeB2AuthorizationSession with the given parameters
-        /// </summary>
-        /// <param name="absoluteMinimumPartSize">The minimum part size for uploads</param>
-        /// <param name="accountID">The account ID for this session context</param>
-        /// <param name="apiUrl">The API URL to use when making requests</param>
-        /// <param name="applicationKey">The application key used for this session context</param>
-        /// <param name="authorizationToken">The authorization token used in this context</param>
-        /// <param name="downloadUrl">The base URL for downloading files</param>
-        /// <param name="recommendedPartSize">The recommended part size for files</param>
-        /// <param name="sessionExpirationDate">The expiration date of this session</param>
-        public BackblazeB2AuthorizationSession(
-            long absoluteMinimumPartSize,
-            string accountID,
-            string apiUrl,
-            string applicationKey,
-            string authorizationToken,
-            string downloadUrl,
-            long recommendedPartSize,
-            DateTime sessionExpirationDate
-        )
-        {
-            AbsoluteMinimumPartSize = absoluteMinimumPartSize;
-            AccountID = accountID;
-            APIURL = apiUrl;
-            ApplicationKey = applicationKey;
-            AuthorizationToken = authorizationToken;
-            DownloadURL = downloadUrl;
-            RecommendedPartSize = recommendedPartSize;
-            SessionExpirationDate = sessionExpirationDate;
-        }
+        public DateTime SessionExpirationDate { get; set; }
         #endregion
 
         #region public methods

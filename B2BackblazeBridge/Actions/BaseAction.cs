@@ -132,47 +132,10 @@ namespace B2BackblazeBridge.Actions
         /// <returns>A decoded JSON response</returns>
         protected async Task<Dictionary<string, dynamic>> SendWebRequestAsync(HttpWebRequest webRequest)
         {
-            using (HttpWebResponse response = await webRequest.GetResponseAsync() as HttpWebResponse)
-            {
-                if (response.StatusCode != HttpStatusCode.OK)
-                {
-                    await HandleNonHttp200ErrorCodeAsync(response);
-                }
-                using (StreamReader streamReader = new StreamReader(response.GetResponseStream()))
-                {
-                    string jsonResponse = await streamReader.ReadToEndAsync();
-                    return JsonConvert.DeserializeObject<Dictionary<string, dynamic>>(jsonResponse);
-                }
-            }
-        }
-
-        /// <summary>
-        /// Sends an HTTP request with the given payload
-        /// </summary>
-        /// <param name="webRequest"></param>
-        /// <param name="payload"></param>
-        /// <returns></returns>
-        protected async Task<Dictionary<string, dynamic>> SendWebRequestAsync(HttpWebRequest webRequest, byte[] payload)
-        {
             try
             {
-                using (Stream stream = await webRequest.GetRequestStreamAsync())
-                {
-                    await stream.WriteAsync(payload, 0, payload.Length);
-                }
-
-                using (HttpWebResponse response = await webRequest.GetResponseAsync() as HttpWebResponse)
-                {
-                    if (response.StatusCode != HttpStatusCode.OK)
-                    {
-                        await HandleNonHttp200ErrorCodeAsync(response);
-                    }
-                    using (StreamReader reader = new StreamReader(response.GetResponseStream()))
-                    {
-                        string responseJson = await reader.ReadToEndAsync();
-                        return JsonConvert.DeserializeObject<Dictionary<string, dynamic>>(responseJson);
-                    }
-                }
+                string jsonResponse = await SendWebRequestAsyncRaw(webRequest, null);
+                return JsonConvert.DeserializeObject<Dictionary<string, dynamic>>(jsonResponse);
             }
             catch (WebException ex)
             {
@@ -180,6 +143,56 @@ namespace B2BackblazeBridge.Actions
             }
 
             throw new InvalidOperationException("Impossible code path reached. This should never happen");
+        }
+
+        /// <summary>
+        /// Sends an HTTP request with the given payload
+        /// </summary>
+        /// <param name="webRequest">The web request</param>
+        /// <param name="payload">The POST payload to send</param>
+        /// <returns>A decoded JSON response</returns>
+        protected async Task<Dictionary<string, dynamic>> SendWebRequestAsync(HttpWebRequest webRequest, byte[] payload)
+        {
+            try
+            {
+                string jsonResponse = await SendWebRequestAsyncRaw(webRequest, payload);
+                return JsonConvert.DeserializeObject<Dictionary<string, dynamic>>(jsonResponse);
+            }
+            catch (WebException ex)
+            {
+                await HandleNonHttp200ErrorCodeAsync(ex.Response as HttpWebResponse);
+            }
+
+            throw new InvalidOperationException("Impossible code path reached. This should never happen");
+        }
+
+        /// <summary>
+        /// Sends an HTTP request with the given payload
+        /// </summary>
+        /// <param name="webRequest">The web request</param>
+        /// <param name="payload">The POST payload to send</param>
+        /// <returns>The raw payload string</returns>
+        protected async Task<string> SendWebRequestAsyncRaw(HttpWebRequest webRequest, byte[] payload)
+        {
+            if (payload != null)
+            {
+                using (Stream stream = await webRequest.GetRequestStreamAsync())
+                {
+                    await stream.WriteAsync(payload, 0, payload.Length);
+                }
+            }
+
+            using (HttpWebResponse response = await webRequest.GetResponseAsync() as HttpWebResponse)
+            {
+                if (response.StatusCode != HttpStatusCode.OK)
+                {
+                    await HandleNonHttp200ErrorCodeAsync(response);
+                }
+                using (StreamReader reader = new StreamReader(response.GetResponseStream()))
+                {
+                    return await reader.ReadToEndAsync();
+                }
+            }
         }
 
         private async Task HandleNonHttp200ErrorCodeAsync(HttpWebResponse response)

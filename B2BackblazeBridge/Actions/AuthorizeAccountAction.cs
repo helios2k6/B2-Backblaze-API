@@ -20,6 +20,7 @@
  */
 
 using B2BackblazeBridge.Core;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Net;
@@ -63,7 +64,7 @@ namespace B2BackblazeBridge.Actions
             webRequest.Headers.Add("Authorization", "Basic " + credentialsHeader);
             try
             {
-                return DecodePayload(await SendWebRequestAsync(webRequest));
+                return DecodePayload(await SendWebRequestAsyncRaw(webRequest, null));
             }
             catch (BaseActionWebRequestException ex)
             {
@@ -73,24 +74,11 @@ namespace B2BackblazeBridge.Actions
         #endregion
 
         #region private methods
-        private BackblazeB2AuthorizationSession DecodePayload(Dictionary<string, dynamic> jsonPayload)
+        private BackblazeB2AuthorizationSession DecodePayload(string jsonPayload)
         {
-            long absoluteMinimumPartSize = jsonPayload["absoluteMinimumPartSize"];
-            string apiUrl = jsonPayload["apiUrl"];
-            string authorizationToken = jsonPayload["authorizationToken"];
-            string downloadUrl = jsonPayload["downloadUrl"];
-            long recommendedPartSize = jsonPayload["recommendedPartSize"];
-
-            return new BackblazeB2AuthorizationSession(
-                absoluteMinimumPartSize,
-                _acccountID,
-                apiUrl,
-                _applicationKey,
-                authorizationToken,
-                downloadUrl,
-                recommendedPartSize,
-                DateTime.Now.AddDays(1.0)
-            );
+            BackblazeB2AuthorizationSession decodedResult = JsonConvert.DeserializeObject<BackblazeB2AuthorizationSession>(jsonPayload);
+            decodedResult.ApplicationKey = _applicationKey;
+            return decodedResult;
         }
         #endregion
     }
