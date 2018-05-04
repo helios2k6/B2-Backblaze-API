@@ -124,28 +124,39 @@ namespace B2BackblazeBridge.Actions
 
             int jobCount = jobsList.Count();
             int workerCount = workerList.Count();
-            int jobsPerWorker = jobCount / workerCount;
-            int remainingJobs = jobCount % workerCount;
-
-            // TODO: If the number of jobs per worker is 0, that means there are too many workers and not enough jobs. So we'll have to
-            // think about how we want to distribute these
-
-            Task[] workerArray = new Task[workerCount];
-            for (int i = 0; i < workerCount - 1; i++)
+            if (jobCount < workerCount)
             {
-                workerArray[i] = ProcessJobs(workerList[i], jobsList.Skip(jobsPerWorker * i).Take(jobsPerWorker).ToList());
+                Task[] workerArray = new Task[jobCount];
+                for (int i = 0; i < jobCount; i++)
+                {
+                    workerArray[i] = ProcessJobs(workerList[i], new List<UploadPartJob>() { jobsList[i] });
+                }
+
+                Task.WaitAll(workerArray);
+                return
+                    (from worker in workerArray.Cast<Task<IDictionary<UploadPartJob, bool>>>()
+                    from kvp in worker.Result
+                    select kvp).ToDictionary(elem => elem.Key, elem => elem.Value);
             }
+            else
+            {
+                int jobsPerWorker = (int)Math.Ceiling((double)jobCount / workerCount);
+                int remainingJobs = Math.Max(jobCount - (jobsPerWorker * workerCount), 0);
+                Task[] workerArray = new Task[workerCount];
+                for (int i = 0; i < workerCount - 1; i++)
+                {
+                    workerArray[i] = ProcessJobs(workerList[i], jobsList.Skip(i * jobsPerWorker).Take(jobsPerWorker).ToList());
+                }
 
-            // Do something special for the last worker
-            workerArray[workerCount - 1] = ProcessJobs(workerList.Last(), jobsList.Skip(jobsPerWorker * (workerCount - 1)).ToList());
-
-            Task.WaitAll(workerArray);
-            IDictionary<UploadPartJob, bool> finalResultMap = new Dictionary<UploadPartJob, bool>();
-
-            return
-                (from worker in workerArray.Cast<Task<IDictionary<UploadPartJob, bool>>>()
-                 from kvp in worker.Result
-                 select kvp).ToDictionary(elem => elem.Key, elem => elem.Value);
+                // Add the remaining jobs to the last worker
+                workerArray[workerCount - 1] = ProcessJobs(workerList[workerCount - 1], jobsList.Skip(jobsPerWorker * (workerCount -1)).ToList());
+                
+                Task.WaitAll(workerArray);
+                return
+                    (from worker in workerArray.Cast<Task<IDictionary<UploadPartJob, bool>>>()
+                    from kvp in worker.Result
+                    select kvp).ToDictionary(elem => elem.Key, elem => elem.Value);
+            }
         }
 
         private async Task<IDictionary<UploadPartJob, bool>> ProcessJobs(GetUploadPartURLResponse url, IList<UploadPartJob> jobs)
