@@ -23,24 +23,47 @@ using System;
 
 namespace B2BackblazeBridge.Core
 {
+    /// <summary>
+    /// Represents the result of uploading a file to the B2 Backblaze servers
+    /// </summary>
+    /// <typeparam name="BackblazeB2UploadFileResult"></typeparam>
     public sealed class BackblazeB2UploadFileResult : IEquatable<BackblazeB2UploadFileResult>
     {
         #region public properties
+        /// <summary>
+        /// Get or set the Account ID used 
+        /// </summary>
         public string AccountID { get; set; }
 
+        /// <summary>
+        /// Get or set the BucketID
+        /// </summary>
         public string BucketID { get; set; }
 
+        /// <summary>
+        /// Get or set the content length
+        /// </summary>
         public long ContentLength { get; set; }
 
+        /// <summary>
+        /// Get or set the SHA-1
+        /// </summary>
         public string ContentSHA1 { get; set; }
 
+        /// <summary>
+        /// Get or set the File ID
+        /// </summary>
         public string FileID { get; set; }
 
+        /// <summary>
+        /// Get or set the file name
+        /// </summary>
         public string FileName { get; set; }
 
+        /// <summary>
+        /// Get or set the upload time stamp
+        /// </summary>
         public long UploadTimeStamp  { get; set; }
-        #endregion
-        #region ctor
         #endregion
         #region public methods
         public override bool Equals(object obj)
