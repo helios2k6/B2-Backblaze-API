@@ -30,6 +30,11 @@ namespace B2BackblazeBridge.Actions
     public sealed class UploadFileActionException : BaseActionWebRequestException
     {
         #region ctor
+        /// <summary>
+        /// Construct a new UploadFileActionException
+        /// </summary>
+        /// <param name="statusCode">The HTTP status code that caused this exception</param>
+        /// <param name="details">The details of the error given back by B2 Backblaze</param>
         public UploadFileActionException(HttpStatusCode statusCode, ErrorDetails details) : base(statusCode, details)
         {
         }

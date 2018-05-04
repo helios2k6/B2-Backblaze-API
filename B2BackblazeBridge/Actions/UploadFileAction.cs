@@ -54,6 +54,12 @@ namespace B2BackblazeBridge.Actions
         #endregion
 
         #region ctor
+        /// <summary>
+        /// Construct an UploadFileAction
+        /// </summary>
+        /// <param name="authorizationSession">The authorization session</param>
+        /// <param name="filePath">The path to the file to upload</param>
+        /// <param name="bucketID">The Bucket ID to upload to</param>
         public UploadFileAction(
             BackblazeB2AuthorizationSession authorizationSession,
             string filePath,
