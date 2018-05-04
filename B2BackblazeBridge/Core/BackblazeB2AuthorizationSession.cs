@@ -26,7 +26,7 @@ namespace B2BackblazeBridge.Core
     /// <summary>
     /// Represents the context required to interact with Backblaze B2 
     /// </summary>
-    public sealed class BackblazeB2AuthorizationSession : IEquatable<BackblazeB2AuthorizationSession>, ISession
+    public sealed class BackblazeB2AuthorizationSession : IEquatable<BackblazeB2AuthorizationSession>
     {
         #region public properties
         /// <summary>
