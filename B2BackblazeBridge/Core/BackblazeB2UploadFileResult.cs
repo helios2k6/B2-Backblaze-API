@@ -19,6 +19,7 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+using Newtonsoft.Json;
 using System;
 
 namespace B2BackblazeBridge.Core
@@ -27,43 +28,52 @@ namespace B2BackblazeBridge.Core
     /// Represents the result of uploading a file to the B2 Backblaze servers
     /// </summary>
     /// <typeparam name="BackblazeB2UploadFileResult"></typeparam>
+    [Serializable]
+    [JsonObject(MemberSerialization.OptIn)]
     public sealed class BackblazeB2UploadFileResult : IEquatable<BackblazeB2UploadFileResult>
     {
         #region public properties
         /// <summary>
         /// Get or set the Account ID used 
         /// </summary>
+        [JsonProperty(PropertyName = "accountId")]
         public string AccountID { get; set; }
 
         /// <summary>
         /// Get or set the BucketID
         /// </summary>
+        [JsonProperty(PropertyName = "bucketId")]
         public string BucketID { get; set; }
 
         /// <summary>
         /// Get or set the content length
         /// </summary>
+        [JsonProperty(PropertyName = "contentLength")]
         public long ContentLength { get; set; }
 
         /// <summary>
         /// Get or set the SHA-1
         /// </summary>
+        [JsonProperty(PropertyName = "contentSha1")]
         public string ContentSHA1 { get; set; }
 
         /// <summary>
         /// Get or set the File ID
         /// </summary>
+        [JsonProperty(PropertyName = "fileId")]
         public string FileID { get; set; }
 
         /// <summary>
         /// Get or set the file name
         /// </summary>
+        [JsonProperty(PropertyName = "fileName")]
         public string FileName { get; set; }
 
         /// <summary>
         /// Get or set the upload time stamp
         /// </summary>
-        public long UploadTimeStamp  { get; set; }
+        [JsonProperty(PropertyName = "uploadTimestamp")]
+        public long UploadTimeStamp { get; set; }
         #endregion
         #region public methods
         public override bool Equals(object obj)
@@ -89,7 +99,7 @@ namespace B2BackblazeBridge.Core
                 return false;
             }
 
-            return 
+            return
                 AccountID.Equals(other.AccountID, StringComparison.Ordinal) &&
                 BucketID.Equals(other.BucketID, StringComparison.Ordinal) &&
                 ContentLength == other.ContentLength &&

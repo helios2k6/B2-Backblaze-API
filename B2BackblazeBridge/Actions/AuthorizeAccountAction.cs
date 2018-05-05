@@ -20,9 +20,7 @@
  */
 
 using B2BackblazeBridge.Core;
-using Newtonsoft.Json;
 using System;
-using System.Collections.Generic;
 using System.Net;
 using System.Text;
 using System.Threading.Tasks;
@@ -64,21 +62,14 @@ namespace B2BackblazeBridge.Actions
             webRequest.Headers.Add("Authorization", "Basic " + credentialsHeader);
             try
             {
-                return DecodePayload(await SendWebRequestAsyncRaw(webRequest, null));
+                BackblazeB2AuthorizationSession response = await SendWebRequestAndDeserialize<BackblazeB2AuthorizationSession>(webRequest, null);
+                response.ApplicationKey = _applicationKey;
+                return response;
             }
             catch (BaseActionWebRequestException ex)
             {
                 throw new AuthorizeAccountActionException(ex.StatusCode, ex.Details);
             }
-        }
-        #endregion
-
-        #region private methods
-        private BackblazeB2AuthorizationSession DecodePayload(string jsonPayload)
-        {
-            BackblazeB2AuthorizationSession decodedResult = JsonConvert.DeserializeObject<BackblazeB2AuthorizationSession>(jsonPayload);
-            decodedResult.ApplicationKey = _applicationKey;
-            return decodedResult;
         }
         #endregion
     }

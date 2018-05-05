@@ -26,8 +26,8 @@ namespace B2BackblazeBridge.Actions
     /// <summary>
     /// Represents a failure to upload a file part due to validation errors
     /// </summary>
-    [System.Serializable]
-    public class UploadFilePartInconsistentException : System.Exception
+    [Serializable]
+    public class UploadFilePartInconsistentException : Exception
     {
         /// <summary>
         /// The file ID that failed to upload correctly

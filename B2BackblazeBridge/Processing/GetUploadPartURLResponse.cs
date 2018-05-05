@@ -19,14 +19,34 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+using Newtonsoft.Json;
+using System;
+
 namespace B2BackblazeBridge.Processing
 {
+    /// <summary>
+    /// Represents the response from the b2_get_upload_part_url API call
+    /// </summary>
+    [Serializable]
+    [JsonObject(MemberSerialization.OptIn)]
     internal sealed class GetUploadPartURLResponse
     {
+        /// <summary>
+        /// Gets or set sthe authorization token
+        /// </summary>
+        [JsonProperty(PropertyName = "authorizationToken")]
         public string AuthorizationToken { get; set; }
 
+        /// <summary>
+        /// Gets or sets the file ID assigned to this file
+        /// </summary>
+        [JsonProperty(PropertyName = "fileId")]
         public string FileID { get; set; }
 
+        /// <summary>
+        /// Gets or sets the upload URL 
+        /// </summary>
+        [JsonProperty(PropertyName = "uploadUrl")]
         public string UploadURL { get; set; }
     }
 }

@@ -19,6 +19,7 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -28,12 +29,15 @@ namespace B2BackblazeBridge.Core
     /// <summary>
     /// Represents the final result of uploading a file in multiple parts
     /// </summary>
+    [Serializable]
+    [JsonObject(MemberSerialization.OptIn)]
     public sealed class BackblazeB2UploadMultipartFileResult : IEquatable<BackblazeB2UploadMultipartFileResult>
     {
         #region public properties
         /// <summary>
         /// The Bucket ID the file is being uploaded to
         /// </summary>
+        [JsonProperty(PropertyName = "bucketId")]
         public string BucketID { get; set;}
 
         /// <summary>
@@ -44,16 +48,19 @@ namespace B2BackblazeBridge.Core
         /// <summary>
         /// The unique file ID of the uploaded file
         /// </summary>
+        [JsonProperty(PropertyName = "fileId")]
         public string FileID { get; set; }
 
         /// <summary>
         /// The file name used on the B2 server
         /// </summary>
+        [JsonProperty(PropertyName = "fileName")]
         public string FileName { get; set; }
 
         /// <summary>
         /// The total length, in bytes, of this file
         /// </summary>
+        [JsonProperty(PropertyName = "contentLength")]
         public long TotalContentLength { get; set; }
         #endregion
         #region public fields

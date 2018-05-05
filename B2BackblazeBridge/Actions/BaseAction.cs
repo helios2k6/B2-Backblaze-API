@@ -126,90 +126,38 @@ namespace B2BackblazeBridge.Actions
         }
 
         /// <summary>
-        /// Sends an HTTP request with no payload
+        /// A convenience function that sends a web request and automatically deserializes the JSON response as a dictionary between 
+        /// strings and any dynamic type
         /// </summary>
-        /// <param name="webRequest">The web request</param>
-        /// <returns>A decoded JSON response</returns>
-        protected async Task<Dictionary<string, dynamic>> SendWebRequestAsync(HttpWebRequest webRequest)
+        /// <param name="webRequest">The web request to send</param>
+        /// <returns>A deserialized dictionary of strings to dynamic types</returns>
+        protected async Task<Dictionary<string, dynamic>> SendWebRequestAndDeserializeAsDictionaryAsync(HttpWebRequest webRequest)
         {
-            try
-            {
-                string jsonResponse = await SendWebRequestAsyncRaw(webRequest, null);
-                return JsonConvert.DeserializeObject<Dictionary<string, dynamic>>(jsonResponse);
-            }
-            catch (WebException ex)
-            {
-                await HandleNonHttp200ErrorCodeAsync(ex.Response as HttpWebResponse);
-            }
+            return await SendWebRequestAndDeserializeAsDictionaryAsync(webRequest, null);
+        }
 
-            throw new InvalidOperationException("Impossible code path reached. This should never happen");
+        /// <summary>
+        /// A convenience function that sends a web request and automatically deserializes the JSON response as a dictionary between 
+        /// strings and any dynamic type
+        /// </summary>
+        /// <param name="webRequest">The web request to send</param>
+        /// <param name="payload">The payload to upload</param>
+        /// <returns>A deserialized dictionary of strings to dynamic types</returns>
+        protected async Task<Dictionary<string, dynamic>> SendWebRequestAndDeserializeAsDictionaryAsync(HttpWebRequest webRequest, byte[] payload)
+        {
+            return await SendWebRequestAndDeserialize<Dictionary<string, dynamic>>(webRequest, payload);
         }
 
         /// <summary>
         /// Sends an HTTP request with the given payload
         /// </summary>
+        /// <typeparam name="TResult">The result type to deserialize</typeparam>
         /// <param name="webRequest">The web request</param>
-        /// <param name="payload">The POST payload to send</param>
-        /// <returns>A decoded JSON response</returns>
-        protected async Task<Dictionary<string, dynamic>> SendWebRequestAsync(HttpWebRequest webRequest, byte[] payload)
+        /// <param name="payload">The payload</param>
+        /// <returns>A deserialized JSON response</returns>
+        protected async Task<TResult> SendWebRequestAndDeserialize<TResult>(HttpWebRequest webRequest, byte[] payload)
         {
-            try
-            {
-                string jsonResponse = await SendWebRequestAsyncRaw(webRequest, payload);
-                return JsonConvert.DeserializeObject<Dictionary<string, dynamic>>(jsonResponse);
-            }
-            catch (WebException ex)
-            {
-                await HandleNonHttp200ErrorCodeAsync(ex.Response as HttpWebResponse);
-            }
-
-            throw new InvalidOperationException("Impossible code path reached. This should never happen");
-        }
-
-        /// <summary>
-        /// Sends an HTTP request with the given payload
-        /// </summary>
-        /// <param name="webRequest">The web request</param>
-        /// <param name="payload">The POST payload to send</param>
-        /// <returns>The raw payload string</returns>
-        protected async Task<string> SendWebRequestAsyncRaw(HttpWebRequest webRequest, byte[] payload)
-        {
-            if (payload != null)
-            {
-                using (Stream stream = await webRequest.GetRequestStreamAsync())
-                {
-                    await stream.WriteAsync(payload, 0, payload.Length);
-                }
-            }
-
-            using (HttpWebResponse response = await webRequest.GetResponseAsync() as HttpWebResponse)
-            {
-                if (response.StatusCode != HttpStatusCode.OK)
-                {
-                    await HandleNonHttp200ErrorCodeAsync(response);
-                }
-                using (StreamReader reader = new StreamReader(response.GetResponseStream()))
-                {
-                    return await reader.ReadToEndAsync();
-                }
-            }
-        }
-
-        private async Task HandleNonHttp200ErrorCodeAsync(HttpWebResponse response)
-        {
-            if (response.StatusCode == HttpStatusCode.OK)
-            {
-                // Handle the case when we actually have an OK code
-                return;
-            }
-
-            // Decode JSON error structure and rethrow
-            using (StreamReader reader = new StreamReader(response.GetResponseStream()))
-            {
-                string responseJson = await reader.ReadToEndAsync();
-                ErrorDetails errorDetails = JsonConvert.DeserializeObject<ErrorDetails>(responseJson);
-                throw new BaseActionWebRequestException(response.StatusCode, errorDetails);
-            }
+            return JsonConvert.DeserializeObject<TResult>(await SendWebRequestAsyncRaw(webRequest, payload));
         }
 
         /// <summary>
@@ -266,6 +214,40 @@ namespace B2BackblazeBridge.Actions
             }
 
             return new TimeSpan(_random.Next(0, int.MaxValue) * TicksPerMicrosecond);
+        }
+        #endregion
+
+        #region private methods
+        private async Task<string> SendWebRequestAsyncRaw(HttpWebRequest webRequest, byte[] payload)
+        {
+            try
+            {
+                if (payload != null)
+                {
+                    using (Stream stream = await webRequest.GetRequestStreamAsync())
+                    {
+                        await stream.WriteAsync(payload, 0, payload.Length);
+                    }
+                }
+
+                using (HttpWebResponse response = await webRequest.GetResponseAsync() as HttpWebResponse)
+                using (StreamReader reader = new StreamReader(response.GetResponseStream()))
+                {
+                    return await reader.ReadToEndAsync();
+                }
+            }
+            catch (WebException ex)
+            {
+                HttpWebResponse response = (HttpWebResponse)ex.Response;
+                // Decode JSON error structure and rethrow
+                using (StreamReader reader = new StreamReader(response.GetResponseStream()))
+                {
+                    string responseJson = await reader.ReadToEndAsync();
+                    ErrorDetails errorDetails = JsonConvert.DeserializeObject<ErrorDetails>(responseJson);
+                    throw new BaseActionWebRequestException(response.StatusCode, errorDetails);
+                }
+            }
+
         }
         #endregion
     }

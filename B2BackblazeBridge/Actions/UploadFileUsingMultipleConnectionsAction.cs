@@ -48,6 +48,8 @@ namespace B2BackblazeBridge.Actions
 
         private static readonly int MaxUploadAttempts = 10;
 
+        private static readonly int MinimumFileChunkSize = 1024 * 1024; // 1 mebibyte
+
         private readonly BackblazeB2AuthorizationSession _authorizationSession;
 
         private readonly string _bucketID;
@@ -81,7 +83,7 @@ namespace B2BackblazeBridge.Actions
                 throw new ArgumentException(string.Format("{0} does not exist", filePath));
             }
 
-            if (fileChunkSizesInBytes < 1048576)
+            if (fileChunkSizesInBytes < MinimumFileChunkSize)
             {
                 throw new ArgumentException("The file chunk sizes must be larger than 1 mebibyte");
             }
@@ -265,7 +267,7 @@ namespace B2BackblazeBridge.Actions
                 webRequest.Headers.Add("Authorization", _authorizationSession.AuthorizationToken);
                 webRequest.ContentLength = jsonBodyBytes.Length;
 
-                Dictionary<string, dynamic> jsonResponse = await SendWebRequestAsync(webRequest, jsonBodyBytes);
+                Dictionary<string, dynamic> jsonResponse = await SendWebRequestAndDeserializeAsDictionaryAsync(webRequest, jsonBodyBytes);
                 return (string)jsonResponse["fileId"];
             }
             catch (BaseActionWebRequestException ex)
@@ -299,13 +301,7 @@ namespace B2BackblazeBridge.Actions
                 webRequest.Headers.Add("Authorization", _authorizationSession.AuthorizationToken);
                 webRequest.ContentLength = jsonPayloadBytes.Length;
 
-                Dictionary<string, dynamic> jsonResponse = await SendWebRequestAsync(webRequest, jsonPayloadBytes);
-                return new GetUploadPartURLResponse
-                {
-                    AuthorizationToken = jsonResponse["authorizationToken"],
-                    FileID = jsonResponse["fileId"],
-                    UploadURL = jsonResponse["uploadUrl"],
-                };
+                return await SendWebRequestAndDeserialize<GetUploadPartURLResponse>(webRequest, jsonPayloadBytes);
             }
             catch (BaseActionWebRequestException ex)
             {
@@ -347,7 +343,7 @@ namespace B2BackblazeBridge.Actions
                     webRequest.Headers.Add("X-Bz-Content-Sha1", sha1Hash);
                     webRequest.ContentLength = fileBytes.Length;
 
-                    Dictionary<string, dynamic> jsonResponse = await SendWebRequestAsync(webRequest, fileBytes);
+                    Dictionary<string, dynamic> jsonResponse = await SendWebRequestAndDeserializeAsDictionaryAsync(webRequest, fileBytes);
 
                     // Do some verification 
                     long contentLengthResult = jsonResponse["contentLength"];
@@ -398,16 +394,11 @@ namespace B2BackblazeBridge.Actions
                 webRequest.Method = "POST";
                 webRequest.Headers.Add("Authorization", _authorizationSession.AuthorizationToken);
 
-                Dictionary<string, dynamic> response = await SendWebRequestAsync(webRequest, requestBytes);
+                BackblazeB2UploadMultipartFileResult response =
+                    await SendWebRequestAndDeserialize<BackblazeB2UploadMultipartFileResult>(webRequest, requestBytes);
+                response.FileHashes = sha1Parts;
 
-                return new BackblazeB2UploadMultipartFileResult
-                {
-                    BucketID = response["bucketId"],
-                    FileHashes = sha1Parts,
-                    FileID = response["fileId"],
-                    FileName = response["fileName"],
-                    TotalContentLength = response["contentLength"],
-                };
+                return response;
             }
             catch (BaseActionWebRequestException ex)
             {

@@ -100,26 +100,12 @@ namespace B2BackblazeBridge.Actions
                 webRequest.ContentType = "b2/x-auto";
                 webRequest.ContentLength = info.Length;
 
-                return DecodeUploadFileResponse(await SendWebRequestAsync(webRequest, fileBytes));
+                return await SendWebRequestAndDeserialize<BackblazeB2UploadFileResult>(webRequest, fileBytes);
             }
             catch (BaseActionWebRequestException ex)
             {
                 throw new UploadFileActionException(ex.StatusCode, ex.Details);
             }
-        }
-
-        private BackblazeB2UploadFileResult DecodeUploadFileResponse(Dictionary<string, dynamic> jsonPayload)
-        {
-            return new BackblazeB2UploadFileResult
-            {
-                AccountID = jsonPayload["accountId"],
-                BucketID = jsonPayload["bucketId"],
-                ContentLength = jsonPayload["contentLength"],
-                ContentSHA1 = jsonPayload["contentSha1"],
-                FileID = jsonPayload["fileId"],
-                FileName = jsonPayload["fileName"],
-                UploadTimeStamp = jsonPayload["uploadTimestamp"],
-            };
         }
 
         private async Task<GetUploadFileURLResult> GetUploadURLAsync()
@@ -133,7 +119,7 @@ namespace B2BackblazeBridge.Actions
                 string body = "{\"bucketId\":\"" + _bucketID + "\"}";
                 byte[] encodedBody = Encoding.UTF8.GetBytes(body);
                 webRequest.ContentLength = encodedBody.Length;
-                return DecodeGetUploadURLJson(await SendWebRequestAsync(webRequest, encodedBody));
+                return DecodeGetUploadURLJson(await SendWebRequestAndDeserializeAsDictionaryAsync(webRequest, encodedBody));
             }
             catch (BaseActionWebRequestException ex)
             {
