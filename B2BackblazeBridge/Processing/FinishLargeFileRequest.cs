@@ -38,7 +38,6 @@ namespace B2BackblazeBridge.Processing
         [JsonProperty(PropertyName = "fileId")]
         public string FileID { get; set; }
 
-
         /// <summary>
         /// Gets or sets the File Part Hashes
         /// </summary>
