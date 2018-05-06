@@ -19,7 +19,70 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+using B2BackblazeBridge.Core;
+using Newtonsoft.Json;
+using System;
+using System.Net;
+using System.Text;
+using System.Threading.Tasks;
+
 namespace B2BackblazeBridge.Actions
 {
+    public sealed class DeleteFileAction : BaseAction<BackblazeB2DeleteFileResult>
+    {
+        #region private fields
+        [Serializable]
+        [JsonObject(MemberSerialization.OptIn)]
+        private sealed class Request
+        {
+            [JsonProperty(PropertyName = "fileName")]
+            public string FileName { get; set; }
 
+            [JsonProperty(PropertyName = "fileId")]
+            public string FileId { get; set; }
+        }
+
+        private readonly string APIURL = "/b2api/v1/b2_delete_file_version";
+
+        private readonly BackblazeB2AuthorizationSession _authorizationSession;
+        private readonly string _fileId;
+        private readonly string _fileName;
+        #endregion
+
+        #region ctor
+        public DeleteFileAction(BackblazeB2AuthorizationSession authorizationSession, string fileId, string fileName)
+        {
+            _authorizationSession = authorizationSession;
+            _fileId = fileId;
+            _fileName = fileName;
+        }
+        #endregion
+
+        #region public methods
+        public async override Task<BackblazeB2DeleteFileResult> ExecuteAsync()
+        {
+            try
+            {
+                Request deleteRequest = new Request
+                {
+                    FileName = _fileName,
+                    FileId = _fileId,
+                };
+                string deleteRequestJson = JsonConvert.SerializeObject(deleteRequest);
+                byte[] payload = Encoding.UTF8.GetBytes(deleteRequestJson);
+
+                HttpWebRequest webRequest = GetHttpWebRequest(_authorizationSession + APIURL, true);
+                webRequest.Method = "POST";
+                webRequest.Headers.Add("Authorization", _authorizationSession.AuthorizationToken);
+                webRequest.ContentLength = payload.Length;
+
+                return await SendWebRequestAndDeserialize<BackblazeB2DeleteFileResult>(webRequest, payload);
+            }
+            catch (BaseActionWebRequestException ex)
+            {
+                throw new DeleteFileActionException(ex.StatusCode, ex.Details);
+            }
+        }
+        #endregion
+    }
 }

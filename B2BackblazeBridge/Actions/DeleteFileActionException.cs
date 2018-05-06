@@ -19,3 +19,19 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+using System.Net;
+
+namespace B2BackblazeBridge.Actions
+{
+    /// <summary>
+    /// This exception is thrown whenever authorizing an account action fails
+    /// </summary>
+    public sealed class DeleteFileActionException : BaseActionWebRequestException
+    {
+        #region ctor
+        public DeleteFileActionException(HttpStatusCode statusCode, ErrorDetails details) : base(statusCode, details)
+        {
+        }
+        #endregion
+    }
+}
