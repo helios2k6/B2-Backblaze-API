@@ -20,6 +20,7 @@
  */
 
 using B2BackblazeBridge.Core;
+using Functional.Maybe;
 using System;
 using System.Net;
 using System.Text;
@@ -53,23 +54,17 @@ namespace B2BackblazeBridge.Actions
         #endregion
 
         #region public methods
-        public async override Task<BackblazeB2AuthorizationSession> ExecuteAsync()
+        public async override Task<BackblazeB2ActionResult<BackblazeB2AuthorizationSession>> ExecuteAsync()
         {
-            HttpWebRequest webRequest = GetHttpWebRequest(APIURL, true);
+            HttpWebRequest webRequest = GetHttpWebRequest(APIURL);
             string credentialsHeader = Convert.ToBase64String(
                 Encoding.UTF8.GetBytes(_acccountID + ":" + _applicationKey)
             );
             webRequest.Headers.Add("Authorization", "Basic " + credentialsHeader);
-            try
-            {
-                BackblazeB2AuthorizationSession response = await SendWebRequestAndDeserialize<BackblazeB2AuthorizationSession>(webRequest, null);
-                response.ApplicationKey = _applicationKey;
-                return response;
-            }
-            catch (BaseActionWebRequestException ex)
-            {
-                throw new AuthorizeAccountActionException(ex.StatusCode, ex.Details);
-            }
+            BackblazeB2ActionResult<BackblazeB2AuthorizationSession> response = await SendWebRequestAndDeserialize<BackblazeB2AuthorizationSession>(webRequest, null);
+            response.Result.Do(r => r.ApplicationKey = _applicationKey);
+
+            return response;
         }
         #endregion
     }

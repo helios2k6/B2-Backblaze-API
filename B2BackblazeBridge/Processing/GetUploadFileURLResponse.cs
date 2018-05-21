@@ -1,4 +1,4 @@
-/* 
+﻿/* 
  * Copyright (c) 2015 Andrew Johnson
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy of 
@@ -19,44 +19,32 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+
+using Newtonsoft.Json;
 using System;
 
-namespace B2BackblazeBridge.Actions
+namespace B2BackblazeBridge.Processing
 {
-    /// <summary>
-    /// Represents a failure to upload a file part due to validation errors
-    /// </summary>
     [Serializable]
-    public class UploadFilePartInconsistentException : Exception
+    [JsonObject(MemberSerialization.OptIn)]
+    internal sealed class GetUploadFileURLResponse
     {
         /// <summary>
-        /// The file ID that failed to upload correctly
+        /// The authorization token used for uploading the the upload URL
         /// </summary>
-        public string FileID { get; }
+        [JsonProperty(PropertyName = "authorizationToken")]
+        public string AuthorizationToken { get; set; }
 
         /// <summary>
-        /// The file part that didn't upload correctly
+        /// The Bucket ID to uplaod to
         /// </summary>
-        public int FilePart { get; }
+        [JsonProperty(PropertyName = "bucketId")]
+        public string BucketID { get; set; }
 
         /// <summary>
-        /// Constructs a new UploadFilePartInconsistentException
+        /// The upload url to use
         /// </summary>
-        /// <param name="fileID">The file ID that had the part that failed to upload</param>
-        /// <param name="filePart">The file part that failed to upload</param>
-        public UploadFilePartInconsistentException(string fileID, int filePart)
-        {
-            FileID = fileID;
-            FilePart = filePart;
-        }
-
-        protected UploadFilePartInconsistentException(
-            System.Runtime.Serialization.SerializationInfo info,
-            System.Runtime.Serialization.StreamingContext context
-        ) : base(info, context)
-         {
-             info.AddValue("FileID", FileID);
-             info.AddValue("FilePart", FilePart);
-         }
+        [JsonProperty(PropertyName = "uploadUrl")]
+        public string UploadURL { get; set; }
     }
 }

@@ -21,6 +21,7 @@
 
 using B2BackblazeBridge.Core;
 using B2BackblazeBridge.Processing;
+using Functional.Maybe;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
@@ -102,24 +103,54 @@ namespace B2BackblazeBridge.Actions
         #endregion
 
         #region public methods
-        public async override Task<BackblazeB2UploadMultipartFileResult> ExecuteAsync()
+        public async override Task<BackblazeB2ActionResult<BackblazeB2UploadMultipartFileResult>> ExecuteAsync()
         {
-            string fileID = await GetFileIDAsync();
-            IEnumerable<UploadPartJob> jobs = await GenerateUploadPartsAsync();
+            BackblazeB2ActionResult<StartLargeFileResponse> fileIDResponse = await GetFileIDAsync();
+            if (fileIDResponse.HasErrors)
+            {
+                return new BackblazeB2ActionResult<BackblazeB2UploadMultipartFileResult>(
+                    Maybe<BackblazeB2UploadMultipartFileResult>.Nothing,
+                    fileIDResponse.Errors
+                );
+            }
 
-            IEnumerable<GetUploadPartURLResponse> urlEndpoints = GetUploadPartURLs(fileID);
-            IDictionary<UploadPartJob, bool> uploadResponses = ProcessAllJobs(jobs, urlEndpoints);
-            int unixTimestamp = (int)(DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1))).TotalSeconds;
+            string fileID = fileIDResponse.Result.Value.FileID;
+            IEnumerable<BackblazeB2ActionResult<GetUploadPartURLResponse>> urlEndpoints = GetUploadPartURLs(fileID);
+            IEnumerable<BackblazeB2ActionResult<UploadFilePartResponse>> uploadResponses = ProcessAllJobs(await GenerateUploadPartsAsync(), urlEndpoints);
 
-            return await FinishUploadingLargeFileAsync(fileID, jobs.Select(t => t.SHA1).ToList());
+            return await FinishUploadingLargeFileAsync(fileID, uploadResponses);
         }
         #endregion
 
         #region private methods
-        private IDictionary<UploadPartJob, bool> ProcessAllJobs(
+        private IEnumerable<BackblazeB2ActionResult<TResult>> AggregateErrors<T, TResult>(IEnumerable<BackblazeB2ActionResult<T>> responses)
+        {
+            return from response in responses
+                   from error in response.Errors
+                   select new BackblazeB2ActionResult<TResult>(Maybe<TResult>.Nothing, error);
+        }
+
+        private IEnumerable<BackblazeB2ActionResult<UploadFilePartResponse>> ProcessAllJobs(
             IEnumerable<UploadPartJob> jobs,
-            IEnumerable<GetUploadPartURLResponse> urls
+            IEnumerable<BackblazeB2ActionResult<GetUploadPartURLResponse>> urlResponses
         )
+        {
+            // If any of these have errors, then we need to return it. Only return the first one
+            if (urlResponses.Any(t => t.HasErrors))
+            {
+                return AggregateErrors<GetUploadPartURLResponse, UploadFilePartResponse>(urlResponses);
+            }
+
+            IEnumerable<GetUploadPartURLResponse> urls = urlResponses.Select(t => t.Result.Value);
+            Task[] workerArray = ConstructAndStartWorkers(jobs, urls);
+            Task.WaitAll(workerArray);
+            return
+                (from worker in workerArray.Cast<Task<IEnumerable<BackblazeB2ActionResult<UploadFilePartResponse>>>>()
+                 from response in worker.Result
+                 select response);
+        }
+
+        private Task[] ConstructAndStartWorkers(IEnumerable<UploadPartJob> jobs, IEnumerable<GetUploadPartURLResponse> urls)
         {
             List<UploadPartJob> jobsList = new List<UploadPartJob>(jobs);
             List<GetUploadPartURLResponse> workerList = new List<GetUploadPartURLResponse>(urls);
@@ -131,14 +162,10 @@ namespace B2BackblazeBridge.Actions
                 Task[] workerArray = new Task[jobCount];
                 for (int i = 0; i < jobCount; i++)
                 {
-                    workerArray[i] = ProcessJobs(workerList[i], new List<UploadPartJob>() { jobsList[i] });
+                    workerArray[i] = ProcessJobsForURL(workerList[i], new List<UploadPartJob>() { jobsList[i] });
                 }
 
-                Task.WaitAll(workerArray);
-                return
-                    (from worker in workerArray.Cast<Task<IDictionary<UploadPartJob, bool>>>()
-                    from kvp in worker.Result
-                    select kvp).ToDictionary(elem => elem.Key, elem => elem.Value);
+                return workerArray;
             }
             else
             {
@@ -147,23 +174,19 @@ namespace B2BackblazeBridge.Actions
                 Task[] workerArray = new Task[workerCount];
                 for (int i = 0; i < workerCount - 1; i++)
                 {
-                    workerArray[i] = ProcessJobs(workerList[i], jobsList.Skip(i * jobsPerWorker).Take(jobsPerWorker).ToList());
+                    workerArray[i] = ProcessJobsForURL(workerList[i], jobsList.Skip(i * jobsPerWorker).Take(jobsPerWorker).ToList());
                 }
 
                 // Add the remaining jobs to the last worker
-                workerArray[workerCount - 1] = ProcessJobs(workerList[workerCount - 1], jobsList.Skip(jobsPerWorker * (workerCount -1)).ToList());
-                
-                Task.WaitAll(workerArray);
-                return
-                    (from worker in workerArray.Cast<Task<IDictionary<UploadPartJob, bool>>>()
-                    from kvp in worker.Result
-                    select kvp).ToDictionary(elem => elem.Key, elem => elem.Value);
+                workerArray[workerCount - 1] = ProcessJobsForURL(workerList[workerCount - 1], jobsList.Skip(jobsPerWorker * (workerCount - 1)).ToList());
+
+                return workerArray;
             }
         }
 
-        private async Task<IDictionary<UploadPartJob, bool>> ProcessJobs(GetUploadPartURLResponse url, IList<UploadPartJob> jobs)
+        private async Task<IEnumerable<BackblazeB2ActionResult<UploadFilePartResponse>>> ProcessJobsForURL(GetUploadPartURLResponse url, IList<UploadPartJob> jobs)
         {
-            Dictionary<UploadPartJob, bool> jobResults = new Dictionary<UploadPartJob, bool>();
+            IList<BackblazeB2ActionResult<UploadFilePartResponse>> responses = new List<BackblazeB2ActionResult<UploadFilePartResponse>>();
             foreach (UploadPartJob job in jobs)
             {
                 // Read bytes first
@@ -177,26 +200,18 @@ namespace B2BackblazeBridge.Actions
                         throw new InvalidOperationException("The number of bytes read does not match expected content length");
                     }
 
-                    try
-                    {
-                        // Then upload the bytes
-                        await UploadFilePartAsync(
-                            fileBytes,
-                            job.SHA1,
-                            job.FilePartNumber,
-                            url
-                        );
+                    // Then upload the bytes
+                    BackblazeB2ActionResult<UploadFilePartResponse> uploadResponse = await UploadFilePartAsync(
+                        fileBytes,
+                        job.SHA1,
+                        job.FilePartNumber,
+                        url
+                    );
 
-                        jobResults.Add(job, true);
-                    }
-                    catch (UploadFilePartFailureException)
-                    {
-                        jobResults.Add(job, false);
-                    }
+                    responses.Add(uploadResponse);
                 }
             }
-
-            return jobResults;
+            return responses;
         }
 
         private async Task<IEnumerable<UploadPartJob>> GenerateUploadPartsAsync()
@@ -250,33 +265,25 @@ namespace B2BackblazeBridge.Actions
             }
         }
 
-        private async Task<string> GetFileIDAsync()
+        private async Task<BackblazeB2ActionResult<StartLargeFileResponse>> GetFileIDAsync()
         {
-            try
+            StartLargeFileRequest request = new StartLargeFileRequest
             {
-                StartLargeFileRequest request = new StartLargeFileRequest
-                {
-                    BucketID = _bucketID,
-                    ContentType = "b2/x-auto",
-                    FileName = GetSafeFileName(_filePath),
-                };
+                BucketID = _bucketID,
+                ContentType = "b2/x-auto",
+                FileName = GetSafeFileName(_filePath),
+            };
 
-                byte[] jsonBodyBytes = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(request));
-                HttpWebRequest webRequest = GetHttpWebRequest(_authorizationSession.APIURL + StartLargeFileURL, true);
-                webRequest.Method = "POST";
-                webRequest.Headers.Add("Authorization", _authorizationSession.AuthorizationToken);
-                webRequest.ContentLength = jsonBodyBytes.Length;
+            byte[] jsonBodyBytes = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(request));
+            HttpWebRequest webRequest = GetHttpWebRequest(_authorizationSession.APIURL + StartLargeFileURL);
+            webRequest.Method = "POST";
+            webRequest.Headers.Add("Authorization", _authorizationSession.AuthorizationToken);
+            webRequest.ContentLength = jsonBodyBytes.Length;
 
-                Dictionary<string, dynamic> jsonResponse = await SendWebRequestAndDeserializeAsDictionaryAsync(webRequest, jsonBodyBytes);
-                return (string)jsonResponse["fileId"];
-            }
-            catch (BaseActionWebRequestException ex)
-            {
-                throw new UploadFileActionException(ex.StatusCode, ex.Details);
-            }
+            return await SendWebRequestAndDeserialize<StartLargeFileResponse>(webRequest, jsonBodyBytes);
         }
 
-        private IEnumerable<GetUploadPartURLResponse> GetUploadPartURLs(string fileID)
+        private IEnumerable<BackblazeB2ActionResult<GetUploadPartURLResponse>> GetUploadPartURLs(string fileID)
         {
             object lock_object = new object();
             Task[] taskArray = new Task[_numberOfConnections];
@@ -287,29 +294,22 @@ namespace B2BackblazeBridge.Actions
 
             Task.WaitAll(taskArray);
 
-            return from t in taskArray.Cast<Task<GetUploadPartURLResponse>>()
+            return from t in taskArray.Cast<Task<BackblazeB2ActionResult<GetUploadPartURLResponse>>>()
                    select t.Result;
         }
 
-        private async Task<GetUploadPartURLResponse> GetUploadPartURLAsync(string fileID)
+        private async Task<BackblazeB2ActionResult<GetUploadPartURLResponse>> GetUploadPartURLAsync(string fileID)
         {
-            try
-            {
-                byte[] jsonPayloadBytes = Encoding.UTF8.GetBytes("{\"fileId\":\"" + fileID + "\"}");
-                HttpWebRequest webRequest = GetHttpWebRequest(_authorizationSession.APIURL + GetUploadPartURLURL, true);
-                webRequest.Method = "POST";
-                webRequest.Headers.Add("Authorization", _authorizationSession.AuthorizationToken);
-                webRequest.ContentLength = jsonPayloadBytes.Length;
+            byte[] jsonPayloadBytes = Encoding.UTF8.GetBytes("{\"fileId\":\"" + fileID + "\"}");
+            HttpWebRequest webRequest = GetHttpWebRequest(_authorizationSession.APIURL + GetUploadPartURLURL);
+            webRequest.Method = "POST";
+            webRequest.Headers.Add("Authorization", _authorizationSession.AuthorizationToken);
+            webRequest.ContentLength = jsonPayloadBytes.Length;
 
-                return await SendWebRequestAndDeserialize<GetUploadPartURLResponse>(webRequest, jsonPayloadBytes);
-            }
-            catch (BaseActionWebRequestException ex)
-            {
-                throw new UploadFileActionException(ex.StatusCode, ex.Details);
-            }
+            return await SendWebRequestAndDeserialize<GetUploadPartURLResponse>(webRequest, jsonPayloadBytes);
         }
 
-        private async Task UploadFilePartAsync(
+        private async Task<BackblazeB2ActionResult<UploadFilePartResponse>> UploadFilePartAsync(
             byte[] fileBytes,
             string sha1Hash,
             int partNumber,
@@ -324,7 +324,15 @@ namespace B2BackblazeBridge.Actions
             {
                 if (attemptNumber >= MaxUploadAttempts)
                 {
-                    throw new UploadFilePartFailureException();
+                    return new BackblazeB2ActionResult<UploadFilePartResponse>(
+                        Maybe<UploadFilePartResponse>.Nothing,
+                        new BackblazeB2ActionErrorDetails
+                        {
+                            Code = "CUSTOM_ERROR",
+                            Message = string.Format("Unable to upload file part: {0}", partNumber),
+                            Status = -1,
+                        }
+                    );
                 }
 
                 // Sleep the current thread so that we can give the server some time to recover
@@ -334,39 +342,37 @@ namespace B2BackblazeBridge.Actions
                     Thread.Sleep(backoffSleepTime);
                 }
 
-                try
+                HttpWebRequest webRequest = GetHttpWebRequest(getUploadPartUrl.UploadURL);
+                webRequest.Method = "POST";
+                webRequest.Headers.Add("Authorization", getUploadPartUrl.AuthorizationToken);
+                webRequest.Headers.Add("X-Bz-Part-Number", partNumber.ToString());
+                webRequest.Headers.Add("X-Bz-Content-Sha1", sha1Hash);
+                webRequest.ContentLength = fileBytes.Length;
+
+                BackblazeB2ActionResult<UploadFilePartResponse> uploadResponse = await SendWebRequestAndDeserialize<UploadFilePartResponse>(webRequest, fileBytes);
+                if (uploadResponse.HasResult)
                 {
-                    HttpWebRequest webRequest = GetHttpWebRequest(getUploadPartUrl.UploadURL, true);
-                    webRequest.Method = "POST";
-                    webRequest.Headers.Add("Authorization", getUploadPartUrl.AuthorizationToken);
-                    webRequest.Headers.Add("X-Bz-Part-Number", partNumber.ToString());
-                    webRequest.Headers.Add("X-Bz-Content-Sha1", sha1Hash);
-                    webRequest.ContentLength = fileBytes.Length;
-
-                    Dictionary<string, dynamic> jsonResponse = await SendWebRequestAndDeserializeAsDictionaryAsync(webRequest, fileBytes);
-
-                    // Do some verification 
-                    long contentLengthResult = jsonResponse["contentLength"];
-                    string sha1Result = jsonResponse["contentSha1"];
-                    int partNumberResult = (int)jsonResponse["partNumber"];
-
+                    // Verify result
+                    UploadFilePartResponse unwrappedResponse = uploadResponse.Result.Value;
                     if (
-                        (contentLengthResult != fileBytes.Length ||
-                        sha1Hash.Equals(sha1Hash, StringComparison.Ordinal) == false ||
-                        partNumber != partNumberResult) &&
-                        attemptNumber >= MaxUploadAttempts
+                        unwrappedResponse.ContentLength != fileBytes.Length ||
+                        unwrappedResponse.ContentSHA1.Equals(sha1Hash, StringComparison.Ordinal) == false ||
+                        unwrappedResponse.PartNumber != partNumber
                     )
                     {
-                        throw new UploadFilePartInconsistentException(getUploadPartUrl.FileID, partNumber);
+                        return new BackblazeB2ActionResult<UploadFilePartResponse>(
+                            Maybe<UploadFilePartResponse>.Nothing,
+                            new BackblazeB2ActionErrorDetails
+                            {
+                                Code = "CUSTOM_ERROR",
+                                Message = string.Format("File part number {0} uploaded successfully but could not be verified", partNumber),
+                                Status = -1,
+                            }
+                        );
                     }
-
-                    break;
-                }
-                catch (BaseActionWebRequestException ex)
-                {
-                    if (ex.StatusCode != HttpStatusCode.ServiceUnavailable || attemptNumber >= MaxUploadAttempts)
+                    else
                     {
-                        throw new UploadFilePartFailureException();
+                        return uploadResponse;
                     }
                 }
 
@@ -374,36 +380,45 @@ namespace B2BackblazeBridge.Actions
             }
         }
 
-        private async Task<BackblazeB2UploadMultipartFileResult> FinishUploadingLargeFileAsync(
+        private async Task<BackblazeB2ActionResult<BackblazeB2UploadMultipartFileResult>> FinishUploadingLargeFileAsync(
             string fileId,
-            IList<string> sha1Parts
+            IEnumerable<BackblazeB2ActionResult<UploadFilePartResponse>> uploadResponses
         )
         {
-            try
+            if (uploadResponses.Any(t => t.HasErrors))
             {
-                FinishLargeFileRequest finishLargeFileRequest = new FinishLargeFileRequest
-                {
-                    FileID = fileId,
-                    FilePartHashes = sha1Parts,
-                };
-                string serializedFileRequest = JsonConvert.SerializeObject(finishLargeFileRequest);
-                byte[] requestBytes = Encoding.UTF8.GetBytes(serializedFileRequest);
+                IEnumerable<BackblazeB2ActionErrorDetails> errors = from uploadResponse in uploadResponses
+                                                                    where uploadResponse.HasErrors
+                                                                    from error in uploadResponse.Errors
+                                                                    select error;
 
-                HttpWebRequest webRequest = GetHttpWebRequest(_authorizationSession.APIURL + FinishLargeFileURL, true);
-                webRequest.ContentLength = requestBytes.Length;
-                webRequest.Method = "POST";
-                webRequest.Headers.Add("Authorization", _authorizationSession.AuthorizationToken);
-
-                BackblazeB2UploadMultipartFileResult response =
-                    await SendWebRequestAndDeserialize<BackblazeB2UploadMultipartFileResult>(webRequest, requestBytes);
-                response.FileHashes = sha1Parts;
-
-                return response;
+                return new BackblazeB2ActionResult<BackblazeB2UploadMultipartFileResult>(Maybe<BackblazeB2UploadMultipartFileResult>.Nothing, errors);
             }
-            catch (BaseActionWebRequestException ex)
+
+            IList<string> sha1Hashes = (from uploadResponse in uploadResponses
+                                        let uploadResponseValue = uploadResponse.Result.Value
+                                        orderby uploadResponseValue.PartNumber ascending
+                                        select uploadResponseValue.ContentSHA1).ToList();
+
+            FinishLargeFileRequest finishLargeFileRequest = new FinishLargeFileRequest
             {
-                throw new UploadFileActionException(ex.StatusCode, ex.Details);
-            }
+                FileID = fileId,
+                FilePartHashes = sha1Hashes,
+            };
+            string serializedFileRequest = JsonConvert.SerializeObject(finishLargeFileRequest);
+            byte[] requestBytes = Encoding.UTF8.GetBytes(serializedFileRequest);
+
+            HttpWebRequest webRequest = GetHttpWebRequest(_authorizationSession.APIURL + FinishLargeFileURL);
+            webRequest.ContentLength = requestBytes.Length;
+            webRequest.Method = "POST";
+            webRequest.Headers.Add("Authorization", _authorizationSession.AuthorizationToken);
+
+            BackblazeB2ActionResult<BackblazeB2UploadMultipartFileResult> response =
+                await SendWebRequestAndDeserialize<BackblazeB2UploadMultipartFileResult>(webRequest, requestBytes);
+
+            response.Result.Do(r => r.FileHashes = sha1Hashes);
+
+            return response;
         }
         #endregion
     }

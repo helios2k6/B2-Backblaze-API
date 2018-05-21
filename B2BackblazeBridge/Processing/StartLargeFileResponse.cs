@@ -1,4 +1,4 @@
-/* 
+﻿/* 
  * Copyright (c) 2015 Andrew Johnson
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy of 
@@ -19,19 +19,16 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-using System.Net;
+using Newtonsoft.Json;
+using System;
 
-namespace B2BackblazeBridge.Actions
+namespace B2BackblazeBridge.Processing
 {
-    /// <summary>
-    /// This exception is thrown whenever authorizing an account action fails
-    /// </summary>
-    public sealed class DeleteFileActionException : BaseActionWebRequestException
+    [Serializable]
+    [JsonObject(MemberSerialization.OptIn)]
+    internal sealed class StartLargeFileResponse
     {
-        #region ctor
-        public DeleteFileActionException(HttpStatusCode statusCode, ErrorDetails details) : base(statusCode, details)
-        {
-        }
-        #endregion
+        [JsonProperty(PropertyName = "fileId")]
+        public string FileID { get; set; }
     }
 }

@@ -19,15 +19,16 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+using B2BackblazeBridge.Core;
+using Functional.Maybe;
 using Newtonsoft.Json;
 using System;
-using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Net;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
-using static B2BackblazeBridge.Actions.BaseActionWebRequestException;
 
 namespace B2BackblazeBridge.Actions
 {
@@ -36,6 +37,15 @@ namespace B2BackblazeBridge.Actions
     /// </summary>
     public abstract class BaseAction<T> : IBackblazeB2Action<T>
     {
+        #region private classes
+        private sealed class RawHttpCallResult
+        {
+            public Maybe<string> SuccessResult { get; set; }
+
+            public Maybe<string> ErrorResult { get; set; }
+        }
+        #endregion
+
         #region private fields
         private static readonly int TicksPerMicrosecond = 10;
 
@@ -43,7 +53,7 @@ namespace B2BackblazeBridge.Actions
         #endregion
 
         #region public methods
-        public abstract Task<T> ExecuteAsync();
+        public abstract Task<BackblazeB2ActionResult<T>> ExecuteAsync();
         #endregion
 
         #region protected methods
@@ -54,13 +64,10 @@ namespace B2BackblazeBridge.Actions
         /// <param name="apiUrl">The URL to use</param>
         /// <param name="setToJson"Whether to set the content type to JSON></param>
         /// <returns>A newly constructed HTTP Web Request</returns>
-        protected HttpWebRequest GetHttpWebRequest(string apiUrl, bool setToJson)
+        protected HttpWebRequest GetHttpWebRequest(string apiUrl)
         {
             HttpWebRequest webRequest = (HttpWebRequest)WebRequest.Create(apiUrl);
-            if (setToJson)
-            {
-                webRequest.ContentType = "application/json; charset=utf-8";
-            }
+            webRequest.ContentType = "application/json; charset=utf-8";
 
             return webRequest;
         }
@@ -126,41 +133,6 @@ namespace B2BackblazeBridge.Actions
         }
 
         /// <summary>
-        /// A convenience function that sends a web request and automatically deserializes the JSON response as a dictionary between 
-        /// strings and any dynamic type
-        /// </summary>
-        /// <param name="webRequest">The web request to send</param>
-        /// <returns>A deserialized dictionary of strings to dynamic types</returns>
-        protected async Task<Dictionary<string, dynamic>> SendWebRequestAndDeserializeAsDictionaryAsync(HttpWebRequest webRequest)
-        {
-            return await SendWebRequestAndDeserializeAsDictionaryAsync(webRequest, null);
-        }
-
-        /// <summary>
-        /// A convenience function that sends a web request and automatically deserializes the JSON response as a dictionary between 
-        /// strings and any dynamic type
-        /// </summary>
-        /// <param name="webRequest">The web request to send</param>
-        /// <param name="payload">The payload to upload</param>
-        /// <returns>A deserialized dictionary of strings to dynamic types</returns>
-        protected async Task<Dictionary<string, dynamic>> SendWebRequestAndDeserializeAsDictionaryAsync(HttpWebRequest webRequest, byte[] payload)
-        {
-            return await SendWebRequestAndDeserialize<Dictionary<string, dynamic>>(webRequest, payload);
-        }
-
-        /// <summary>
-        /// Sends an HTTP request with the given payload
-        /// </summary>
-        /// <typeparam name="TResult">The result type to deserialize</typeparam>
-        /// <param name="webRequest">The web request</param>
-        /// <param name="payload">The payload</param>
-        /// <returns>A deserialized JSON response</returns>
-        protected async Task<TResult> SendWebRequestAndDeserialize<TResult>(HttpWebRequest webRequest, byte[] payload)
-        {
-            return JsonConvert.DeserializeObject<TResult>(await SendWebRequestAsyncRaw(webRequest, payload));
-        }
-
-        /// <summary>
         /// Computes the SHA1 hash of the given set of bytes
         /// </summary>
         /// <returns>A string representing the SHA1 hash</returns>
@@ -215,10 +187,32 @@ namespace B2BackblazeBridge.Actions
 
             return new TimeSpan(_random.Next(0, int.MaxValue) * TicksPerMicrosecond);
         }
+        
+        /// <summary>
+        /// Sends a web request with the optional payload and attempts to deserialize the result. Otherwise, it deserializes the error
+        /// </summary>
+        /// <typeparam name="TResult">The type of result</typeparam>
+        /// <param name="webRequest">The web request</param>
+        /// <param name="payload">The payload to send</param>
+        /// <returns>An action result</returns>
+        protected async Task<BackblazeB2ActionResult<TResult>> SendWebRequestAndDeserialize<TResult>(HttpWebRequest webRequest, byte[] payload)
+        {
+            RawHttpCallResult rawHttpCallResult = await SendWebRequestAsyncRaw(webRequest, payload);
+            Maybe<TResult> resultMaybe = rawHttpCallResult.SuccessResult.Select(t => JsonConvert.DeserializeObject<TResult>(t));
+            Maybe<BackblazeB2ActionErrorDetails> errorMaybe = rawHttpCallResult.ErrorResult.Select(e => JsonConvert.DeserializeObject<BackblazeB2ActionErrorDetails>(e));
+
+            return new BackblazeB2ActionResult<TResult>(resultMaybe, errorMaybe.ToEnumerable());
+        }
         #endregion
 
         #region private methods
-        private async Task<string> SendWebRequestAsyncRaw(HttpWebRequest webRequest, byte[] payload)
+        /// <summary>
+        /// Send a raw web request to the B2 Backblaze API
+        /// </summary>
+        /// <param name="webRequest">The web request</param>
+        /// <param name="payload">The optional payload to send</param>
+        /// <returns>A raw http result</returns>
+        private async Task<RawHttpCallResult> SendWebRequestAsyncRaw(HttpWebRequest webRequest, byte[] payload)
         {
             try
             {
@@ -233,21 +227,25 @@ namespace B2BackblazeBridge.Actions
                 using (HttpWebResponse response = await webRequest.GetResponseAsync() as HttpWebResponse)
                 using (StreamReader reader = new StreamReader(response.GetResponseStream()))
                 {
-                    return await reader.ReadToEndAsync();
+                    string jsonResult = await reader.ReadToEndAsync();
+                    return new RawHttpCallResult
+                    {
+                        SuccessResult = jsonResult.ToMaybe(),
+                    };
                 }
             }
             catch (WebException ex)
             {
                 HttpWebResponse response = (HttpWebResponse)ex.Response;
-                // Decode JSON error structure and rethrow
                 using (StreamReader reader = new StreamReader(response.GetResponseStream()))
                 {
                     string responseJson = await reader.ReadToEndAsync();
-                    ErrorDetails errorDetails = JsonConvert.DeserializeObject<ErrorDetails>(responseJson);
-                    throw new BaseActionWebRequestException(response.StatusCode, errorDetails);
+                    return new RawHttpCallResult
+                    {
+                        ErrorResult = responseJson.ToMaybe(),
+                    };
                 }
             }
-
         }
         #endregion
     }

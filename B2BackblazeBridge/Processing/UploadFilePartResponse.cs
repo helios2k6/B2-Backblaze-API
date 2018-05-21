@@ -1,4 +1,4 @@
-/* 
+﻿/* 
  * Copyright (c) 2015 Andrew Johnson
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy of 
@@ -19,20 +19,25 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-namespace B2BackblazeBridge.Actions
+using Newtonsoft.Json;
+using System;
+
+namespace B2BackblazeBridge.Processing
 {
-    /// <summary>
-    /// Represents an exception where we could not upload a file part, even after 
-    /// multiple attempts
-    /// </summary>
-    [System.Serializable]
-    public class UploadFilePartFailureException : System.Exception
+    [Serializable]
+    [JsonObject(MemberSerialization.OptIn)]
+    internal sealed class UploadFilePartResponse
     {
-        public UploadFilePartFailureException() { }
-        public UploadFilePartFailureException(string message) : base(message) { }
-        public UploadFilePartFailureException(string message, System.Exception inner) : base(message, inner) { }
-        protected UploadFilePartFailureException(
-            System.Runtime.Serialization.SerializationInfo info,
-            System.Runtime.Serialization.StreamingContext context) : base(info, context) { }
+        [JsonProperty(PropertyName = "contentLength")]
+        public long ContentLength { get; set; }
+
+        [JsonProperty(PropertyName = "contentSha1")]
+        public string ContentSHA1 { get; set; }
+
+        [JsonProperty(PropertyName = "fileId")]
+        public string FileID { get; set; }
+
+        [JsonProperty(PropertyName = "partNumber")]
+        public long PartNumber { get; set; }
     }
 }

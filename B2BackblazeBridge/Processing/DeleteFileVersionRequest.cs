@@ -1,4 +1,4 @@
-/* 
+﻿/* 
  * Copyright (c) 2015 Andrew Johnson
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy of 
@@ -19,25 +19,19 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+using Newtonsoft.Json;
 using System;
-using System.Net;
 
-namespace B2BackblazeBridge.Actions
+namespace B2BackblazeBridge.Processing
 {
-    /// <summary>
-    /// This exception is thrown whenever uploading a file fails
-    /// </summary>
-    public sealed class UploadFileActionException : BaseActionWebRequestException
+    [Serializable]
+    [JsonObject(MemberSerialization.OptIn)]
+    internal sealed class DeleteFileVersionRequest
     {
-        #region ctor
-        /// <summary>
-        /// Construct a new UploadFileActionException
-        /// </summary>
-        /// <param name="statusCode">The HTTP status code that caused this exception</param>
-        /// <param name="details">The details of the error given back by B2 Backblaze</param>
-        public UploadFileActionException(HttpStatusCode statusCode, ErrorDetails details) : base(statusCode, details)
-        {
-        }
-        #endregion
+        [JsonProperty(PropertyName = "fileName")]
+        public string FileName { get; set; }
+
+        [JsonProperty(PropertyName = "fileId")]
+        public string FileId { get; set; }
     }
 }

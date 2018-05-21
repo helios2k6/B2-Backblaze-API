@@ -19,6 +19,7 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+using B2BackblazeBridge.Core;
 using System.Threading.Tasks;
 
 namespace B2BackblazeBridge.Actions
@@ -28,6 +29,6 @@ namespace B2BackblazeBridge.Actions
     /// </summary>
     interface IBackblazeB2Action<TResult>
     {
-        Task<TResult> ExecuteAsync();
+        Task<BackblazeB2ActionResult<TResult>> ExecuteAsync();
     }
 }

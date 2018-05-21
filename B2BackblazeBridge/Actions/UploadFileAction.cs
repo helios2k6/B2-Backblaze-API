@@ -20,8 +20,9 @@
  */
 
 using B2BackblazeBridge.Core;
+using B2BackblazeBridge.Processing;
+using Functional.Maybe;
 using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Net;
 using System.Text;
@@ -34,17 +35,6 @@ namespace B2BackblazeBridge.Actions
     /// </summary>
     public sealed class UploadFileAction : BaseAction<BackblazeB2UploadFileResult>
     {
-        #region private classes
-        private sealed class GetUploadFileURLResult
-        {
-            public string AuthorizationToken { get; set; }
-
-            public string BucketID { get; set; }
-
-            public string UploadURL { get; set; }
-        }
-        #endregion
-
         #region private fields
         private static readonly string GetUploadURIURI = "/b2api/v1/b2_get_upload_url";
 
@@ -78,23 +68,25 @@ namespace B2BackblazeBridge.Actions
         #endregion
 
         #region public methods
-        public async override Task<BackblazeB2UploadFileResult> ExecuteAsync()
+        public async override Task<BackblazeB2ActionResult<BackblazeB2UploadFileResult>> ExecuteAsync()
         {
             return await UploadFileAsync(await GetUploadURLAsync());
         }
         #endregion
 
         #region private methods
-        private async Task<BackblazeB2UploadFileResult> UploadFileAsync(GetUploadFileURLResult getUploadFileUrlResult)
+        private async Task<BackblazeB2ActionResult<BackblazeB2UploadFileResult>> UploadFileAsync(BackblazeB2ActionResult<GetUploadFileURLResponse> getUploadFileUrlResult)
         {
-            try
+            if (getUploadFileUrlResult.HasResult)
             {
+                GetUploadFileURLResponse unwrappedResult = getUploadFileUrlResult.Result.Value;
+
                 byte[] fileBytes = File.ReadAllBytes(_filePath);
                 string sha1Hash = ComputeSHA1Hash(fileBytes);
                 FileInfo info = new FileInfo(_filePath);
-                HttpWebRequest webRequest = (HttpWebRequest)WebRequest.Create(getUploadFileUrlResult.UploadURL);
+                HttpWebRequest webRequest = (HttpWebRequest)WebRequest.Create(unwrappedResult.UploadURL);
                 webRequest.Method = "POST";
-                webRequest.Headers.Add("Authorization", getUploadFileUrlResult.AuthorizationToken);
+                webRequest.Headers.Add("Authorization", unwrappedResult.AuthorizationToken);
                 webRequest.Headers.Add("X-Bz-File-Name", GetSafeFileName(_filePath));
                 webRequest.Headers.Add("X-Bz-Content-Sha1", sha1Hash);
                 webRequest.ContentType = "b2/x-auto";
@@ -102,39 +94,22 @@ namespace B2BackblazeBridge.Actions
 
                 return await SendWebRequestAndDeserialize<BackblazeB2UploadFileResult>(webRequest, fileBytes);
             }
-            catch (BaseActionWebRequestException ex)
+            else
             {
-                throw new UploadFileActionException(ex.StatusCode, ex.Details);
+                return new BackblazeB2ActionResult<BackblazeB2UploadFileResult>(Maybe<BackblazeB2UploadFileResult>.Nothing, getUploadFileUrlResult.Errors);
             }
         }
 
-        private async Task<GetUploadFileURLResult> GetUploadURLAsync()
+        private async Task<BackblazeB2ActionResult<GetUploadFileURLResponse>> GetUploadURLAsync()
         {
-            try
-            {
-                HttpWebRequest webRequest = GetHttpWebRequest(_authorizationSession.APIURL + GetUploadURIURI, true);
-                webRequest.Headers.Add("Authorization", _authorizationSession.AuthorizationToken);
-                webRequest.Method = "POST";
+            HttpWebRequest webRequest = GetHttpWebRequest(_authorizationSession.APIURL + GetUploadURIURI);
+            webRequest.Headers.Add("Authorization", _authorizationSession.AuthorizationToken);
+            webRequest.Method = "POST";
 
-                string body = "{\"bucketId\":\"" + _bucketID + "\"}";
-                byte[] encodedBody = Encoding.UTF8.GetBytes(body);
-                webRequest.ContentLength = encodedBody.Length;
-                return DecodeGetUploadURLJson(await SendWebRequestAndDeserializeAsDictionaryAsync(webRequest, encodedBody));
-            }
-            catch (BaseActionWebRequestException ex)
-            {
-                throw new UploadFileActionException(ex.StatusCode, ex.Details);
-            }
-        }
-
-        private GetUploadFileURLResult DecodeGetUploadURLJson(Dictionary<string, dynamic> jsonPayload)
-        {
-            return new GetUploadFileURLResult
-            {
-                AuthorizationToken = jsonPayload["authorizationToken"],
-                BucketID = jsonPayload["bucketId"],
-                UploadURL = jsonPayload["uploadUrl"],
-            };
+            string body = "{\"bucketId\":\"" + _bucketID + "\"}";
+            byte[] encodedBody = Encoding.UTF8.GetBytes(body);
+            webRequest.ContentLength = encodedBody.Length;
+            return await SendWebRequestAndDeserialize<GetUploadFileURLResponse>(webRequest, encodedBody);
         }
         #endregion
     }
