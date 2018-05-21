@@ -123,13 +123,6 @@ namespace B2BackblazeBridge.Actions
         #endregion
 
         #region private methods
-        private IEnumerable<BackblazeB2ActionResult<TResult>> AggregateErrors<T, TResult>(IEnumerable<BackblazeB2ActionResult<T>> responses)
-        {
-            return from response in responses
-                   from error in response.Errors
-                   select new BackblazeB2ActionResult<TResult>(Maybe<TResult>.Nothing, error);
-        }
-
         private IEnumerable<BackblazeB2ActionResult<UploadFilePartResponse>> ProcessAllJobs(
             IEnumerable<UploadPartJob> jobs,
             IEnumerable<BackblazeB2ActionResult<GetUploadPartURLResponse>> urlResponses
@@ -138,7 +131,9 @@ namespace B2BackblazeBridge.Actions
             // If any of these have errors, then we need to return it. Only return the first one
             if (urlResponses.Any(t => t.HasErrors))
             {
-                return AggregateErrors<GetUploadPartURLResponse, UploadFilePartResponse>(urlResponses);
+                return from response in urlResponses
+                       from error in response.Errors
+                       select new BackblazeB2ActionResult<UploadFilePartResponse>(Maybe<UploadFilePartResponse>.Nothing, error);
             }
 
             IEnumerable<GetUploadPartURLResponse> urls = urlResponses.Select(t => t.Result.Value);
