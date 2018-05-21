@@ -203,6 +203,7 @@ namespace B2BackblazeBridge.Actions
 
             return new BackblazeB2ActionResult<TResult>(resultMaybe, errorMaybe.ToEnumerable());
         }
+
         #endregion
 
         #region private methods

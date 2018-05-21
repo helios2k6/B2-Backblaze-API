@@ -28,6 +28,9 @@ using System.Threading.Tasks;
 
 namespace B2BackblazeBridge.Actions
 {
+    /// <summary>
+    /// Represents an action to delete a file
+    /// </summary>
     public sealed class DeleteFileAction : BaseAction<BackblazeB2DeleteFileResult>
     {
         #region private fields
@@ -39,6 +42,12 @@ namespace B2BackblazeBridge.Actions
         #endregion
 
         #region ctor
+        /// <summary>
+        /// Constructs a new DeleteFileAction 
+        /// </summary>
+        /// <param name="authorizationSession">The authorization session</param>
+        /// <param name="fileId">The file ID to delete</param>
+        /// <param name="fileName">The file name to delete</param>
         public DeleteFileAction(BackblazeB2AuthorizationSession authorizationSession, string fileId, string fileName)
         {
             _authorizationSession = authorizationSession;
