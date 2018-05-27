@@ -79,7 +79,7 @@ namespace B2BackblazeBridge.Actions
         {
             if (getUploadFileUrlResult.HasResult)
             {
-                GetUploadFileURLResponse unwrappedResult = getUploadFileUrlResult.Result.Value;
+                GetUploadFileURLResponse unwrappedResult = getUploadFileUrlResult.MaybeResult.Value;
 
                 byte[] fileBytes = File.ReadAllBytes(_filePath);
                 string sha1Hash = ComputeSHA1Hash(fileBytes);

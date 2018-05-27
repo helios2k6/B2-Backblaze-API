@@ -53,7 +53,7 @@ namespace B2BackblazeBridge.Actions
         #endregion
 
         #region private fields
-        private static readonly string DownloadByIDURL = "/api/b2_download_file_by_id";
+        private static readonly string DownloadByIDURL = "/b2api/v1/b2_download_file_by_id";
 
         private static readonly int BufferSize = 64 * 1024; // 64 kibibytes
 
@@ -130,7 +130,7 @@ namespace B2BackblazeBridge.Actions
                 case IdentifierType.ID:
                     return await DownloadByFileIDAsync();
                 case IdentifierType.Name:
-                    throw new NotImplementedException();
+                    return await DownloadByFileNameAsync();
                 default:
                     throw new InvalidOperationException();
             }
@@ -143,7 +143,7 @@ namespace B2BackblazeBridge.Actions
             string body = "{\"fileId\":\"" + Identifier + "\"}";
             byte[] payload = Encoding.UTF8.GetBytes(body);
 
-            HttpWebRequest webRequest = GetHttpWebRequest(_authorizationSession + DownloadByIDURL);
+            HttpWebRequest webRequest = GetHttpWebRequest(_authorizationSession.DownloadURL + DownloadByIDURL);
             webRequest.Method = "POST";
             webRequest.Headers.Add("Authorization", _authorizationSession.AuthorizationToken);
             webRequest.ContentLength = payload.Length;

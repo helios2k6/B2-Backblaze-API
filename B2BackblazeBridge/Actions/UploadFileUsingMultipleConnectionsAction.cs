@@ -114,7 +114,7 @@ namespace B2BackblazeBridge.Actions
                 );
             }
 
-            string fileID = fileIDResponse.Result.Value.FileID;
+            string fileID = fileIDResponse.MaybeResult.Value.FileID;
             IEnumerable<BackblazeB2ActionResult<GetUploadPartURLResponse>> urlEndpoints = GetUploadPartURLs(fileID);
             IEnumerable<BackblazeB2ActionResult<UploadFilePartResponse>> uploadResponses = ProcessAllJobs(await GenerateUploadPartsAsync(), urlEndpoints);
 
@@ -136,7 +136,7 @@ namespace B2BackblazeBridge.Actions
                        select new BackblazeB2ActionResult<UploadFilePartResponse>(Maybe<UploadFilePartResponse>.Nothing, error);
             }
 
-            IEnumerable<GetUploadPartURLResponse> urls = urlResponses.Select(t => t.Result.Value);
+            IEnumerable<GetUploadPartURLResponse> urls = urlResponses.Select(t => t.MaybeResult.Value);
             Task[] workerArray = ConstructAndStartWorkers(jobs, urls);
             Task.WaitAll(workerArray);
             return
@@ -348,7 +348,7 @@ namespace B2BackblazeBridge.Actions
                 if (uploadResponse.HasResult)
                 {
                     // Verify result
-                    UploadFilePartResponse unwrappedResponse = uploadResponse.Result.Value;
+                    UploadFilePartResponse unwrappedResponse = uploadResponse.MaybeResult.Value;
                     if (
                         unwrappedResponse.ContentLength != fileBytes.Length ||
                         unwrappedResponse.ContentSHA1.Equals(sha1Hash, StringComparison.Ordinal) == false ||
@@ -391,7 +391,7 @@ namespace B2BackblazeBridge.Actions
             }
 
             IList<string> sha1Hashes = (from uploadResponse in uploadResponses
-                                        let uploadResponseValue = uploadResponse.Result.Value
+                                        let uploadResponseValue = uploadResponse.MaybeResult.Value
                                         orderby uploadResponseValue.PartNumber ascending
                                         select uploadResponseValue.ContentSHA1).ToList();
 
@@ -411,7 +411,7 @@ namespace B2BackblazeBridge.Actions
             BackblazeB2ActionResult<BackblazeB2UploadMultipartFileResult> response =
                 await SendWebRequestAndDeserializeAsync<BackblazeB2UploadMultipartFileResult>(webRequest, requestBytes);
 
-            response.Result.Do(r => r.FileHashes = sha1Hashes);
+            response.MaybeResult.Do(r => r.FileHashes = sha1Hashes);
 
             return response;
         }

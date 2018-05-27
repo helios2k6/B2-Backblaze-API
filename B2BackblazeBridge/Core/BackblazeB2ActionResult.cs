@@ -36,7 +36,12 @@ namespace B2BackblazeBridge.Core
         /// <summary>
         /// The Optional result 
         /// </summary>
-        public Maybe<TResult> Result { get; }
+        public Maybe<TResult> MaybeResult { get; }
+
+        /// <summary>
+        /// The actual result; throws on a Nothing option value
+        /// </summary>
+        public TResult Result { get { return MaybeResult.Value; } }
 
         /// <summary>
         /// The errors that occurred during this action
@@ -48,7 +53,7 @@ namespace B2BackblazeBridge.Core
         /// </summary>
         public bool HasResult
         {
-            get { return Result.IsSomething() && Errors.Any() == false; }
+            get { return MaybeResult.IsSomething() && Errors.Any() == false; }
         }
 
         /// <summary>
@@ -87,7 +92,7 @@ namespace B2BackblazeBridge.Core
         /// <param name="errors"></param>
         public BackblazeB2ActionResult(Maybe<TResult> result, IEnumerable<BackblazeB2ActionErrorDetails> errors)
         {
-            Result = result;
+            MaybeResult = result;
             Errors = errors;
         }
         #endregion
@@ -100,8 +105,8 @@ namespace B2BackblazeBridge.Core
                 return false;
             }
 
-            TResult result = Result.OrElseDefault();
-            TResult otherResult = other.Result.OrElseDefault();
+            TResult result = MaybeResult.OrElseDefault();
+            TResult otherResult = other.MaybeResult.OrElseDefault();
 
             return Equals(result, otherResult) && Enumerable.SequenceEqual(Errors, other.Errors);
         }
@@ -113,7 +118,7 @@ namespace B2BackblazeBridge.Core
 
         public override int GetHashCode()
         {
-            TResult result = Result.OrElseDefault();
+            TResult result = MaybeResult.OrElseDefault();
 
             int hashCode = 0;
             if (result != null)

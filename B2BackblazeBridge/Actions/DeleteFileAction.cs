@@ -67,7 +67,7 @@ namespace B2BackblazeBridge.Actions
             string deleteRequestJson = JsonConvert.SerializeObject(deleteRequest);
             byte[] payload = Encoding.UTF8.GetBytes(deleteRequestJson);
 
-            HttpWebRequest webRequest = GetHttpWebRequest(_authorizationSession + APIURL);
+            HttpWebRequest webRequest = GetHttpWebRequest(_authorizationSession.APIURL + APIURL);
             webRequest.Method = "POST";
             webRequest.Headers.Add("Authorization", _authorizationSession.AuthorizationToken);
             webRequest.ContentLength = payload.Length;
