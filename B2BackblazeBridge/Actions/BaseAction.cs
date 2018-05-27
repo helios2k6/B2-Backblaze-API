@@ -195,7 +195,7 @@ namespace B2BackblazeBridge.Actions
         /// <param name="webRequest">The web request</param>
         /// <param name="payload">The payload to send</param>
         /// <returns>An action result</returns>
-        protected async Task<BackblazeB2ActionResult<TResult>> SendWebRequestAndDeserialize<TResult>(HttpWebRequest webRequest, byte[] payload)
+        protected async Task<BackblazeB2ActionResult<TResult>> SendWebRequestAndDeserializeAsync<TResult>(HttpWebRequest webRequest, byte[] payload)
         {
             RawHttpCallResult rawHttpCallResult = await SendWebRequestAsyncRaw(webRequest, payload);
             Maybe<TResult> resultMaybe = rawHttpCallResult.SuccessResult.Select(t => JsonConvert.DeserializeObject<TResult>(t));
@@ -203,7 +203,6 @@ namespace B2BackblazeBridge.Actions
 
             return new BackblazeB2ActionResult<TResult>(resultMaybe, errorMaybe.ToEnumerable());
         }
-
         #endregion
 
         #region private methods

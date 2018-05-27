@@ -53,11 +53,6 @@ namespace B2BackblazeBridge.Core
         /// The timestamp from when the file upload began
         /// </summary>
         public long TimeStamp { get; set; }
-
-        /// <summary>
-        /// The file bytes 
-        /// </summary>
-        public byte[] FileBytes { get; set; }
         #endregion
 
         #region public methods

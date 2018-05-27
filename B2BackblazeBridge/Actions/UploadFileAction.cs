@@ -92,7 +92,7 @@ namespace B2BackblazeBridge.Actions
                 webRequest.ContentType = "b2/x-auto";
                 webRequest.ContentLength = info.Length;
 
-                return await SendWebRequestAndDeserialize<BackblazeB2UploadFileResult>(webRequest, fileBytes);
+                return await SendWebRequestAndDeserializeAsync<BackblazeB2UploadFileResult>(webRequest, fileBytes);
             }
             else
             {
@@ -109,7 +109,7 @@ namespace B2BackblazeBridge.Actions
             string body = "{\"bucketId\":\"" + _bucketID + "\"}";
             byte[] encodedBody = Encoding.UTF8.GetBytes(body);
             webRequest.ContentLength = encodedBody.Length;
-            return await SendWebRequestAndDeserialize<GetUploadFileURLResponse>(webRequest, encodedBody);
+            return await SendWebRequestAndDeserializeAsync<GetUploadFileURLResponse>(webRequest, encodedBody);
         }
         #endregion
     }

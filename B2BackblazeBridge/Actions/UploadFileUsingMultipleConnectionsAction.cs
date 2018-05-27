@@ -275,7 +275,7 @@ namespace B2BackblazeBridge.Actions
             webRequest.Headers.Add("Authorization", _authorizationSession.AuthorizationToken);
             webRequest.ContentLength = jsonBodyBytes.Length;
 
-            return await SendWebRequestAndDeserialize<StartLargeFileResponse>(webRequest, jsonBodyBytes);
+            return await SendWebRequestAndDeserializeAsync<StartLargeFileResponse>(webRequest, jsonBodyBytes);
         }
 
         private IEnumerable<BackblazeB2ActionResult<GetUploadPartURLResponse>> GetUploadPartURLs(string fileID)
@@ -301,7 +301,7 @@ namespace B2BackblazeBridge.Actions
             webRequest.Headers.Add("Authorization", _authorizationSession.AuthorizationToken);
             webRequest.ContentLength = jsonPayloadBytes.Length;
 
-            return await SendWebRequestAndDeserialize<GetUploadPartURLResponse>(webRequest, jsonPayloadBytes);
+            return await SendWebRequestAndDeserializeAsync<GetUploadPartURLResponse>(webRequest, jsonPayloadBytes);
         }
 
         private async Task<BackblazeB2ActionResult<UploadFilePartResponse>> UploadFilePartAsync(
@@ -344,7 +344,7 @@ namespace B2BackblazeBridge.Actions
                 webRequest.Headers.Add("X-Bz-Content-Sha1", sha1Hash);
                 webRequest.ContentLength = fileBytes.Length;
 
-                BackblazeB2ActionResult<UploadFilePartResponse> uploadResponse = await SendWebRequestAndDeserialize<UploadFilePartResponse>(webRequest, fileBytes);
+                BackblazeB2ActionResult<UploadFilePartResponse> uploadResponse = await SendWebRequestAndDeserializeAsync<UploadFilePartResponse>(webRequest, fileBytes);
                 if (uploadResponse.HasResult)
                 {
                     // Verify result
@@ -409,7 +409,7 @@ namespace B2BackblazeBridge.Actions
             webRequest.Headers.Add("Authorization", _authorizationSession.AuthorizationToken);
 
             BackblazeB2ActionResult<BackblazeB2UploadMultipartFileResult> response =
-                await SendWebRequestAndDeserialize<BackblazeB2UploadMultipartFileResult>(webRequest, requestBytes);
+                await SendWebRequestAndDeserializeAsync<BackblazeB2UploadMultipartFileResult>(webRequest, requestBytes);
 
             response.Result.Do(r => r.FileHashes = sha1Hashes);
 

@@ -72,7 +72,7 @@ namespace B2BackblazeBridge.Actions
             webRequest.Headers.Add("Authorization", _authorizationSession.AuthorizationToken);
             webRequest.ContentLength = payload.Length;
 
-            return await SendWebRequestAndDeserialize<BackblazeB2DeleteFileResult>(webRequest, payload);
+            return await SendWebRequestAndDeserializeAsync<BackblazeB2DeleteFileResult>(webRequest, payload);
         }
         #endregion
     }

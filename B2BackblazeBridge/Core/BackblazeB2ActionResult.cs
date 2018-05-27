@@ -62,6 +62,15 @@ namespace B2BackblazeBridge.Core
 
         #region ctor
         /// <summary>
+        /// Constructs a new BackblazeB2ActionResult to represent a result from a call to the B2 server with a non-error 
+        /// </summary>
+        /// <param name="result">The result of the call</param>
+        public BackblazeB2ActionResult(TResult result)
+            : this(result.ToMaybe(), Enumerable.Empty<BackblazeB2ActionErrorDetails>())
+        {
+        }
+
+        /// <summary>
         /// Constructs a new BackblazeB2ActionResult to represent a result from a call to the B2 server
         /// </summary>
         /// <param name="result">The result of the call</param>

@@ -61,7 +61,7 @@ namespace B2BackblazeBridge.Actions
                 Encoding.UTF8.GetBytes(_acccountID + ":" + _applicationKey)
             );
             webRequest.Headers.Add("Authorization", "Basic " + credentialsHeader);
-            BackblazeB2ActionResult<BackblazeB2AuthorizationSession> response = await SendWebRequestAndDeserialize<BackblazeB2AuthorizationSession>(webRequest, null);
+            BackblazeB2ActionResult<BackblazeB2AuthorizationSession> response = await SendWebRequestAndDeserializeAsync<BackblazeB2AuthorizationSession>(webRequest, null);
             response.Result.Do(r => r.ApplicationKey = _applicationKey);
 
             return response;
