@@ -317,19 +317,6 @@ namespace B2BackblazeBridge.Actions
             int attemptNumber = 0;
             while (true)
             {
-                if (attemptNumber >= MaxUploadAttempts)
-                {
-                    return new BackblazeB2ActionResult<UploadFilePartResponse>(
-                        Maybe<UploadFilePartResponse>.Nothing,
-                        new BackblazeB2ActionErrorDetails
-                        {
-                            Code = "CUSTOM_ERROR",
-                            Message = string.Format("Unable to upload file part: {0}", partNumber),
-                            Status = -1,
-                        }
-                    );
-                }
-
                 // Sleep the current thread so that we can give the server some time to recover
                 if (attemptNumber > 0)
                 {
@@ -370,8 +357,14 @@ namespace B2BackblazeBridge.Actions
                         return uploadResponse;
                     }
                 }
-
-                attemptNumber++;
+                else if (uploadResponse.Errors.First().Code.Equals("service_unavailable", StringComparison.OrdinalIgnoreCase) && attemptNumber < MaxUploadAttempts)
+                {
+                    attemptNumber++;
+                }
+                else
+                {
+                    return uploadResponse;
+                }
             }
         }
 
