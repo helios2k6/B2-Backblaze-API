@@ -37,11 +37,11 @@ namespace B2BackblazeBridgeTester
 
         public static void Main(string[] args)
         {
-            Console.WriteLine("B2 Backblaze Tester v1.0");
-            Execute(args[0], args[1], args[2]).Wait();
+            Console.WriteLine("B2 Backblaze Tester v1.1");
+            Execute(args[0], args[1], args[2], args[3]).Wait();
         }
 
-        private static async Task Execute(string accountID, string applicationKey, string fileToUpload)
+        private static async Task Execute(string accountID, string applicationKey, string bucketID, string fileToUpload)
         {
             if (string.IsNullOrEmpty(accountID) || string.IsNullOrEmpty(applicationKey) || File.Exists(fileToUpload) == false)
             {
@@ -62,10 +62,8 @@ namespace B2BackblazeBridgeTester
             Dictionary<Tuple<int, int>, string> exceptions = new Dictionary<Tuple<int, int>, string>();
 
             // Test connection speeds and chunk sizes
-            // First, we take big leaps in how many connections we test: 20, 40, 60, 80, 100
-            // And we take big leaps in how big the chunk size can be: 20, 40, 60, 80, 100
-            IEnumerable<int> connections = new[] { 20, 40, 60, 80, 100 };
-            IEnumerable<int> chunkSizes = new[] { 20 * Mebibyte, 40 * Mebibyte, 60 * Mebibyte, 80 * Mebibyte, 100 * Mebibyte, };
+            IEnumerable<int> connections = new[] { 25 };
+            IEnumerable<int> chunkSizes = new[] { 5 * Mebibyte };
 
             Console.WriteLine("Running Test");
             // Then we find the area that is likely to have the best 
@@ -81,7 +79,7 @@ namespace B2BackblazeBridgeTester
                         UploadFileUsingMultipleConnectionsAction uploadFileAction = new UploadFileUsingMultipleConnectionsAction(
                           authorizeAccountResult.Result,
                           fileToUpload,
-                          "9e42df326bce132c693f0214",
+                          bucketID,
                           currentChunkSize,
                           currentNumConnections
                         );
@@ -103,6 +101,7 @@ namespace B2BackblazeBridgeTester
                     }
                     catch (Exception e)
                     {
+                        Console.WriteLine("Failed to run test");
                         exceptions.Add(mapKey, e.Message);
                     }
                 }
@@ -110,17 +109,19 @@ namespace B2BackblazeBridgeTester
 
             FileInfo info = new FileInfo(fileToUpload);
             Console.WriteLine(string.Format("File length is: {0}", info.Length));
+            Console.WriteLine(string.Format("Current ticks per second is: {0}", Stopwatch.Frequency));
 
             // Print out results
+            Console.WriteLine(string.Format("Connections | Bytes | Ticks"));
             foreach (KeyValuePair<Tuple<int, int>, long> entry in timings)
             {
-                Console.WriteLine(string.Format("{0} @ {1} mebibytes: {2}", entry.Key.Item1, entry.Key.Item2, entry.Value));
+                Console.WriteLine(string.Format("{0} | {1} | {2}", entry.Key.Item1, entry.Key.Item2, entry.Value));
             }
 
             // Print out exceptions
             foreach (KeyValuePair<Tuple<int, int>, string> entry in exceptions)
             {
-                Console.WriteLine(string.Format("ERROR FOR: {0} @ {1} mebibytes: {2}", entry.Key.Item1, entry.Key.Item2, entry.Value));
+                Console.WriteLine(string.Format("ERROR FOR: {0} | {1} mebibytes: {2}", entry.Key.Item1, entry.Key.Item2, entry.Value));
             }
         }
     }

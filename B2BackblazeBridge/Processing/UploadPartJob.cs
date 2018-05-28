@@ -39,7 +39,7 @@ namespace B2BackblazeBridge.Processing
         /// <summary>
         /// The file part number
         /// </summary>
-        public int FilePartNumber { get; set; }
+        public long FilePartNumber { get; set; }
 
         /// <summary>
         /// The SHA1 hash of this chunk

@@ -213,15 +213,15 @@ namespace B2BackblazeBridge.Actions
         {
             IList<UploadPartJob> jobs = new List<UploadPartJob>();
             FileInfo fileInfo = new FileInfo(_filePath);
-            int numberOfChunks = (int)(fileInfo.Length / _fileChunkSizesInBytes); // We can't have more than 4 billion chunks per file. 
-            for (int currentChunk = 0; currentChunk < numberOfChunks; currentChunk++)
+            long numberOfChunks = (fileInfo.Length / _fileChunkSizesInBytes); // We can't have more than 4 billion chunks per file. 
+            for (long currentChunk = 0; currentChunk < numberOfChunks; currentChunk++)
             {
                 long cursorPosition = currentChunk * _fileChunkSizesInBytes;
                 jobs.Add(new UploadPartJob
                 {
                     ContentLength = _fileChunkSizesInBytes,
                     FileCursorPosition = cursorPosition,
-                    FilePartNumber = currentChunk + 1, // File parts are 1-index based...I know, fucking stupid
+                    FilePartNumber = currentChunk + 1L, // File parts are 1-index based...I know, fucking stupid
                     SHA1 = await ComputeSHA1HashOfChunkAsync(cursorPosition, _fileChunkSizesInBytes),
                 });
             }
@@ -235,7 +235,7 @@ namespace B2BackblazeBridge.Actions
                 {
                     ContentLength = remainderChunk,
                     FileCursorPosition = numberOfChunks * _fileChunkSizesInBytes,
-                    FilePartNumber = numberOfChunks + 1, // File parts are 1-index based...I know, fucking stupid
+                    FilePartNumber = numberOfChunks + 1L, // File parts are 1-index based...I know, fucking stupid
                     SHA1 = await ComputeSHA1HashOfChunkAsync(cursorPosition, remainderChunk),
                 });
             }
@@ -307,7 +307,7 @@ namespace B2BackblazeBridge.Actions
         private async Task<BackblazeB2ActionResult<UploadFilePartResponse>> UploadFilePartAsync(
             byte[] fileBytes,
             string sha1Hash,
-            int partNumber,
+            long partNumber,
             GetUploadPartURLResponse getUploadPartUrl
         )
         {
