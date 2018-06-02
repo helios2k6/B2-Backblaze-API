@@ -19,9 +19,14 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+using B2BackblazeBridge.Actions;
+using B2BackblazeBridge.Core;
 using System;
+using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading.Tasks;
 
 namespace B2BackupUtility
 {
@@ -30,6 +35,11 @@ namespace B2BackupUtility
     /// </summary>
     public static class Driver
     {
+        #region private fields
+        private const int FILE_CHUNK_SIZE = 1024 * 1024 * 5;
+        private const int CONNECTIONS = 25;
+        #endregion
+
         public static void Main(string[] args)
         {
             if (args.Length < 4 || WantsHelp(args))
@@ -45,7 +55,51 @@ namespace B2BackupUtility
                 return;
             }
 
+            ExecuteAsync(args[0], args[1], args[2], action, args.Skip(4)).Wait();
+        }
 
+        private static async Task ExecuteAsync(string accountID, string applicationKey, string bucketID, Action action, IEnumerable<string> remainingArgs)
+        {
+            AuthorizeAccountAction authorizeAccountAction = new AuthorizeAccountAction(accountID, applicationKey);
+            BackblazeB2ActionResult<BackblazeB2AuthorizationSession> authorizationSessionResult = await authorizeAccountAction.ExecuteAsync();
+            if (authorizationSessionResult.HasErrors)
+            {
+                Console.WriteLine(
+                    string.Format(
+                        "Could not authorize account with account ID {0} and application key {1}. Error: {2}",
+                        accountID,
+                        applicationKey,
+                        authorizationSessionResult.Errors.First().Message
+                    )
+                );
+
+                return;
+            }
+
+            BackblazeB2AuthorizationSession authorizationSession = authorizationSessionResult.Result;
+            switch (action)
+            {
+                case Action.DELETE:
+                    await DeleteFileAsync(authorizationSession, bucketID, remainingArgs);
+                    break;
+
+                case Action.DOWNLOAD:
+                    await DownloadFileAsync(authorizationSession, bucketID, remainingArgs);
+                    break;
+
+                case Action.LIST:
+                    await ListFilesAsync(authorizationSession, bucketID);
+                    break;
+
+                case Action.UPLOAD:
+                    await UploadFileAsync(authorizationSession, bucketID, remainingArgs);
+                    break;
+
+                case Action.UNKNOWN:
+                default:
+                    Console.WriteLine("Unknown action specified");
+                    break;
+            }
         }
 
         private static bool TryGetAction(string[] args, out Action action)
@@ -135,6 +189,92 @@ namespace B2BackupUtility
                 .AppendLine();
 
             Console.Write(builder.ToString());
+        }
+
+        private static async Task UploadFileAsync(BackblazeB2AuthorizationSession authorizationSession, string bucketID, IEnumerable<string> remainingArgs)
+        {
+            string fileToUpload = GetArgument(remainingArgs, "--file");
+            string destination = GetArgument(remainingArgs, "--destination");
+
+            if (string.IsNullOrWhiteSpace(fileToUpload) || string.IsNullOrWhiteSpace(destination) || File.Exists(fileToUpload) == false)
+            {
+                Console.WriteLine(string.Format("Invalid arguments sent for --file ({0}) or --destination ({1})", fileToUpload, destination));
+                return;
+            }
+
+            UploadFileUsingMultipleConnectionsAction uploadAction = new UploadFileUsingMultipleConnectionsAction(
+                authorizationSession,
+                fileToUpload,
+                destination,
+                bucketID,
+                FILE_CHUNK_SIZE,
+                CONNECTIONS
+            );
+
+            BackblazeB2ActionResult<BackblazeB2UploadMultipartFileResult> uploadResult = await ExecuteActionAsync(uploadAction, "Upload File");
+            if (uploadResult.HasResult)
+            {
+                BackblazeB2UploadMultipartFileResult result = uploadResult.Result;
+                StringBuilder builder = new StringBuilder();
+                builder.AppendLine("Upload Successful:");
+                builder.AppendFormat("File: {0}", result.FileName).AppendLine();
+                builder.AppendFormat("File ID: {0}", result.FileID).AppendLine();
+                builder.AppendFormat("Total Content Length: {0}", result.TotalContentLength).AppendLine();
+
+                Console.Write(builder.ToString());
+            }
+        }
+
+        private static async Task ListFilesAsync(BackblazeB2AuthorizationSession authorizationSession, string bucketID)
+        {
+            ListFilesAction action = ListFilesAction.CreateListFileActionForFileNames(authorizationSession, bucketID, true);
+            BackblazeB2ActionResult<BackblazeB2ListFilesResult> actionResult = await ExecuteActionAsync(action, "List files");
+            if (actionResult.HasResult)
+            {
+                foreach (BackblazeB2ListFilesResult.FileResult file in actionResult.Result.Files)
+                {
+                    Console.WriteLine(string.Format("{0} - {1}", file.FileName, file.FileID));
+                }
+            }
+        }
+
+        private static async Task DownloadFileAsync(BackblazeB2AuthorizationSession authorizationSession, string bukcetID, IEnumerable<string> remainingArgs)
+        {
+        }
+
+        private static async Task DeleteFileAsync(BackblazeB2AuthorizationSession authorizationSession, string bucketID, IEnumerable<string> remainingArgs)
+        {
+        }
+
+        private static async Task<BackblazeB2ActionResult<T>> ExecuteActionAsync<T>(BaseAction<T> action, string actionName)
+        {
+            BackblazeB2ActionResult<T> actionResult = await action.ExecuteAsync();
+            if (actionResult.HasErrors)
+            {
+                string errorMessagesComposed = actionResult.Errors.Select(t => t.Message).Aggregate((a, b) => string.Format("{0}\n{1}", a, b));
+                Console.WriteLine(string.Format("Could not execute action {0}. Errors: {1}", actionName, errorMessagesComposed));
+            }
+
+            return actionResult;
+        }
+
+        private static string GetArgument(IEnumerable<string> args, string option)
+        {
+            bool returnNextItem = false;
+            foreach (string arg in args)
+            {
+                if (returnNextItem)
+                {
+                    return arg;
+                }
+
+                if (arg.Equals(option, StringComparison.Ordinal))
+                {
+                    returnNextItem = true;
+                }
+            }
+
+            return null;
         }
     }
 }

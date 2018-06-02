@@ -5,4 +5,9 @@
     <TargetFramework>netcoreapp2.0</TargetFramework>
   </PropertyGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\B2BackblazeBridge\B2BackblazeBridge.csproj" />
+    <ProjectReference Include="..\Functional.Maybe\Functional.Maybe.csproj" />
+  </ItemGroup>
+
 </Project>
