@@ -41,6 +41,7 @@ namespace B2BackblazeBridge.Actions
         private readonly BackblazeB2AuthorizationSession _authorizationSession;
         private readonly string _bucketID;
         private readonly string _filePath;
+        private readonly string _fileDestination;
         #endregion
 
         #region ctor
@@ -49,10 +50,12 @@ namespace B2BackblazeBridge.Actions
         /// </summary>
         /// <param name="authorizationSession">The authorization session</param>
         /// <param name="filePath">The path to the file to upload</param>
+        /// <param name="fileDestination">The remote file path to upload to</param>
         /// <param name="bucketID">The Bucket ID to upload to</param>
         public UploadFileAction(
             BackblazeB2AuthorizationSession authorizationSession,
             string filePath,
+            string fileDestination,
             string bucketID
         ) : base()
         {
@@ -64,6 +67,7 @@ namespace B2BackblazeBridge.Actions
             _authorizationSession = authorizationSession ?? throw new ArgumentNullException("The authorization session object must not be null");
             _bucketID = bucketID;
             _filePath = filePath;
+            _fileDestination = fileDestination;
         }
         #endregion
 
@@ -87,7 +91,7 @@ namespace B2BackblazeBridge.Actions
                 HttpWebRequest webRequest = (HttpWebRequest)WebRequest.Create(unwrappedResult.UploadURL);
                 webRequest.Method = "POST";
                 webRequest.Headers.Add("Authorization", unwrappedResult.AuthorizationToken);
-                webRequest.Headers.Add("X-Bz-File-Name", GetSafeFileName(_filePath));
+                webRequest.Headers.Add("X-Bz-File-Name", GetSafeFileName(_fileDestination));
                 webRequest.Headers.Add("X-Bz-Content-Sha1", sha1Hash);
                 webRequest.ContentType = "b2/x-auto";
                 webRequest.ContentLength = info.Length;

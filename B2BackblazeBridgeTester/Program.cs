@@ -79,6 +79,7 @@ namespace B2BackblazeBridgeTester
                         UploadFileUsingMultipleConnectionsAction uploadFileAction = new UploadFileUsingMultipleConnectionsAction(
                           authorizeAccountResult.Result,
                           fileToUpload,
+                          fileToUpload,
                           bucketID,
                           currentChunkSize,
                           currentNumConnections

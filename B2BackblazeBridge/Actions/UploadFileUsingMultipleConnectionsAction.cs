@@ -57,6 +57,8 @@ namespace B2BackblazeBridge.Actions
 
         private readonly string _filePath;
 
+        private readonly string _fileDestination;
+
         private readonly int _numberOfConnections;
 
         private readonly int _fileChunkSizesInBytes;
@@ -68,12 +70,14 @@ namespace B2BackblazeBridge.Actions
         /// </summary>
         /// <param name="authorizationSession">The authorization session</param>
         /// <param name="filePath">The (local) path to the file you want to upload</param>
+        /// <param name="fileDestination">The remote path you want to upload to</param>
         /// <param name="bucketID">The B2 bucket you want to upload to</param>
         /// <param name="fileChunkSizesInBytes">The size (in bytes) of the file chunks you want to use when uploading</param>
         /// <param name="numberOfConnections">The number of connections to use when uploading</param>
         public UploadFileUsingMultipleConnectionsAction(
             BackblazeB2AuthorizationSession authorizationSession,
             string filePath,
+            string fileDestination,
             string bucketID,
             int fileChunkSizesInBytes,
             int numberOfConnections
@@ -97,6 +101,7 @@ namespace B2BackblazeBridge.Actions
             _authorizationSession = authorizationSession ?? throw new ArgumentNullException("The authorization session object must not be mull");
             _bucketID = bucketID;
             _filePath = filePath;
+            _fileDestination = fileDestination;
             _fileChunkSizesInBytes = fileChunkSizesInBytes;
             _numberOfConnections = numberOfConnections;
         }
@@ -266,7 +271,7 @@ namespace B2BackblazeBridge.Actions
             {
                 BucketID = _bucketID,
                 ContentType = "b2/x-auto",
-                FileName = GetSafeFileName(_filePath),
+                FileName = GetSafeFileName(_fileDestination),
             };
 
             byte[] jsonBodyBytes = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(request));
