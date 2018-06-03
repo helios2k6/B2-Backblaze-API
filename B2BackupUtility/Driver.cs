@@ -27,7 +27,6 @@ using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
-using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -41,10 +40,15 @@ namespace B2BackupUtility
         #region private fields
         private const int FILE_CHUNK_SIZE = 1024 * 1024 * 5;
         private const int CONNECTIONS = 20;
+
+        private static readonly TimeSpan ONE_HOUR = TimeSpan.FromMinutes(60);
         #endregion
 
         public static void Main(string[] args)
         {
+            // Just to add space between the command and the output
+            Console.WriteLine();
+
             if (args.Length < 4 || WantsHelp(args))
             {
                 PrintHelp();
@@ -63,6 +67,7 @@ namespace B2BackupUtility
 
         private static async Task ExecuteAsync(string accountID, string applicationKey, string bucketID, Action action, IEnumerable<string> remainingArgs)
         {
+            Console.WriteLine("Authorizing account");
             AuthorizeAccountAction authorizeAccountAction = new AuthorizeAccountAction(accountID, applicationKey);
             BackblazeB2ActionResult<BackblazeB2AuthorizationSession> authorizationSessionResult = await authorizeAccountAction.ExecuteAsync();
             if (authorizationSessionResult.HasErrors)
@@ -79,6 +84,8 @@ namespace B2BackupUtility
                 return;
             }
 
+            Console.WriteLine("Account authorized");
+            Console.WriteLine();
             BackblazeB2AuthorizationSession authorizationSession = authorizationSessionResult.Result;
             switch (action)
             {
@@ -96,6 +103,10 @@ namespace B2BackupUtility
 
                 case Action.UPLOAD:
                     await UploadFileAsync(authorizationSession, bucketID, remainingArgs);
+                    break;
+
+                case Action.UPLOAD_FOLDER:
+                    await UploadFolderAsync(authorizationSession, bucketID, remainingArgs);
                     break;
 
                 case Action.UNKNOWN:
@@ -127,6 +138,9 @@ namespace B2BackupUtility
                 case "--delete-file":
                     action = Action.DELETE;
                     break;
+                case "--upload-folder":
+                    action = Action.UPLOAD_FOLDER;
+                    break;
                 default:
                     action = Action.UNKNOWN;
                     return false;
@@ -152,6 +166,9 @@ namespace B2BackupUtility
                 .AppendLine("--upload-file")
                 .AppendLine("\t\tUpload a file. Will automatically update versions of files")
                 .AppendLine()
+                .AppendLine("--upload-folder")
+                .AppendLine("\t\tUploads a folder full of files. Will automatically recurse the folder")
+                .AppendLine()
                 .AppendLine("--list-files")
                 .AppendLine("\t\tList all of the available files on the server. Note, this action will be charged as a Class C charge")
                 .AppendLine()
@@ -172,6 +189,13 @@ namespace B2BackupUtility
                 .AppendLine()
                 .AppendLine("--destination")
                 .AppendLine("\t\tThe path to upload to")
+                .AppendLine()
+                .AppendLine("Upload Folder Options")
+                .AppendLine("--folder")
+                .AppendLine("\t\tThe folder to upload.")
+                .AppendLine()
+                .AppendLine("--flatten")
+                .AppendLine("\t\tFlatten all folders and upload all files to a single directory on B2")
                 .AppendLine()
                 .AppendLine("List Files Options")
                 .AppendLine("\t\tThere aren't any. Just type in the command")
@@ -201,16 +225,57 @@ namespace B2BackupUtility
         {
             string fileToUpload = GetArgument(remainingArgs, "--file");
             string destination = GetArgument(remainingArgs, "--destination");
-
             if (string.IsNullOrWhiteSpace(fileToUpload) || string.IsNullOrWhiteSpace(destination) || File.Exists(fileToUpload) == false)
             {
                 Console.WriteLine(string.Format("Invalid arguments sent for --file ({0}) or --destination ({1})", fileToUpload, destination));
                 return;
             }
 
+            Console.WriteLine("Uploading file");
+            await UploadFileImplAsync(authorizationSession, bucketID, fileToUpload, destination);
+        }
+
+        private static async Task UploadFolderAsync(BackblazeB2AuthorizationSession authorizationSession, string bucketID, IEnumerable<string> remainingArgs)
+        {
+            string folder = GetArgument(remainingArgs, "--folder");
+            bool flatten = DoesOptionExist(remainingArgs, "--flatten");
+            if (Directory.Exists(folder) == false)
+            {
+                Console.WriteLine(string.Format("Folder does not exist: {0}", folder));
+                return;
+            }
+
+            Console.WriteLine("Uploading folder");
+            BackblazeB2AuthorizationSession currentAuthorizationSession = authorizationSession;
+            IEnumerable<string> files = Directory.EnumerateFiles(folder, "*", SearchOption.AllDirectories);
+            foreach (string file in files)
+            {
+                if (currentAuthorizationSession.SessionExpirationDate - DateTime.Now < ONE_HOUR)
+                {
+                    Console.WriteLine("Session is about to end in less than an hour. Renewing.");
+
+                    // Renew the authorization
+                    AuthorizeAccountAction authorizeAction = new AuthorizeAccountAction(currentAuthorizationSession.AccountID, currentAuthorizationSession.ApplicationKey);
+                    BackblazeB2ActionResult<BackblazeB2AuthorizationSession> authorizeActionResult = await ExecuteActionAsync(authorizeAction, "Re-Authorize account");
+                    if (authorizeActionResult.HasErrors)
+                    {
+                        // Could not reauthorize. Aborting
+                        return;
+                    }
+
+                    currentAuthorizationSession = authorizeActionResult.Result;
+                }
+
+                string destination = flatten ? Path.GetFileName(file) : file;
+                await UploadFileImplAsync(currentAuthorizationSession, bucketID, file, destination);
+            }
+        }
+
+        private static async Task UploadFileImplAsync(BackblazeB2AuthorizationSession authorizationSession, string bucketID, string file, string destination)
+        {
             UploadFileUsingMultipleConnectionsAction uploadAction = new UploadFileUsingMultipleConnectionsAction(
                 authorizationSession,
-                fileToUpload,
+                file,
                 destination,
                 bucketID,
                 FILE_CHUNK_SIZE,
@@ -232,13 +297,14 @@ namespace B2BackupUtility
                 builder.AppendFormat("File ID: {0}", result.FileID).AppendLine();
                 builder.AppendFormat("Total Content Length: {0}", result.TotalContentLength).AppendLine();
                 builder.AppendFormat("Upload Time: {0} seconds", (double)watch.ElapsedTicks / Stopwatch.Frequency).AppendLine();
-                builder.AppendFormat("Upload Speed: {0:0,0.00} bytes / second", bytesPerSecond.ToString("0,0.00", CultureInfo.InvariantCulture)).AppendLine();
+                builder.AppendFormat("Upload Speed: {0:0,0.00} bytes / second", bytesPerSecond.ToString("0,0.00", CultureInfo.InvariantCulture)).AppendLine().AppendLine();
                 Console.Write(builder.ToString());
             }
         }
 
         private static async Task ListFilesAsync(BackblazeB2AuthorizationSession authorizationSession, string bucketID)
         {
+            Console.WriteLine("Fetching file list");
             ListFilesAction action = ListFilesAction.CreateListFileActionForFileNames(authorizationSession, bucketID, true);
             BackblazeB2ActionResult<BackblazeB2ListFilesResult> actionResult = await ExecuteActionAsync(action, "List files");
             if (actionResult.HasResult)
@@ -254,7 +320,6 @@ namespace B2BackupUtility
         {
             string fileName = GetArgument(remainingArgs, "--file-name");
             string fileID = GetArgument(remainingArgs, "--file-id");
-
             if (string.IsNullOrWhiteSpace(fileName) && string.IsNullOrWhiteSpace(fileID))
             {
                 Console.WriteLine("No file name or file ID could be found");
@@ -274,6 +339,7 @@ namespace B2BackupUtility
                 return;
             }
 
+            Console.WriteLine("Downloading file");
             DownloadFileAction downloadAction = string.IsNullOrWhiteSpace(fileName)
                 ? new DownloadFileAction(authorizationSession, destination, fileID)
                 : new DownloadFileAction(authorizationSession, destination, bucketID, fileName);
@@ -296,13 +362,13 @@ namespace B2BackupUtility
         {
             string fileName = GetArgument(remainingArgs, "--file-name");
             string fileID = GetArgument(remainingArgs, "--file-id");
-
             if (string.IsNullOrWhiteSpace(fileName) || string.IsNullOrWhiteSpace(fileID))
             {
                 Console.WriteLine("A file name and file ID must be provided");
                 return;
             }
 
+            Console.WriteLine("Deleting File");
             DeleteFileAction deleteFileAction = new DeleteFileAction(authorizationSession, fileID, fileName);
             BackblazeB2ActionResult<BackblazeB2DeleteFileResult> result = await ExecuteActionAsync(deleteFileAction, "Delete file");
             if (result.HasResult)
@@ -321,6 +387,11 @@ namespace B2BackupUtility
             }
 
             return actionResult;
+        }
+
+        private static bool DoesOptionExist(IEnumerable<string> args, string option)
+        {
+            return args.Any(t => t.Equals(option, StringComparison.Ordinal));
         }
 
         private static string GetArgument(IEnumerable<string> args, string option)

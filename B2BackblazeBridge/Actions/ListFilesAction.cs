@@ -108,9 +108,21 @@ namespace B2BackblazeBridge.Actions
                 startFileName = currentResult.Result.NextFileName;
                 fileResults = fileResults.Concat(currentResult.Result.Files);
             } while (_shouldFetchAllFiles && startFileName != null);
+
+            IEnumerable<BackblazeB2ListFilesResult.FileResult> unescapedFileResults = from fileResult in fileResults
+                                                                                      select new BackblazeB2ListFilesResult.FileResult
+                                                                                      {
+                                                                                          Action = fileResult.Action,
+                                                                                          ContentLength = fileResult.ContentLength,
+                                                                                          ContentSha1 = fileResult.ContentSha1,
+                                                                                          ContentType = fileResult.ContentType,
+                                                                                          FileID = fileResult.FileID,
+                                                                                          FileName = Uri.UnescapeDataString(fileResult.FileName),
+                                                                                          UploadTimeStamp = fileResult.UploadTimeStamp,
+                                                                                      };
             return new BackblazeB2ActionResult<BackblazeB2ListFilesResult>(new BackblazeB2ListFilesResult
             {
-                Files = fileResults.ToArray(),
+                Files = unescapedFileResults.ToArray(),
                 NextFileID = currentResult.Result.NextFileID,
                 NextFileName = currentResult.Result.NextFileName,
             });

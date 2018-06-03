@@ -22,6 +22,7 @@
 using B2BackblazeBridge.Core;
 using B2BackblazeBridge.Processing;
 using Newtonsoft.Json;
+using System;
 using System.Net;
 using System.Text;
 using System.Threading.Tasks;
@@ -61,7 +62,7 @@ namespace B2BackblazeBridge.Actions
         {
             DeleteFileVersionRequest deleteRequest = new DeleteFileVersionRequest
             {
-                FileName = _fileName,
+                FileName = GetSafeFileName(_fileName),
                 FileId = _fileId,
             };
             string deleteRequestJson = JsonConvert.SerializeObject(deleteRequest);
@@ -72,7 +73,14 @@ namespace B2BackblazeBridge.Actions
             webRequest.Headers.Add("Authorization", _authorizationSession.AuthorizationToken);
             webRequest.ContentLength = payload.Length;
 
-            return await SendWebRequestAndDeserializeAsync<BackblazeB2DeleteFileResult>(webRequest, payload);
+            BackblazeB2ActionResult<BackblazeB2DeleteFileResult> deletionResult = await SendWebRequestAndDeserializeAsync<BackblazeB2DeleteFileResult>(webRequest, payload);
+            if (deletionResult.HasResult)
+            {
+                string escapedFileName = deletionResult.Result.FileName;
+                deletionResult.Result.FileName = Uri.UnescapeDataString(escapedFileName);
+            }
+
+            return deletionResult;
         }
         #endregion
     }

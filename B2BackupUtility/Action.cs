@@ -43,6 +43,10 @@ namespace B2BackupUtility
         /// </summary>
         UPLOAD,
         /// <summary>
+        /// Upload a folder of files
+        /// </summary>
+        UPLOAD_FOLDER,
+        /// <summary>
         /// Unknown action
         /// </summary>
         UNKNOWN,
