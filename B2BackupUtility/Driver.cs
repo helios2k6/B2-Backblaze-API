@@ -23,8 +23,11 @@ using B2BackblazeBridge.Actions;
 using B2BackblazeBridge.Core;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -37,7 +40,7 @@ namespace B2BackupUtility
     {
         #region private fields
         private const int FILE_CHUNK_SIZE = 1024 * 1024 * 5;
-        private const int CONNECTIONS = 25;
+        private const int CONNECTIONS = 20;
         #endregion
 
         public static void Main(string[] args)
@@ -80,7 +83,7 @@ namespace B2BackupUtility
             switch (action)
             {
                 case Action.DELETE:
-                    await DeleteFileAsync(authorizationSession, bucketID, remainingArgs);
+                    await DeleteFileAsync(authorizationSession, remainingArgs);
                     break;
 
                 case Action.DOWNLOAD:
@@ -180,6 +183,9 @@ namespace B2BackupUtility
                 .AppendLine("--file-id")
                 .AppendLine("\t\tDownload a file by file ID")
                 .AppendLine()
+                .AppendLine("--destination")
+                .AppendLine("\t\tThe destination you want to download the file")
+                .AppendLine()
                 .AppendLine("Delete File Options")
                 .AppendLine("--file-name")
                 .AppendLine("\t\tDelete a file by file name")
@@ -211,16 +217,22 @@ namespace B2BackupUtility
                 CONNECTIONS
             );
 
+            Stopwatch watch = new Stopwatch();
+            watch.Start();
             BackblazeB2ActionResult<BackblazeB2UploadMultipartFileResult> uploadResult = await ExecuteActionAsync(uploadAction, "Upload File");
+            watch.Stop();
             if (uploadResult.HasResult)
             {
+                double bytesPerSecond = uploadResult.Result.TotalContentLength / ((double)watch.ElapsedTicks / Stopwatch.Frequency);
+
                 BackblazeB2UploadMultipartFileResult result = uploadResult.Result;
                 StringBuilder builder = new StringBuilder();
                 builder.AppendLine("Upload Successful:");
                 builder.AppendFormat("File: {0}", result.FileName).AppendLine();
                 builder.AppendFormat("File ID: {0}", result.FileID).AppendLine();
                 builder.AppendFormat("Total Content Length: {0}", result.TotalContentLength).AppendLine();
-
+                builder.AppendFormat("Upload Time: {0} seconds", (double)watch.ElapsedTicks / Stopwatch.Frequency).AppendLine();
+                builder.AppendFormat("Upload Speed: {0:0,0.00} bytes / second", bytesPerSecond.ToString("0,0.00", CultureInfo.InvariantCulture)).AppendLine();
                 Console.Write(builder.ToString());
             }
         }
@@ -238,12 +250,65 @@ namespace B2BackupUtility
             }
         }
 
-        private static async Task DownloadFileAsync(BackblazeB2AuthorizationSession authorizationSession, string bukcetID, IEnumerable<string> remainingArgs)
+        private static async Task DownloadFileAsync(BackblazeB2AuthorizationSession authorizationSession, string bucketID, IEnumerable<string> remainingArgs)
         {
+            string fileName = GetArgument(remainingArgs, "--file-name");
+            string fileID = GetArgument(remainingArgs, "--file-id");
+
+            if (string.IsNullOrWhiteSpace(fileName) && string.IsNullOrWhiteSpace(fileID))
+            {
+                Console.WriteLine("No file name or file ID could be found");
+                return;
+            }
+
+            string destination = GetArgument(remainingArgs, "--destination");
+            if (string.IsNullOrWhiteSpace(destination))
+            {
+                Console.WriteLine("No file destination provided");
+                return;
+            }
+
+            if (File.Exists(destination))
+            {
+                Console.WriteLine("Cannot override file that exists");
+                return;
+            }
+
+            DownloadFileAction downloadAction = string.IsNullOrWhiteSpace(fileName)
+                ? new DownloadFileAction(authorizationSession, destination, fileID)
+                : new DownloadFileAction(authorizationSession, destination, bucketID, fileName);
+
+            Stopwatch watch = new Stopwatch();
+            watch.Start();
+            BackblazeB2ActionResult<BackblazeB2DownloadFileResult> result = await ExecuteActionAsync(downloadAction, "Download file");
+            watch.Stop();
+            if (result.HasResult)
+            {
+                double bytesPerSecond = result.Result.ContentLength / ((double)watch.ElapsedTicks / Stopwatch.Frequency);
+
+                Console.WriteLine(string.Format("File successfully downloaded: {0} to {1}", result.Result.FileName, destination));
+                Console.WriteLine(string.Format("Download Time: {0} seconds", (double)watch.ElapsedTicks / Stopwatch.Frequency));
+                Console.WriteLine(string.Format("Download Speed: {0:0,0.00} bytes / second", bytesPerSecond.ToString("0,0.00", CultureInfo.InvariantCulture)));
+            }
         }
 
-        private static async Task DeleteFileAsync(BackblazeB2AuthorizationSession authorizationSession, string bucketID, IEnumerable<string> remainingArgs)
+        private static async Task DeleteFileAsync(BackblazeB2AuthorizationSession authorizationSession, IEnumerable<string> remainingArgs)
         {
+            string fileName = GetArgument(remainingArgs, "--file-name");
+            string fileID = GetArgument(remainingArgs, "--file-id");
+
+            if (string.IsNullOrWhiteSpace(fileName) || string.IsNullOrWhiteSpace(fileID))
+            {
+                Console.WriteLine("A file name and file ID must be provided");
+                return;
+            }
+
+            DeleteFileAction deleteFileAction = new DeleteFileAction(authorizationSession, fileID, fileName);
+            BackblazeB2ActionResult<BackblazeB2DeleteFileResult> result = await ExecuteActionAsync(deleteFileAction, "Delete file");
+            if (result.HasResult)
+            {
+                Console.WriteLine(string.Format("File successfully deleted: {0} | {1}", result.Result.FileName, result.Result.FileID));
+            }
         }
 
         private static async Task<BackblazeB2ActionResult<T>> ExecuteActionAsync<T>(BaseAction<T> action, string actionName)

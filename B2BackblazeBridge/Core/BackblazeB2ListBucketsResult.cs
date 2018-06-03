@@ -20,6 +20,7 @@
  */
 
 using System;
+using System.Linq;
 using Newtonsoft.Json;
 
 namespace B2BackblazeBridge.Core
@@ -29,7 +30,7 @@ namespace B2BackblazeBridge.Core
     /// </summary>
     [Serializable]
     [JsonObject(MemberSerialization.OptIn)]
-    public sealed class BackblazeB2ListBucketsResult
+    public sealed class BackblazeB2ListBucketsResult : IEquatable<BackblazeB2ListBucketsResult>
     {
         #region inner classes
         /// <summary>
@@ -38,22 +39,80 @@ namespace B2BackblazeBridge.Core
         /// </summary>
         [Serializable]
         [JsonObject(MemberSerialization.OptIn)]
-        public sealed class BucketItem
+        public sealed class BucketItem : IEquatable<BucketItem>
         {
+            #region public properties
+            /// <summary>
+            /// The account ID of all of the B2 buckets
+            /// </summary>
             [JsonProperty(PropertyName = "accountId")]
             public string AccountID { get; set; }
 
+            /// <summary>
+            /// The bucket ID
+            /// </summary>
             [JsonProperty(PropertyName = "bucketId")]
             public string BucketID { get; set; }
 
+            /// <summary>
+            /// The name of the bucket
+            /// </summary>
             [JsonProperty(PropertyName = "bucketName")]
             public string BucketName { get; set; }
 
+            /// <summary>
+            /// The type of bucket. Usually, it's always private
+            /// </summary>
             [JsonProperty(PropertyName = "bucketType")]
             public string BucketType { get; set; }
-            
+
+            /// <summary>
+            /// The revision number of the bucket
+            /// </summary>
             [JsonProperty(PropertyName = "revision")]
             public long Revision { get; set; }
+            #endregion
+
+            #region public methods
+            public bool Equals(BucketItem other)
+            {
+                if (EqualsPreamble(other) == false)
+                {
+                    return false;
+                }
+
+                return string.Equals(AccountID, other.AccountID, StringComparison.Ordinal) &&
+                    string.Equals(BucketID, other.BucketID, StringComparison.Ordinal) &&
+                    string.Equals(BucketName, other.BucketName, StringComparison.Ordinal) &&
+                    string.Equals(BucketType, other.BucketType, StringComparison.Ordinal) &&
+                    Revision == other.Revision;
+            }
+
+            public override bool Equals(object obj)
+            {
+                return Equals(obj as BucketItem);
+            }
+
+            public override int GetHashCode()
+            {
+                return AccountID?.GetHashCode() ?? 0 ^
+                    BucketID?.GetHashCode() ?? 0 ^
+                    BucketName?.GetHashCode() ?? 0 ^
+                    BucketType?.GetHashCode() ?? 0 ^
+                    Revision.GetHashCode();
+            }
+            #endregion
+
+            #region private methods
+            private bool EqualsPreamble(object other)
+            {
+                if (ReferenceEquals(null, other)) return false;
+                if (ReferenceEquals(this, other)) return true;
+                if (GetType() != other.GetType()) return false;
+
+                return true;
+            }
+            #endregion
         }
         #endregion
 
@@ -63,6 +122,40 @@ namespace B2BackblazeBridge.Core
         /// </summary>
         [JsonProperty(PropertyName = "buckets")]
         public BucketItem[] Buckets { get; set; }
+        #endregion
+
+        #region public methods
+        public bool Equals(BackblazeB2ListBucketsResult other)
+        {
+            if (EqualsPreamble(other) == false)
+            {
+                return false;
+            }
+
+            return Enumerable.SequenceEqual(Buckets, other.Buckets);
+        }
+
+        public override bool Equals(object obj)
+        {
+            return Equals(obj as BackblazeB2ListBucketsResult);
+        }
+
+        public override int GetHashCode()
+        {
+            return Buckets?.Aggregate(0, (seed, e) => seed ^ e.GetHashCode()) ?? 0;
+        }
+        #endregion
+
+        #region private methods
+
+        private bool EqualsPreamble(object other)
+        {
+            if (ReferenceEquals(null, other)) return false;
+            if (ReferenceEquals(this, other)) return true;
+            if (GetType() != other.GetType()) return false;
+
+            return true;
+        }
         #endregion
     }
 }

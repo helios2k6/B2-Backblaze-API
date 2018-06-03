@@ -21,6 +21,7 @@
 
 using Newtonsoft.Json;
 using System;
+using System.Linq;
 
 namespace B2BackblazeBridge.Core
 {
@@ -29,7 +30,7 @@ namespace B2BackblazeBridge.Core
     /// </summary>
     [Serializable]
     [JsonObject(MemberSerialization.OptIn)]
-    public sealed class BackblazeB2ListFilesResult
+    public sealed class BackblazeB2ListFilesResult : IEquatable<BackblazeB2ListFilesResult>
     {
         #region inner classes
         /// <summary>
@@ -37,8 +38,9 @@ namespace B2BackblazeBridge.Core
         /// </summary>
         [Serializable]
         [JsonObject(MemberSerialization.OptIn)]
-        public sealed class FileResult
+        public sealed class FileResult : IEquatable<FileResult>
         {
+            #region public properties
             /// <summary>
             /// The file ID of the file
             /// </summary>
@@ -82,6 +84,55 @@ namespace B2BackblazeBridge.Core
             /// </summary>
             [JsonProperty(PropertyName = "uploadTimestamp")]
             public long UploadTimeStamp { get; set; }
+            #endregion
+
+            #region ctor
+            #endregion
+
+            #region public methods
+            public bool Equals(FileResult other)
+            {
+                if (EqualsPreamble(other) == false)
+                {
+                    return false;
+                }
+
+                return string.Equals(FileID, other.FileID, StringComparison.Ordinal) &&
+                    string.Equals(FileName, other.FileName, StringComparison.Ordinal) &&
+                    ContentLength == other.ContentLength &&
+                    string.Equals(ContentType, other.ContentType, StringComparison.Ordinal) &&
+                    string.Equals(ContentSha1, other.ContentSha1, StringComparison.OrdinalIgnoreCase) &&
+                    string.Equals(Action, other.Action, StringComparison.Ordinal) &&
+                    UploadTimeStamp == other.UploadTimeStamp;
+            }
+
+            public override bool Equals(object obj)
+            {
+                return Equals(obj as FileResult);
+            }
+
+            public override int GetHashCode()
+            {
+                return FileID?.GetHashCode() ?? 0 ^
+                    FileName?.GetHashCode() ?? 0 ^
+                    ContentLength.GetHashCode() ^
+                    ContentType?.GetHashCode() ?? 0 ^
+                    ContentSha1?.GetHashCode() ?? 0 ^
+                    Action?.GetHashCode() ?? 0 ^
+                    UploadTimeStamp.GetHashCode();
+            }
+            #endregion
+
+            #region private methods
+            private bool EqualsPreamble(object other)
+            {
+                if (ReferenceEquals(null, other)) return false;
+                if (ReferenceEquals(this, other)) return true;
+                if (GetType() != other.GetType()) return false;
+
+                return true;
+            }
+            #endregion
         }
 
         #endregion
@@ -105,6 +156,43 @@ namespace B2BackblazeBridge.Core
         /// </summary>
         [JsonProperty(PropertyName = "nextFileId")]
         public string NextFileID { get; set; }
+        #endregion
+
+        #region public methods
+        public bool Equals(BackblazeB2ListFilesResult other)
+        {
+            if (EqualsPreamble(other) == false)
+            {
+                return false;
+            }
+
+            return string.Equals(NextFileName, other.NextFileName, StringComparison.Ordinal) &&
+                string.Equals(NextFileName, other.NextFileName, StringComparison.Ordinal) &&
+                Enumerable.SequenceEqual(Files, other.Files);
+        }
+
+        public override bool Equals(object obj)
+        {
+            return Equals(obj as BackblazeB2ListFilesResult);
+        }
+
+        public override int GetHashCode()
+        {
+            return NextFileID?.GetHashCode() ?? 0 ^
+                NextFileName?.GetHashCode() ?? 0 ^
+                Files?.Aggregate(0, (acc, e) => acc ^ e.GetHashCode()) ?? 0;
+        }
+        #endregion
+
+        #region private methods
+        private bool EqualsPreamble(object other)
+        {
+            if (ReferenceEquals(null, other)) return false;
+            if (ReferenceEquals(this, other)) return true;
+            if (GetType() != other.GetType()) return false;
+
+            return true;
+        }
         #endregion
     }
 }
