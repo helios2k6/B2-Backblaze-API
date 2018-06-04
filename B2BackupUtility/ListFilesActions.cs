@@ -27,12 +27,12 @@ using System.Threading.Tasks;
 
 namespace B2BackupUtility
 {
-    public static class ListFilesAction
+    public static class ListFilesActions
     {
         public static async Task ListFilesAsync(BackblazeB2AuthorizationSession authorizationSession, string bucketID)
         {
             Console.WriteLine("Fetching file list");
-            B2BackblazeBridge.Actions.ListFilesAction action = B2BackblazeBridge.Actions.ListFilesAction.CreateListFileActionForFileNames(authorizationSession, bucketID, true);
+            ListFilesAction action = ListFilesAction.CreateListFileActionForFileNames(authorizationSession, bucketID, true);
             BackblazeB2ActionResult<BackblazeB2ListFilesResult> actionResult = await CommonActions.ExecuteActionAsync(action, "List files");
             if (actionResult.HasResult)
             {

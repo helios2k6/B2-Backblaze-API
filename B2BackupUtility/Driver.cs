@@ -88,7 +88,7 @@ namespace B2BackupUtility
                     break;
 
                 case Action.LIST:
-                    await ListFilesAction.ListFilesAsync(authorizationSession, bucketID);
+                    await ListFilesActions.ListFilesAsync(authorizationSession, bucketID);
                     break;
 
                 case Action.UPLOAD:
@@ -181,6 +181,9 @@ namespace B2BackupUtility
                 .AppendLine()
                 .AppendLine("--flatten")
                 .AppendLine("\t\tFlatten all folders and upload all files to a single directory on B2")
+                .AppendLine()
+                .AppendLine("--force-override-files")
+                .AppendLine("\t\tUpload files to the server regardless if their SHA-1 hashes match")
                 .AppendLine()
                 .AppendLine("List Files Options")
                 .AppendLine("\t\tThere aren't any. Just type in the command")
