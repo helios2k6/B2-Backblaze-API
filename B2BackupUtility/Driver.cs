@@ -52,7 +52,18 @@ namespace B2BackupUtility
                 return;
             }
 
-            ExecuteAsync(args[0], args[1], args[2], action, args.Skip(4)).Wait();
+            string accountID = CommonActions.GetArgument(args, "--account-id");
+            string applicationKey = CommonActions.GetArgument(args, "--application-key");
+            string bucketID = CommonActions.GetArgument(args, "--bucket-id");
+
+            if (string.IsNullOrWhiteSpace(accountID) || string.IsNullOrWhiteSpace(applicationKey) || string.IsNullOrWhiteSpace(bucketID))
+            {
+                Console.WriteLine("Account ID, application key, or bucket ID are empty or null.");
+                PrintHelp();
+                return;
+            }
+
+            ExecuteAsync(accountID, applicationKey, bucketID, action, args).Wait();
         }
 
         private static async Task ExecuteAsync(string accountID, string applicationKey, string bucketID, Action action, IEnumerable<string> remainingArgs)
@@ -143,7 +154,19 @@ namespace B2BackupUtility
         {
             StringBuilder builder = new StringBuilder();
             builder.AppendLine("B2 Backup Utility v1.1")
-                .AppendLine("Usage: <this program> <account ID> <application key> <bucket ID> <action> [options]")
+                .AppendLine("Usage: <this program> <necessary switches> <action> [options]")
+                .AppendLine();
+
+            builder.AppendLine("Necessary Switches")
+                .AppendLine("--account-id")
+                .AppendLine()
+                .AppendLine("\t\tThe account ID associated with the B2 Backblaze Account")
+                .AppendLine()
+                .AppendLine("--application-key")
+                .AppendLine("\t\tThe secret application key that's authorized to call the B2 Backblaze API")
+                .AppendLine()
+                .AppendLine("--bucket-id")
+                .AppendLine("\t\tThe bucket ID to modify or read from")
                 .AppendLine();
 
             builder.AppendLine("Actions")
