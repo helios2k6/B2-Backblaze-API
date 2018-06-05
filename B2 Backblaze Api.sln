@@ -11,8 +11,6 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Functional.Maybe", "Functio
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "B2BackupUtility", "B2BackupUtility\B2BackupUtility.csproj", "{188D9714-1374-411B-A6A8-F27F32B84A65}"
 	ProjectSection(ProjectDependencies) = postProject
-		{024E879D-864C-41AF-916A-D9C3FE5E7933} = {024E879D-864C-41AF-916A-D9C3FE5E7933}
-		{42B408BE-10DE-4BBC-B649-135A283C8F01} = {42B408BE-10DE-4BBC-B649-135A283C8F01}
 	EndProjectSection
 EndProject
 Global
