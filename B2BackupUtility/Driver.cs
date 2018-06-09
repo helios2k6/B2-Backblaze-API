@@ -142,6 +142,9 @@ namespace B2BackupUtility
                 case "--upload-folder":
                     action = Action.UPLOAD_FOLDER;
                     break;
+                case "--verify-files":
+                    action = Action.VERIFY;
+                    break;
                 default:
                     action = Action.UNKNOWN;
                     return false;
@@ -185,6 +188,8 @@ namespace B2BackupUtility
                 .AppendLine()
                 .AppendLine("--delete-file")
                 .AppendLine()
+                .AppendLine("--verify-files")
+                .AppendLine()
                 .AppendLine("--help")
                 .AppendLine("\t\tDisplay this message")
                 .AppendLine();
@@ -227,6 +232,13 @@ namespace B2BackupUtility
                 .AppendLine()
                 .AppendLine("--file-id")
                 .AppendLine("\t\tDelete a file by file ID")
+                .AppendLine()
+                .AppendLine("Verify Files Options")
+                .AppendLine("--flatten")
+                .AppendLine("\t\tSpecify is the folders were flatted when they were uploaded")
+                .AppendLine()
+                .AppendLine("--folder")
+                .AppendLine("\t\tThe local folder to verify")
                 .AppendLine();
 
             Console.Write(builder.ToString());
