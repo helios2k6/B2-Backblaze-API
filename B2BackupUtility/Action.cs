@@ -50,9 +50,5 @@ namespace B2BackupUtility
         /// Unknown action
         /// </summary>
         UNKNOWN,
-        /// <summary>
-        /// Verify the files that are on B2
-        /// </summary>
-        VERIFY,
     }
 }
