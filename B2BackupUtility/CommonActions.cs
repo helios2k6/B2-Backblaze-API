@@ -67,27 +67,6 @@ namespace B2BackupUtility
             return true;
         }
 
-        public static string ComputeSHA1Hash(string filePath)
-        {
-            if (File.Exists(filePath) == false)
-            {
-                throw new InvalidOperationException("File does not exist. Cannot compute SHA-1");
-            }
-
-            using (FileStream stream = new FileStream(filePath, FileMode.Open, FileAccess.Read))
-            using (SHA1 shaHash = SHA1.Create())
-            {
-                byte[] hashData = shaHash.ComputeHash(stream);
-                StringBuilder sb = new StringBuilder();
-                foreach (byte b in hashData)
-                {
-                    sb.Append(b.ToString("x2"));
-                }
-
-                return sb.ToString();
-            }
-        }
-
         public static async Task<BackblazeB2ActionResult<T>> ExecuteActionAsync<T>(BaseAction<T> action, string actionName)
         {
             BackblazeB2ActionResult<T> actionResult = await action.ExecuteAsync();

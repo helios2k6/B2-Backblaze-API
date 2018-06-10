@@ -77,11 +77,11 @@ namespace B2BackupUtility
             }
 
             // Deduplicate destination files, especially if stuff is going to be flattened
-            IEnumerable<Tuple<string, string>> deduplicatedLocalFileToDestinationFiles = DeduplicateFilesToUpload(files.Item2, flatten);
+            IEnumerable<LocalFileToRemoteFileMapping> deduplicatedLocalFileToDestinationFiles = FilePathUtilities.GenerateLocalToRemotePathMapping(files.Item2, flatten);
 
             Console.WriteLine("Uploading folder");
             BackblazeB2AuthorizationSession currentAuthorizationSession = authorizationSession;
-            foreach (Tuple<string, string> localFileToDestinationFile in deduplicatedLocalFileToDestinationFiles)
+            foreach (LocalFileToRemoteFileMapping localFileToDestinationFile in deduplicatedLocalFileToDestinationFiles)
             {
                 if (currentAuthorizationSession.SessionExpirationDate - DateTime.Now < Constants.OneHour)
                 {
@@ -99,60 +99,7 @@ namespace B2BackupUtility
                     currentAuthorizationSession = authorizeActionResult.Result;
                 }
 
-                await UploadFileImplAsync(currentAuthorizationSession, bucketID, localFileToDestinationFile.Item1, localFileToDestinationFile.Item2);
-            }
-        }
-
-        private static string GetDestinationFileName(string localFileName, bool flatten)
-        {
-            return flatten ? Path.GetFileName(localFileName) : localFileName;
-        }
-
-        private static IEnumerable<Tuple<string, string>> DeduplicateFilesToUpload(IEnumerable<string> localFilePaths, bool flatten)
-        {
-            Console.WriteLine("Deduplicating destination files");
-            IDictionary<string, ISet<string>> possiblyDuplicateFiles = new Dictionary<string, ISet<string>>();
-            foreach (string localFilePath in localFilePaths)
-            {
-                string destination = GetDestinationFileName(localFilePath, flatten);
-                if (possiblyDuplicateFiles.ContainsKey(destination))
-                {
-                    Console.WriteLine("File name collision found. Determining if it is a duplicate");
-                    // This file might be similar to other files we know of. Check all of the files
-                    // and see if it's similar to them
-                    bool isDuplicate = false;
-                    foreach (string possibleDuplicate in possiblyDuplicateFiles[destination])
-                    {
-                        if (CommonActions.AreFilesEqual(localFilePath, possibleDuplicate))
-                        {
-                            isDuplicate = true;
-                            break;
-                        }
-                    }
-
-                    // Remember to add this file to the list of possible duplicates
-                    possiblyDuplicateFiles[destination].Add(localFilePath);
-                    if (isDuplicate)
-                    {
-                        Console.WriteLine(string.Format("File name collision and duplicate found. Skipping file {0}", localFilePath));
-                        continue;
-                    }
-
-                    // If we're not a duplicate, then we need to rename the destination file to something we know is unique
-                    destination = string.Format("{0}_non_duplicate({1}){2}", Path.GetFileNameWithoutExtension(destination), possiblyDuplicateFiles[destination].Count, Path.GetExtension(destination));
-                    Console.WriteLine(string.Format("Name collision found, but file was not a duplicate. Renaming destination file to: {0}", destination));
-                }
-                else
-                {
-                    // Add this entry
-                    HashSet<string> possibleDuplicates = new HashSet<string>
-                    {
-                        localFilePath,
-                    };
-                    possiblyDuplicateFiles[destination] = possibleDuplicates;
-                }
-
-                yield return Tuple.Create(localFilePath, destination);
+                await UploadFileImplAsync(currentAuthorizationSession, bucketID, localFileToDestinationFile.LocalFilePath, localFileToDestinationFile.RemoteFilePath);
             }
         }
 
@@ -178,8 +125,8 @@ namespace B2BackupUtility
             BackblazeB2ListFilesResult listFiles = listFilesActionResult.Result;
             IDictionary<string, string> sha1ToFileNames = listFiles.Files.ToDictionary(e => e.ContentSha1, e => e.FileName);
             IEnumerable<string> filteredFiles = from localFile in filesToUpload
-                                                let localFileSHA1 = CommonActions.ComputeSHA1Hash(localFile)
-                                                let destinationFileName = GetDestinationFileName(localFile, flatten)
+                                                let localFileSHA1 = SHA1FileHashStore.Instance.GetFileHash(localFile)
+                                                let destinationFileName = FilePathUtilities.GetDestinationFileName(localFile, flatten)
                                                 where !sha1ToFileNames.ContainsKey(localFileSHA1) || !sha1ToFileNames[localFileSHA1].Equals(destinationFileName, StringComparison.Ordinal)
                                                 select localFile;
 

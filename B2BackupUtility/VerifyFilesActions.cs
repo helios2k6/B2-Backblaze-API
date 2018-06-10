@@ -34,7 +34,7 @@ namespace B2BackupUtility
     {
         public static async Task VerifyFiles(BackblazeB2AuthorizationSession authorizationSession, string bucketID, IEnumerable<string> remainingArgs)
         {
-            bool flattenFiles = CommonActions.DoesOptionExist(remainingArgs, "--flatten");
+            bool flattenDirectoryStructure = CommonActions.DoesOptionExist(remainingArgs, "--flatten");
             string folder = CommonActions.GetArgument(remainingArgs, "--folder");
             
             if (string.IsNullOrWhiteSpace(folder))
@@ -54,18 +54,16 @@ namespace B2BackupUtility
             BackblazeB2ActionResult<BackblazeB2ListFilesResult> actionResult = await CommonActions.ExecuteActionAsync(action, "List files");
             if (actionResult.HasResult)
             {
-                IEnumerable<string> allFiles = Directory.EnumerateFiles(folder, "*", SearchOption.AllDirectories);
-                if (flattenFiles)
+                // Process all local files and deal with the case when there might be a duplicate
+                IEnumerable<string> allLocalFiles = Directory.EnumerateFiles(folder, "*", SearchOption.AllDirectories);
+                IEnumerable<LocalFileToRemoteFileMapping> localToRemoteFileMappings = FilePathUtilities.GenerateLocalToRemotePathMapping(allLocalFiles, flattenDirectoryStructure);
+                IDictionary<string, LocalFileToRemoteFileMapping> remoteFileToLocalFileMapping = localToRemoteFileMappings.ToDictionary(t => t.RemoteFilePath, t => t);
+                foreach (FileResult remoteFileResult in actionResult.Result.Files)
                 {
-                    allFiles = allFiles.Select(e => Path.GetFileName(e)).Distinct();
-                }
-
-                ISet<string> allLocalFilePaths = new HashSet<string>(allFiles);
-                ISet<string> filesThatAreNotUploaded = new HashSet<string>();
-                ISet<string> filesThatDoNotMatch = new HashSet<string>();
-                foreach (FileResult onlineFile in actionResult.Result.Files)
-                {
-                    
+                    if (remoteFileToLocalFileMapping.ContainsKey(remoteFileResult.FileName))
+                    {
+                        // Check SHA1 hash codes
+                    }
                 }
             }
         }
