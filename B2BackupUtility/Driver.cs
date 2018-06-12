@@ -153,13 +153,12 @@ namespace B2BackupUtility
         private static void PrintHelp()
         {
             StringBuilder builder = new StringBuilder();
-            builder.AppendLine("B2 Backup Utility v1.1")
+            builder.AppendLine("B2 Backup Utility v1.2")
                 .AppendLine("Usage: <this program> <necessary switches> <action> [options]")
                 .AppendLine();
 
             builder.AppendLine("Necessary Switches")
                 .AppendLine("--account-id")
-                .AppendLine()
                 .AppendLine("\t\tThe account ID associated with the B2 Backblaze Account")
                 .AppendLine()
                 .AppendLine("--application-key")
@@ -184,6 +183,7 @@ namespace B2BackupUtility
                 .AppendLine("\t\tDownloads a file from the B2 Backblaze server. Note, this action will be charged as a Class B charge")
                 .AppendLine()
                 .AppendLine("--delete-file")
+                .AppendLine("\t\tDeletes a file on the B2 Backblaze server.")
                 .AppendLine()
                 .AppendLine("--help")
                 .AppendLine("\t\tDisplay this message")
@@ -207,9 +207,6 @@ namespace B2BackupUtility
                 .AppendLine()
                 .AppendLine("--force-override-files")
                 .AppendLine("\t\tUpload files to the server regardless if their SHA-1 hashes match")
-                .AppendLine()
-                .AppendLine("List Files Options")
-                .AppendLine("\t\tThere aren't any. Just type in the command")
                 .AppendLine()
                 .AppendLine("Download File Options")
                 .AppendLine("--file-name")
