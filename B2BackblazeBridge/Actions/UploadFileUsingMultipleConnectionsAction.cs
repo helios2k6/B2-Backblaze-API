@@ -143,14 +143,56 @@ namespace B2BackblazeBridge.Actions
             }
 
             string fileID = fileIDResponse.MaybeResult.Value.FileID;
-            IEnumerable<BackblazeB2ActionResult<GetUploadPartURLResponse>> urlEndpoints = GetUploadPartURLs(fileID);
-            IEnumerable<BackblazeB2ActionResult<UploadFilePartResponse>> uploadResponses = ProcessAllJobs(await GenerateUploadPartsAsync(), urlEndpoints);
+            try
+            {
+                IEnumerable<BackblazeB2ActionResult<GetUploadPartURLResponse>> urlEndpoints = GetUploadPartURLs(fileID);
+                IEnumerable<BackblazeB2ActionResult<UploadFilePartResponse>> uploadResponses = ProcessAllJobs(await GenerateUploadPartsAsync(), urlEndpoints);
 
-            return await FinishUploadingLargeFileAsync(fileID, uploadResponses);
+                return await FinishUploadingLargeFileAsync(fileID, uploadResponses);
+            }
+            catch (TaskCanceledException)
+            {
+                // Attempt to do a cancellation
+                return await CancelFileUpload(fileID);
+            }
+            catch (AggregateException ex)
+            {
+                // Only attempt a cancellation if we had a task cancelled exception
+                if (ex.InnerExceptions.Any(e => e is TaskCanceledException))
+                {
+                    return await CancelFileUpload(fileID);
+                }
+
+                throw ex;
+            }
         }
         #endregion
 
         #region private methods
+        private async Task<BackblazeB2ActionResult<BackblazeB2UploadMultipartFileResult>> CancelFileUpload(string fileID)
+        {
+            CancelLargeFileUploadAction cancelAction = new CancelLargeFileUploadAction(_authorizationSession, fileID);
+            BackblazeB2ActionResult<BackblazeB2CancelLargeFileUploadResult> cancelResult = await cancelAction.ExecuteAsync();
+            if (cancelResult.HasErrors)
+            {
+                return new BackblazeB2ActionResult<BackblazeB2UploadMultipartFileResult>(
+                    Maybe<BackblazeB2UploadMultipartFileResult>.Nothing,
+                    cancelResult.Errors
+                );
+            }
+
+            return new BackblazeB2ActionResult<BackblazeB2UploadMultipartFileResult>(
+                new BackblazeB2UploadMultipartFileResult
+                {
+                    BucketID = _bucketID,
+                    FileHashes = new List<string>(),
+                    FileID = fileID,
+                    FileName = string.Empty,
+                    FileUploadStatus = BackblazeB2UploadMultipartFileResult.UploadStatus.CANCELLED,
+                }
+            );
+        }
+
         private IEnumerable<BackblazeB2ActionResult<UploadFilePartResponse>> ProcessAllJobs(
             IEnumerable<UploadPartJob> jobs,
             IEnumerable<BackblazeB2ActionResult<GetUploadPartURLResponse>> urlResponses
@@ -212,6 +254,8 @@ namespace B2BackblazeBridge.Actions
             IList<BackblazeB2ActionResult<UploadFilePartResponse>> responses = new List<BackblazeB2ActionResult<UploadFilePartResponse>>();
             foreach (UploadPartJob job in jobs)
             {
+                _cancellationToken.ThrowIfCancellationRequested();
+
                 // Read bytes first
                 using (FileStream stream = new FileStream(_filePath, FileMode.Open, FileAccess.Read))
                 {
@@ -345,6 +389,9 @@ namespace B2BackblazeBridge.Actions
             int attemptNumber = 0;
             while (true)
             {
+                // Throw an exception is we are being interrupted
+                _cancellationToken.ThrowIfCancellationRequested();
+
                 // Sleep the current thread so that we can give the server some time to recover
                 if (attemptNumber > 0)
                 {
@@ -432,7 +479,10 @@ namespace B2BackblazeBridge.Actions
             BackblazeB2ActionResult<BackblazeB2UploadMultipartFileResult> response =
                 await SendWebRequestAndDeserializeAsync<BackblazeB2UploadMultipartFileResult>(webRequest, requestBytes);
 
-            response.MaybeResult.Do(r => r.FileHashes = sha1Hashes);
+            response.MaybeResult.Do(r => {
+                r.FileHashes = sha1Hashes;
+                r.FileUploadStatus = BackblazeB2UploadMultipartFileResult.UploadStatus.SUCCESS;
+            });
 
             return response;
         }

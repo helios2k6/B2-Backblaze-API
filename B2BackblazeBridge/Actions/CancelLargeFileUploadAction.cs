@@ -29,7 +29,8 @@ using B2BackblazeBridge.Core;
 namespace B2BackblazeBridge.Actions
 {
     /// <summary>
-    /// Represents a request to B2 to cancel the uploading of a large file
+    /// Represents a request to B2 to cancel the uploading of a large file. Generally speaking, this should
+    /// not be used by consumers because it's already used internally during cancellation events. 
     /// </summary>
     public sealed class CancelLargeFileUploadAction : BaseAction<BackblazeB2CancelLargeFileUploadResult>
     {

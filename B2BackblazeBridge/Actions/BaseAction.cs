@@ -47,12 +47,12 @@ namespace B2BackblazeBridge.Actions
         }
         #endregion
 
-        #region private fields
+        #region fields
         private static readonly int TicksPerMicrosecond = 10;
 
         private readonly Random _random;
 
-        private readonly CancellationToken _cancellationToken;
+        protected readonly CancellationToken _cancellationToken;
         #endregion
 
         #region protected ctor
@@ -231,7 +231,7 @@ namespace B2BackblazeBridge.Actions
                 {
                     using (Stream stream = await webRequest.GetRequestStreamAsync())
                     {
-                        await stream.WriteAsync(payload, 0, payload.Length);
+                        await stream.WriteAsync(payload, 0, payload.Length, _cancellationToken);
                     }
                 }
 

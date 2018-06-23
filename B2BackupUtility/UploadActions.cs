@@ -141,33 +141,40 @@ namespace B2BackupUtility
 
         private static async Task UploadFileImplAsync(BackblazeB2AuthorizationSession authorizationSession, string bucketID, string file, string destination)
         {
-            UploadFileUsingMultipleConnectionsAction uploadAction = new UploadFileUsingMultipleConnectionsAction(
-                authorizationSession,
-                file,
-                destination,
-                bucketID,
-                Constants.FileChunkSize,
-                Constants.TargetUploadConnections,
-                CancellationActions.GlobalCancellationToken
-            );
-
-            Stopwatch watch = new Stopwatch();
-            watch.Start();
-            BackblazeB2ActionResult<BackblazeB2UploadMultipartFileResult> uploadResult = await CommonActions.ExecuteActionAsync(uploadAction, "Upload File");
-            watch.Stop();
-            if (uploadResult.HasResult)
+            try
             {
-                double bytesPerSecond = uploadResult.Result.TotalContentLength / ((double)watch.ElapsedTicks / Stopwatch.Frequency);
+                UploadFileUsingMultipleConnectionsAction uploadAction = new UploadFileUsingMultipleConnectionsAction(
+                    authorizationSession,
+                    file,
+                    destination,
+                    bucketID,
+                    Constants.FileChunkSize,
+                    Constants.TargetUploadConnections,
+                    CancellationActions.GlobalCancellationToken
+                );
 
-                BackblazeB2UploadMultipartFileResult result = uploadResult.Result;
-                StringBuilder builder = new StringBuilder();
-                builder.AppendLine("Upload Successful:");
-                builder.AppendFormat("File: {0}", result.FileName).AppendLine();
-                builder.AppendFormat("File ID: {0}", result.FileID).AppendLine();
-                builder.AppendFormat("Total Content Length: {0}", result.TotalContentLength).AppendLine();
-                builder.AppendFormat("Upload Time: {0} seconds", (double)watch.ElapsedTicks / Stopwatch.Frequency).AppendLine();
-                builder.AppendFormat("Upload Speed: {0:0,0.00} bytes / second", bytesPerSecond.ToString("0,0.00", CultureInfo.InvariantCulture)).AppendLine().AppendLine();
-                Console.Write(builder.ToString());
+                Stopwatch watch = new Stopwatch();
+                watch.Start();
+                BackblazeB2ActionResult<BackblazeB2UploadMultipartFileResult> uploadResult = await CommonActions.ExecuteActionAsync(uploadAction, "Upload File");
+                watch.Stop();
+                if (uploadResult.HasResult)
+                {
+                    double bytesPerSecond = uploadResult.Result.TotalContentLength / ((double)watch.ElapsedTicks / Stopwatch.Frequency);
+
+                    BackblazeB2UploadMultipartFileResult result = uploadResult.Result;
+                    StringBuilder builder = new StringBuilder();
+                    builder.AppendLine("Upload Successful:");
+                    builder.AppendFormat("File: {0}", result.FileName).AppendLine();
+                    builder.AppendFormat("File ID: {0}", result.FileID).AppendLine();
+                    builder.AppendFormat("Total Content Length: {0}", result.TotalContentLength).AppendLine();
+                    builder.AppendFormat("Upload Time: {0} seconds", (double)watch.ElapsedTicks / Stopwatch.Frequency).AppendLine();
+                    builder.AppendFormat("Upload Speed: {0:0,0.00} bytes / second", bytesPerSecond.ToString("0,0.00", CultureInfo.InvariantCulture)).AppendLine().AppendLine();
+                    Console.Write(builder.ToString());
+                }
+            }
+            catch (TaskCanceledException)
+            {
+                Console.WriteLine("Cancelled upload");
             }
         }
     }

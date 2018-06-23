@@ -33,6 +33,27 @@ namespace B2BackblazeBridge.Core
     [JsonObject(MemberSerialization.OptIn)]
     public sealed class BackblazeB2UploadMultipartFileResult : IEquatable<BackblazeB2UploadMultipartFileResult>
     {
+        #region inner enums
+        /// <summary>
+        /// Represents the upload status of the file
+        /// </summary>
+        public enum UploadStatus
+        {
+            /// <summary>
+            /// This was a partial upload
+            /// </summary>
+            PARTIAL,
+            /// <summary>
+            /// This was successfully uploaded
+            /// </summary>
+            SUCCESS,
+            /// <summary>
+            /// This upload was cancelled
+            /// </summary>
+            CANCELLED,
+        }
+        #endregion
+
         #region public properties
         /// <summary>
         /// The Bucket ID the file is being uploaded to
@@ -62,6 +83,11 @@ namespace B2BackblazeBridge.Core
         /// </summary>
         [JsonProperty(PropertyName = "contentLength")]
         public long TotalContentLength { get; set; }
+
+        /// <summary>
+        /// The status of the file upload
+        /// </summary>
+        public UploadStatus FileUploadStatus { get; set; }
         #endregion
         #region public fields
         public override int GetHashCode()
