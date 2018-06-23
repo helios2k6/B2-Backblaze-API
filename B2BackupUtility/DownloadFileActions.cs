@@ -32,17 +32,17 @@ namespace B2BackupUtility
 {
     public static class DownloadFileActions
     {
-        public static async Task DownloadFileAsync(BackblazeB2AuthorizationSession authorizationSession, string bucketID, IEnumerable<string> remainingArgs)
+        public static async Task DownloadFileAsync(BackblazeB2AuthorizationSession authorizationSession, string bucketID, IEnumerable<string> args)
         {
-            string fileName = CommonActions.GetArgument(remainingArgs, "--file-name");
-            string fileID = CommonActions.GetArgument(remainingArgs, "--file-id");
+            string fileName = CommonActions.GetArgument(args, "--file-name");
+            string fileID = CommonActions.GetArgument(args, "--file-id");
             if (string.IsNullOrWhiteSpace(fileName) && string.IsNullOrWhiteSpace(fileID))
             {
                 Console.WriteLine("No file name or file ID could be found");
                 return;
             }
 
-            string destination = CommonActions.GetArgument(remainingArgs, "--destination");
+            string destination = CommonActions.GetArgument(args, "--destination");
             if (string.IsNullOrWhiteSpace(destination))
             {
                 Console.WriteLine("No file destination provided");

@@ -34,10 +34,11 @@ namespace B2BackupUtility
 {
     public static class UploadActions
     {
-        public static async Task UploadFileAsync(BackblazeB2AuthorizationSession authorizationSession, string bucketID, IEnumerable<string> remainingArgs)
+        public static async Task UploadFileAsync(BackblazeB2AuthorizationSession authorizationSession, string bucketID, IEnumerable<string> args)
         {
-            string fileToUpload = CommonActions.GetArgument(remainingArgs, "--file");
-            string destination = CommonActions.GetArgument(remainingArgs, "--destination");
+            string fileToUpload = CommonActions.GetArgument(args, "--file");
+            string destination = CommonActions.GetArgument(args, "--destination");
+
             if (string.IsNullOrWhiteSpace(fileToUpload) || string.IsNullOrWhiteSpace(destination) || File.Exists(fileToUpload) == false)
             {
                 Console.WriteLine(string.Format("Invalid arguments sent for --file ({0}) or --destination ({1})", fileToUpload, destination));
@@ -45,14 +46,14 @@ namespace B2BackupUtility
             }
 
             Console.WriteLine("Uploading file");
-            await UploadFileImplAsync(authorizationSession, bucketID, fileToUpload, destination);
+            await UploadFileImplAsync(authorizationSession, bucketID, fileToUpload, destination, GetNumberOfConnections(args));
         }
 
-        public static async Task UploadFolderAsync(BackblazeB2AuthorizationSession authorizationSession, string bucketID, IEnumerable<string> remainingArgs)
+        public static async Task UploadFolderAsync(BackblazeB2AuthorizationSession authorizationSession, string bucketID, IEnumerable<string> args)
         {
-            string folder = CommonActions.GetArgument(remainingArgs, "--folder");
-            bool flatten = CommonActions.DoesOptionExist(remainingArgs, "--flatten");
-            bool overrideFiles = CommonActions.DoesOptionExist(remainingArgs, "--force-override-files");
+            string folder = CommonActions.GetArgument(args, "--folder");
+            bool flatten = CommonActions.DoesOptionExist(args, "--flatten");
+            bool overrideFiles = CommonActions.DoesOptionExist(args, "--force-override-files");
             if (Directory.Exists(folder) == false)
             {
                 Console.WriteLine(string.Format("Folder does not exist: {0}", folder));
@@ -105,7 +106,7 @@ namespace B2BackupUtility
                     currentAuthorizationSession = authorizeActionResult.Result;
                 }
 
-                await UploadFileImplAsync(currentAuthorizationSession, bucketID, localFileToDestinationFile.LocalFilePath, localFileToDestinationFile.RemoteFilePath);
+                await UploadFileImplAsync(currentAuthorizationSession, bucketID, localFileToDestinationFile.LocalFilePath, localFileToDestinationFile.RemoteFilePath, GetNumberOfConnections(args));
             }
         }
 
@@ -139,7 +140,7 @@ namespace B2BackupUtility
             return Tuple.Create(true, filteredFiles);
         }
 
-        private static async Task UploadFileImplAsync(BackblazeB2AuthorizationSession authorizationSession, string bucketID, string file, string destination)
+        private static async Task UploadFileImplAsync(BackblazeB2AuthorizationSession authorizationSession, string bucketID, string file, string destination, int uploadConnections)
         {
             try
             {
@@ -149,7 +150,7 @@ namespace B2BackupUtility
                     destination,
                     bucketID,
                     Constants.FileChunkSize,
-                    Constants.TargetUploadConnections,
+                    uploadConnections,
                     CancellationActions.GlobalCancellationToken
                 );
 
@@ -176,6 +177,15 @@ namespace B2BackupUtility
             {
                 Console.WriteLine("Cancelled upload");
             }
+        }
+
+        private static int GetNumberOfConnections(IEnumerable<string> args)
+        {
+            string connections = CommonActions.GetArgument(args, "--connections");
+            int numberOfConnections = Constants.TargetUploadConnections;
+            int.TryParse(connections, out numberOfConnections);
+
+            return numberOfConnections > 0 ? numberOfConnections : Constants.TargetUploadConnections;
         }
     }
 }

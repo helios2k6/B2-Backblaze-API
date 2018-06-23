@@ -184,13 +184,14 @@ namespace B2BackblazeBridge.Actions
             return new BackblazeB2ActionResult<BackblazeB2UploadMultipartFileResult>(
                 new BackblazeB2UploadMultipartFileResult
                 {
-                    BucketID = _bucketID,
+                    BucketID = cancelResult.Result.BucketID,
                     FileHashes = new List<string>(),
-                    FileID = fileID,
-                    FileName = string.Empty,
+                    FileID = cancelResult.Result.FileID,
+                    FileName = cancelResult.Result.FileName,
                     FileUploadStatus = BackblazeB2UploadMultipartFileResult.UploadStatus.CANCELLED,
                 }
             );
+
         }
 
         private IEnumerable<BackblazeB2ActionResult<UploadFilePartResponse>> ProcessAllJobs(

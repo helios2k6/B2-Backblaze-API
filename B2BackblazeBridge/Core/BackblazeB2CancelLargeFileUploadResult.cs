@@ -35,21 +35,25 @@ namespace B2BackblazeBridge.Core
         /// <summary>
         /// The account the bucket is in
         /// </summary>
+        [JsonProperty(PropertyName = "accountId")]
         public string AccountID { get; set; }
 
         /// <summary>
         /// The bucket the file resides in
         /// </summary>
+        [JsonProperty(PropertyName = "bucketId")]
         public string BucketID { get; set; }
 
         /// <summary>
         /// The file ID that has been cancelled
         /// </summary>
+        [JsonProperty(PropertyName = "fileId")]
         public string FileID { get; set; }
 
         /// <summary>
         /// The file name that has been cancelled
         /// </summary>
+        [JsonProperty(PropertyName = "fileName")]
         public string FileName { get; set; }
         #endregion
 

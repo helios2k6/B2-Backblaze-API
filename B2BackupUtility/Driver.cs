@@ -140,35 +140,36 @@ namespace B2BackupUtility
                 return false;
             }
 
-            switch (args[3])
+            foreach (string arg in args)
             {
-                case "--upload-file":
-                    action = Action.UPLOAD;
-                    break;
-                case "--list-files":
-                    action = Action.LIST;
-                    break;
-                case "--download-file":
-                    action = Action.DOWNLOAD;
-                    break;
-                case "--delete-file":
-                    action = Action.DELETE;
-                    break;
-                case "--upload-folder":
-                    action = Action.UPLOAD_FOLDER;
-                    break;
-                default:
-                    action = Action.UNKNOWN;
-                    return false;
+                switch (arg)
+                {
+                    case "--upload-file":
+                        action = Action.UPLOAD;
+                        return true;
+                    case "--list-files":
+                        action = Action.LIST;
+                        return true;
+                    case "--download-file":
+                        action = Action.DOWNLOAD;
+                        return true;
+                    case "--delete-file":
+                        action = Action.DELETE;
+                        return true;
+                    case "--upload-folder":
+                        action = Action.UPLOAD_FOLDER;
+                        return true;
+                }
             }
 
-            return true;
+            action = Action.UNKNOWN;
+            return false;
         }
 
         private static void PrintHelp()
         {
             StringBuilder builder = new StringBuilder();
-            builder.AppendLine("B2 Backup Utility v1.2")
+            builder.AppendLine("B2 Backup Utility v1.4")
                 .AppendLine("Usage: <this program> <necessary switches> <action> [options]")
                 .AppendLine();
 
@@ -213,6 +214,9 @@ namespace B2BackupUtility
                 .AppendLine("--destination")
                 .AppendLine("\t\tThe path to upload to")
                 .AppendLine()
+                .AppendLine("--connections")
+                .AppendLine("\t\tThe number of connections to use when uploading the file. Default = 20")
+                .AppendLine()
                 .AppendLine("Upload Folder Options")
                 .AppendLine("--folder")
                 .AppendLine("\t\tThe folder to upload.")
@@ -222,6 +226,9 @@ namespace B2BackupUtility
                 .AppendLine()
                 .AppendLine("--force-override-files")
                 .AppendLine("\t\tUpload files to the server regardless if their SHA-1 hashes match")
+                .AppendLine()
+                .AppendLine("--connections")
+                .AppendLine("\t\tThe number of connections to use when uploading the file. Default = 20")
                 .AppendLine()
                 .AppendLine("Download File Options")
                 .AppendLine("--file-name")

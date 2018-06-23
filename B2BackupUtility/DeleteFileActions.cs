@@ -30,10 +30,10 @@ namespace B2BackupUtility
 {
     public static class DeleteFileActions
     {
-        public static async Task DeleteFileAsync(BackblazeB2AuthorizationSession authorizationSession, IEnumerable<string> remainingArgs)
+        public static async Task DeleteFileAsync(BackblazeB2AuthorizationSession authorizationSession, IEnumerable<string> args)
         {
-            string fileName = CommonActions.GetArgument(remainingArgs, "--file-name");
-            string fileID = CommonActions.GetArgument(remainingArgs, "--file-id");
+            string fileName = CommonActions.GetArgument(args, "--file-name");
+            string fileID = CommonActions.GetArgument(args, "--file-id");
             if (string.IsNullOrWhiteSpace(fileName) || string.IsNullOrWhiteSpace(fileID))
             {
                 Console.WriteLine("A file name and file ID must be provided");
