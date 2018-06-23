@@ -83,6 +83,12 @@ namespace B2BackupUtility
             BackblazeB2AuthorizationSession currentAuthorizationSession = authorizationSession;
             foreach (LocalFileToRemoteFileMapping localFileToDestinationFile in deduplicatedLocalFileToDestinationFiles)
             {
+                if (CancellationActions.GlobalCancellationToken.IsCancellationRequested)
+                {
+                    // If the current upload has been cancelled, just return
+                    return;
+                }
+
                 if (currentAuthorizationSession.SessionExpirationDate - DateTime.Now < Constants.OneHour)
                 {
                     Console.WriteLine("Session is about to end in less than an hour. Renewing.");
@@ -141,7 +147,8 @@ namespace B2BackupUtility
                 destination,
                 bucketID,
                 Constants.FileChunkSize,
-                Constants.TargetUploadConnections
+                Constants.TargetUploadConnections,
+                CancellationActions.GlobalCancellationToken
             );
 
             Stopwatch watch = new Stopwatch();

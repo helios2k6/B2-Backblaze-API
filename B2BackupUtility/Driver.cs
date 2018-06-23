@@ -25,6 +25,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace B2BackupUtility
@@ -52,6 +53,8 @@ namespace B2BackupUtility
                 return;
             }
 
+            HookUpCancellationHandler(action);
+
             string accountID = CommonActions.GetArgument(args, "--account-id");
             string applicationKey = CommonActions.GetArgument(args, "--application-key");
             string bucketID = CommonActions.GetArgument(args, "--bucket-id");
@@ -64,6 +67,19 @@ namespace B2BackupUtility
             }
 
             ExecuteAsync(accountID, applicationKey, bucketID, action, args).Wait();
+        }
+
+        private static void HookUpCancellationHandler(Action action)
+        {
+            switch (action)
+            {
+                // Cancellation is only significant for these actions
+                case Action.DOWNLOAD:
+                case Action.UPLOAD:
+                case Action.UPLOAD_FOLDER:
+                    Console.CancelKeyPress += CancellationActions.HandleCancel;
+                    break;
+            }
         }
 
         private static async Task ExecuteAsync(string accountID, string applicationKey, string bucketID, Action action, IEnumerable<string> remainingArgs)
