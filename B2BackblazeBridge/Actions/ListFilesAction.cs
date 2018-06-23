@@ -24,6 +24,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using B2BackblazeBridge.Core;
 using B2BackblazeBridge.Processing;
@@ -56,7 +57,12 @@ namespace B2BackblazeBridge.Actions
         #endregion
 
         #region ctor
-        private ListFilesAction(BackblazeB2AuthorizationSession authorizationSession, string bucketID, ListFileMethod method, bool shouldFetchAllFiles)
+        private ListFilesAction(
+            BackblazeB2AuthorizationSession authorizationSession,
+            string bucketID,
+            ListFileMethod method,
+            bool shouldFetchAllFiles
+        ) : base(CancellationToken.None)
         {
             _authorizationSession = authorizationSession;
             _bucketID = bucketID;

@@ -26,6 +26,7 @@ using System;
 using System.IO;
 using System.Net;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace B2BackblazeBridge.Actions
@@ -57,7 +58,7 @@ namespace B2BackblazeBridge.Actions
             string filePath,
             string fileDestination,
             string bucketID
-        ) : base()
+        ) : base(CancellationToken.None)
         {
             if (File.Exists(filePath) == false)
             {

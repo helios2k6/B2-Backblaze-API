@@ -23,6 +23,7 @@ using System;
 using System.IO;
 using System.Net;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using B2BackblazeBridge.Core;
 using Functional.Maybe;
@@ -85,7 +86,7 @@ namespace B2BackblazeBridge.Actions
         /// <param name="fileDestination">The file path to download to</param>
         /// <param name="identifier">The identifier</param>
         /// <param name="downloadIdentifierType">The type of identifier</param>
-        private DownloadFileAction(BackblazeB2AuthorizationSession authorizationSession, string fileDestination, string identifier, IdentifierType downloadIdentifierType)
+        private DownloadFileAction(BackblazeB2AuthorizationSession authorizationSession, string fileDestination, string identifier, IdentifierType downloadIdentifierType) : base(CancellationToken.None)
         {
             if (File.Exists(fileDestination))
             {

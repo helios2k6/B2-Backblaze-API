@@ -74,14 +74,16 @@ namespace B2BackblazeBridge.Actions
         /// <param name="bucketID">The B2 bucket you want to upload to</param>
         /// <param name="fileChunkSizesInBytes">The size (in bytes) of the file chunks you want to use when uploading</param>
         /// <param name="numberOfConnections">The number of connections to use when uploading</param>
+        /// <param name="cancellationToken">The cancellation token to pass in when this upload needs to be cancelled</param>
         public UploadFileUsingMultipleConnectionsAction(
             BackblazeB2AuthorizationSession authorizationSession,
             string filePath,
             string fileDestination,
             string bucketID,
             int fileChunkSizesInBytes,
-            int numberOfConnections
-        )
+            int numberOfConnections,
+            CancellationToken cancellationToken
+        ) : base(cancellationToken)
         {
             if (File.Exists(filePath) == false)
             {
@@ -104,6 +106,27 @@ namespace B2BackblazeBridge.Actions
             _fileDestination = fileDestination;
             _fileChunkSizesInBytes = fileChunkSizesInBytes;
             _numberOfConnections = numberOfConnections;
+        }
+
+        /// <summary>
+        /// Constructs a new UploadFileUsingMultipleConnectionsActions
+        /// </summary>
+        /// <param name="authorizationSession">The authorization session</param>
+        /// <param name="filePath">The (local) path to the file you want to upload</param>
+        /// <param name="fileDestination">The remote path you want to upload to</param>
+        /// <param name="bucketID">The B2 bucket you want to upload to</param>
+        /// <param name="fileChunkSizesInBytes">The size (in bytes) of the file chunks you want to use when uploading</param>
+        /// <param name="numberOfConnections">The number of connections to use when uploading</param>
+        /// <param name="cancellationToken">The cancellation token to pass in when this upload needs to be cancelled</param>
+        public UploadFileUsingMultipleConnectionsAction(
+            BackblazeB2AuthorizationSession authorizationSession,
+            string filePath,
+            string fileDestination,
+            string bucketID,
+            int fileChunkSizesInBytes,
+            int numberOfConnections
+        ) : this(authorizationSession, filePath, fileDestination, bucketID, fileChunkSizesInBytes, numberOfConnections, CancellationToken.None)
+        {
         }
         #endregion
 

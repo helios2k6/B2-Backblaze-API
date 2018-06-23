@@ -25,6 +25,7 @@ using Newtonsoft.Json;
 using System;
 using System.Net;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace B2BackblazeBridge.Actions
@@ -49,7 +50,11 @@ namespace B2BackblazeBridge.Actions
         /// <param name="authorizationSession">The authorization session</param>
         /// <param name="fileId">The file ID to delete</param>
         /// <param name="fileName">The file name to delete</param>
-        public DeleteFileAction(BackblazeB2AuthorizationSession authorizationSession, string fileId, string fileName)
+        public DeleteFileAction(
+            BackblazeB2AuthorizationSession authorizationSession,
+            string fileId,
+            string fileName
+        ) : base(CancellationToken.None)
         {
             _authorizationSession = authorizationSession;
             _fileId = fileId;

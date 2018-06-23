@@ -24,6 +24,7 @@ using Functional.Maybe;
 using System;
 using System.Net;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace B2BackblazeBridge.Actions
@@ -46,7 +47,7 @@ namespace B2BackblazeBridge.Actions
         /// </summary>
         /// <param name="accountID">The B2 account ID</param>
         /// <param name="applicationKey">The B2 application key</param>
-        public AuthorizeAccountAction(string accountID, string applicationKey) : base()
+        public AuthorizeAccountAction(string accountID, string applicationKey) : base(CancellationToken.None)
         {
             _acccountID = accountID;
             _applicationKey = applicationKey;

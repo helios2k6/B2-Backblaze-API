@@ -21,6 +21,7 @@
 
 using System.Net;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using B2BackblazeBridge.Core;
 
@@ -35,7 +36,7 @@ namespace B2BackblazeBridge.Actions
         #endregion
 
         #region ctor
-        public ListBucketsAction(BackblazeB2AuthorizationSession authorizationSession)
+        public ListBucketsAction(BackblazeB2AuthorizationSession authorizationSession) : base(CancellationToken.None)
         {
             _authorizationSession = authorizationSession;
         }

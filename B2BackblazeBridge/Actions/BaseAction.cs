@@ -28,6 +28,7 @@ using System.Linq;
 using System.Net;
 using System.Security.Cryptography;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace B2BackblazeBridge.Actions
@@ -49,7 +50,17 @@ namespace B2BackblazeBridge.Actions
         #region private fields
         private static readonly int TicksPerMicrosecond = 10;
 
-        private readonly Random _random = new Random();
+        private readonly Random _random;
+
+        private readonly CancellationToken _cancellationToken;
+        #endregion
+
+        #region protected ctor
+        protected BaseAction(CancellationToken cancellationToken)
+        {
+            _cancellationToken = cancellationToken;
+            _random = new Random();
+        }
         #endregion
 
         #region public methods
