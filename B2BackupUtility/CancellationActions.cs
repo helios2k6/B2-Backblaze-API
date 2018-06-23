@@ -31,9 +31,11 @@ namespace B2BackupUtility
 
         public static void HandleCancel(object sender, ConsoleCancelEventArgs e)
         {
+            Console.WriteLine("Cancellation detected");
             int incrementedValue = Interlocked.Increment(ref CancellationRequestCounter);
             if (incrementedValue == 1)
             {
+                Console.WriteLine("Attempting to cancel gracefully");
                 // Prevent the console from shutting down the first time
                 e.Cancel = true;
             }
