@@ -478,7 +478,11 @@ namespace B2BackblazeBridge.Actions
             BackblazeB2ActionResult<BackblazeB2UploadMultipartFileResult> response =
                 await SendWebRequestAndDeserializeAsync<BackblazeB2UploadMultipartFileResult>(webRequest, requestBytes);
 
-            response.MaybeResult.Do(r => r.FileHashes = sha1Hashes);
+            response.MaybeResult.Do(r =>
+            {
+                r.FileHashes = sha1Hashes;
+                r.FileName = Uri.UnescapeDataString(r.FileName);
+            });
 
             return response;
         }

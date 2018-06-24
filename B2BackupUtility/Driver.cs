@@ -169,7 +169,7 @@ namespace B2BackupUtility
         private static void PrintHelp()
         {
             StringBuilder builder = new StringBuilder();
-            builder.AppendLine("B2 Backup Utility v1.4")
+            builder.AppendLine("B2 Backup Utility v1.6")
                 .AppendLine("Usage: <this program> <necessary switches> <action> [options]")
                 .AppendLine();
 

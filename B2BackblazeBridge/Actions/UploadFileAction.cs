@@ -97,7 +97,9 @@ namespace B2BackblazeBridge.Actions
                 webRequest.ContentType = "b2/x-auto";
                 webRequest.ContentLength = info.Length;
 
-                return await SendWebRequestAndDeserializeAsync<BackblazeB2UploadFileResult>(webRequest, fileBytes);
+                BackblazeB2ActionResult<BackblazeB2UploadFileResult> result = await SendWebRequestAndDeserializeAsync<BackblazeB2UploadFileResult>(webRequest, fileBytes);
+                result.MaybeResult.Do(t => t.FileName = Uri.UnescapeDataString(t.FileName));
+                return result;
             }
             else
             {
