@@ -30,7 +30,7 @@ namespace B2BackblazeBridge.Core
     /// <typeparam name="BackblazeB2UploadFileResult"></typeparam>
     [Serializable]
     [JsonObject(MemberSerialization.OptIn)]
-    public sealed class BackblazeB2UploadFileResult : IEquatable<BackblazeB2UploadFileResult>
+    public sealed class BackblazeB2UploadFileResult : IEquatable<BackblazeB2UploadFileResult>, IBackblazeB2UploadResult
     {
         #region public properties
         /// <summary>

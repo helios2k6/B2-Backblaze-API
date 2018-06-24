@@ -144,39 +144,61 @@ namespace B2BackupUtility
         {
             try
             {
-                UploadFileUsingMultipleConnectionsAction uploadAction = new UploadFileUsingMultipleConnectionsAction(
-                    authorizationSession,
-                    file,
-                    destination,
-                    bucketID,
-                    Constants.FileChunkSize,
-                    uploadConnections,
-                    CancellationActions.GlobalCancellationToken
-                );
-
-                Stopwatch watch = new Stopwatch();
-                watch.Start();
-                BackblazeB2ActionResult<BackblazeB2UploadMultipartFileResult> uploadResult = await CommonActions.ExecuteActionAsync(uploadAction, "Upload File");
-                watch.Stop();
-                if (uploadResult.HasResult)
+                FileInfo info = new FileInfo(file);
+                if (info.Length < 1024 * 1024)
                 {
-                    double bytesPerSecond = uploadResult.Result.TotalContentLength / ((double)watch.ElapsedTicks / Stopwatch.Frequency);
+                    UploadFileAction uploadAction = new UploadFileAction(
+                        authorizationSession,
+                        file,
+                        destination,
+                        bucketID
+                    );
 
-                    BackblazeB2UploadMultipartFileResult result = uploadResult.Result;
-                    StringBuilder builder = new StringBuilder();
-                    builder.AppendLine("Upload Successful:");
-                    builder.AppendFormat("File: {0}", result.FileName).AppendLine();
-                    builder.AppendFormat("File ID: {0}", result.FileID).AppendLine();
-                    builder.AppendFormat("Total Content Length: {0}", result.TotalContentLength).AppendLine();
-                    builder.AppendFormat("Upload Time: {0} seconds", (double)watch.ElapsedTicks / Stopwatch.Frequency).AppendLine();
-                    builder.AppendFormat("Upload Speed: {0:0,0.00} bytes / second", bytesPerSecond.ToString("0,0.00", CultureInfo.InvariantCulture)).AppendLine().AppendLine();
-                    Console.Write(builder.ToString());
+                    await ExecuteUploadActionAsync(uploadAction);
+                }
+                else
+                {
+                    UploadFileUsingMultipleConnectionsAction uploadAction = new UploadFileUsingMultipleConnectionsAction(
+                        authorizationSession,
+                        file,
+                        destination,
+                        bucketID,
+                        Constants.FileChunkSize,
+                        uploadConnections,
+                        CancellationActions.GlobalCancellationToken
+                    );
+
+                    await ExecuteUploadActionAsync(uploadAction);
                 }
             }
             catch (TaskCanceledException)
             {
                 Console.WriteLine("Cancelled upload");
             }
+        }
+
+        private static async Task<BackblazeB2ActionResult<T>> ExecuteUploadActionAsync<T>(BaseAction<T> action) where T : IBackblazeB2UploadResult
+        {
+            Stopwatch watch = new Stopwatch();
+            watch.Start();
+            BackblazeB2ActionResult<T> uploadResult = await CommonActions.ExecuteActionAsync(action, "Upload File");
+            watch.Stop();
+
+            if (uploadResult.HasResult)
+            {
+                double bytesPerSecond = uploadResult.Result.ContentLength / ((double)watch.ElapsedTicks / Stopwatch.Frequency);
+
+                StringBuilder builder = new StringBuilder();
+                builder.AppendLine("Upload Successful:");
+                builder.AppendFormat("File: {0}", uploadResult.Result.FileName).AppendLine();
+                builder.AppendFormat("File ID: {0}", uploadResult.Result.FileID).AppendLine();
+                builder.AppendFormat("Total Content Length: {0}", uploadResult.Result.ContentLength).AppendLine();
+                builder.AppendFormat("Upload Time: {0} seconds", (double)watch.ElapsedTicks / Stopwatch.Frequency).AppendLine();
+                builder.AppendFormat("Upload Speed: {0:0,0.00} bytes / second", bytesPerSecond.ToString("0,0.00", CultureInfo.InvariantCulture)).AppendLine().AppendLine();
+                Console.Write(builder.ToString());
+            }
+
+            return uploadResult;
         }
 
         private static int GetNumberOfConnections(IEnumerable<string> args)

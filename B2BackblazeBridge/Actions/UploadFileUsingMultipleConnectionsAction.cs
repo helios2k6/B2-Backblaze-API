@@ -182,16 +182,14 @@ namespace B2BackblazeBridge.Actions
             }
 
             return new BackblazeB2ActionResult<BackblazeB2UploadMultipartFileResult>(
-                new BackblazeB2UploadMultipartFileResult
+                Maybe<BackblazeB2UploadMultipartFileResult>.Nothing,
+                new BackblazeB2ActionErrorDetails
                 {
-                    BucketID = cancelResult.Result.BucketID,
-                    FileHashes = new List<string>(),
-                    FileID = cancelResult.Result.FileID,
-                    FileName = cancelResult.Result.FileName,
-                    FileUploadStatus = BackblazeB2UploadMultipartFileResult.UploadStatus.CANCELLED,
+                    Status = -1,
+                    Code = "MULTIPART_UPLOAD_CANCELLED",
+                    Message = "The user cancalled the upload",
                 }
             );
-
         }
 
         private IEnumerable<BackblazeB2ActionResult<UploadFilePartResponse>> ProcessAllJobs(
@@ -480,10 +478,7 @@ namespace B2BackblazeBridge.Actions
             BackblazeB2ActionResult<BackblazeB2UploadMultipartFileResult> response =
                 await SendWebRequestAndDeserializeAsync<BackblazeB2UploadMultipartFileResult>(webRequest, requestBytes);
 
-            response.MaybeResult.Do(r => {
-                r.FileHashes = sha1Hashes;
-                r.FileUploadStatus = BackblazeB2UploadMultipartFileResult.UploadStatus.SUCCESS;
-            });
+            response.MaybeResult.Do(r => r.FileHashes = sha1Hashes);
 
             return response;
         }

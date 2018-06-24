@@ -31,35 +31,26 @@ namespace B2BackblazeBridge.Core
     /// </summary>
     [Serializable]
     [JsonObject(MemberSerialization.OptIn)]
-    public sealed class BackblazeB2UploadMultipartFileResult : IEquatable<BackblazeB2UploadMultipartFileResult>
+    public sealed class BackblazeB2UploadMultipartFileResult : IEquatable<BackblazeB2UploadMultipartFileResult>, IBackblazeB2UploadResult
     {
-        #region inner enums
-        /// <summary>
-        /// Represents the upload status of the file
-        /// </summary>
-        public enum UploadStatus
-        {
-            /// <summary>
-            /// This was a partial upload
-            /// </summary>
-            PARTIAL,
-            /// <summary>
-            /// This was successfully uploaded
-            /// </summary>
-            SUCCESS,
-            /// <summary>
-            /// This upload was cancelled
-            /// </summary>
-            CANCELLED,
-        }
-        #endregion
-
         #region public properties
+        /// <summary>
+        /// Get or set the Account ID used 
+        /// </summary>
+        [JsonProperty(PropertyName = "accountId")]
+        public string AccountID { get; set; }
+
         /// <summary>
         /// The Bucket ID the file is being uploaded to
         /// </summary>
         [JsonProperty(PropertyName = "bucketId")]
         public string BucketID { get; set;}
+
+        /// <summary>
+        /// The total length, in bytes, of this file
+        /// </summary>
+        [JsonProperty(PropertyName = "contentLength")]
+        public long ContentLength { get; set; }
 
         /// <summary>
         /// The SHA-1 file hashes of the individual parts of the file
@@ -77,17 +68,6 @@ namespace B2BackblazeBridge.Core
         /// </summary>
         [JsonProperty(PropertyName = "fileName")]
         public string FileName { get; set; }
-
-        /// <summary>
-        /// The total length, in bytes, of this file
-        /// </summary>
-        [JsonProperty(PropertyName = "contentLength")]
-        public long TotalContentLength { get; set; }
-
-        /// <summary>
-        /// The status of the file upload
-        /// </summary>
-        public UploadStatus FileUploadStatus { get; set; }
         #endregion
         #region public fields
         public override int GetHashCode()
@@ -95,7 +75,7 @@ namespace B2BackblazeBridge.Core
             return
                 BucketID.GetHashCode() ^
                 FileID.GetHashCode() ^
-                TotalContentLength.GetHashCode();
+                ContentLength.GetHashCode();
         }
 
         public override bool Equals(object obj)
@@ -105,7 +85,7 @@ namespace B2BackblazeBridge.Core
 
         public bool Equals(BackblazeB2UploadMultipartFileResult other)
         {
-            return TotalContentLength == other.TotalContentLength &&
+            return ContentLength == other.ContentLength &&
                 BucketID.Equals(other.BucketID, StringComparison.Ordinal) &&
                 Enumerable.SequenceEqual(FileHashes, other.FileHashes) &&
                 FileID.Equals(other.FileID, StringComparison.Ordinal);
