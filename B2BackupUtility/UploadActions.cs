@@ -21,6 +21,7 @@
 
 using B2BackblazeBridge.Actions;
 using B2BackblazeBridge.Core;
+using B2BackblazeBridge.Exceptions;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -174,6 +175,23 @@ namespace B2BackupUtility
             catch (TaskCanceledException)
             {
                 Console.WriteLine("Cancelled upload");
+            }
+            catch (B2ContractBrokenException ex)
+            {
+                Console.Write(new StringBuilder()
+                    .AppendFormat("An unexpected exception occurred while uploading file {0}", file)
+                    .AppendLine()
+                    .AppendLine("==Exception Details==")
+                    .AppendLine("Message")
+                    .AppendLine(ex.Message)
+                    .AppendLine()
+                    .AppendLine("Stack")
+                    .AppendLine(ex.StackTrace)
+                    .AppendLine()
+                    .AppendLine("Source")
+                    .AppendLine(ex.Source)
+                    .AppendLine().ToString()
+                );
             }
         }
 

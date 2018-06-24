@@ -20,6 +20,7 @@
  */
 
 using B2BackblazeBridge.Core;
+using B2BackblazeBridge.Exceptions;
 using Functional.Maybe;
 using Newtonsoft.Json;
 using System;
@@ -256,6 +257,10 @@ namespace B2BackblazeBridge.Actions
                         ErrorResult = responseJson.ToMaybe(),
                     };
                 }
+            }
+            catch (Exception ex)
+            {
+                throw new B2ContractBrokenException("An exception occurred while attempting to talk to the B2 API", ex);
             }
         }
         #endregion
