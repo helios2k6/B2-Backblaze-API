@@ -209,6 +209,11 @@ namespace B2BackblazeBridge.Actions
         /// <returns>An action result</returns>
         protected async Task<BackblazeB2ActionResult<TResult>> SendWebRequestAndDeserializeAsync<TResult>(HttpWebRequest webRequest, byte[] payload)
         {
+            if (webRequest == null)
+            {
+                throw new ArgumentNullException("webRequest");
+            }
+
             RawHttpCallResult rawHttpCallResult = await SendWebRequestAsyncRaw(webRequest, payload);
             Maybe<TResult> resultMaybe = rawHttpCallResult.SuccessResult.Select(t => JsonConvert.DeserializeObject<TResult>(t));
             Maybe<BackblazeB2ActionErrorDetails> errorMaybe = rawHttpCallResult.ErrorResult.Select(e => JsonConvert.DeserializeObject<BackblazeB2ActionErrorDetails>(e));
