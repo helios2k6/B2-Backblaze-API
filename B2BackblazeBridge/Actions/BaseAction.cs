@@ -254,12 +254,29 @@ namespace B2BackblazeBridge.Actions
             catch (WebException ex)
             {
                 HttpWebResponse response = (HttpWebResponse)ex.Response;
-                using (StreamReader reader = new StreamReader(response.GetResponseStream()))
+                if (response != null)
                 {
-                    string responseJson = await reader.ReadToEndAsync();
+                    using (StreamReader reader = new StreamReader(response.GetResponseStream()))
+                    {
+                        string responseJson = await reader.ReadToEndAsync();
+                        return new RawHttpCallResult
+                        {
+                            ErrorResult = responseJson.ToMaybe(),
+                        };
+                    }
+                }
+                else
+                {
+                    BackblazeB2ActionErrorDetails customErrorDetails = new BackblazeB2ActionErrorDetails
+                    {
+                        Status = (int)response.StatusCode,
+                        Code = "Unknown B2 Error",
+                        Message = response.StatusDescription,
+                    };
+                    string customErrorJson = JsonConvert.SerializeObject(customErrorDetails);
                     return new RawHttpCallResult
                     {
-                        ErrorResult = responseJson.ToMaybe(),
+                        ErrorResult = customErrorJson.ToMaybe(),
                     };
                 }
             }

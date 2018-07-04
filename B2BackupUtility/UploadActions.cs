@@ -61,16 +61,6 @@ namespace B2BackupUtility
                 return;
             }
 
-            Console.WriteLine("Prefetching file list");
-            // Get a list of files that are already on the server
-            ListFilesAction listFilesAction = ListFilesAction.CreateListFileActionForFileNames(authorizationSession, bucketID, true);
-            BackblazeB2ActionResult<BackblazeB2ListFilesResult> listFilesActionResult = await CommonActions.ExecuteActionAsync(listFilesAction, "List files");
-            if (listFilesActionResult.HasErrors)
-            {
-                Console.WriteLine(string.Format("Unable to prefetch folder. Reason: {0}", listFilesActionResult.Errors.First().Message));
-                return;
-            }
-
             Tuple<bool, IEnumerable<string>> files = await TryGetFilesToUploadAsync(authorizationSession, bucketID, folder, flatten, overrideFiles);
             if (files.Item1 == false)
             {
