@@ -269,9 +269,9 @@ namespace B2BackblazeBridge.Actions
                 {
                     BackblazeB2ActionErrorDetails customErrorDetails = new BackblazeB2ActionErrorDetails
                     {
-                        Status = (int)response.StatusCode,
+                        Status = (int)ex.Status,
                         Code = "Unknown B2 Error",
-                        Message = response.StatusDescription,
+                        Message = ex.Message,
                     };
                     string customErrorJson = JsonConvert.SerializeObject(customErrorDetails);
                     return new RawHttpCallResult
