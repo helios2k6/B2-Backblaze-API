@@ -54,19 +54,21 @@ namespace B2BackblazeBridge.Core
             public string FileName { get; set; }
 
             /// <summary>
-            /// The length of the file
+            /// The length of the file provided during upload.
             /// </summary>
             [JsonProperty(PropertyName = "contentLength")]
             public long ContentLength { get; set; }
 
             /// <summary>
-            /// The type of content of this file
+            /// The type of content of this file provided during upload.
             /// </summary>
             [JsonProperty(PropertyName = "contentType")]
             public string ContentType { get; set; }
 
             /// <summary>
-            /// The SHA-1 hash of the file
+            /// The SHA-1 hash of the file that was provided during upload. 
+            /// WARNING: this is usually NULL because most large files are
+            /// uploaded in pieces
             /// </summary>
             [JsonProperty(PropertyName = "contentSha1")]
             public string ContentSha1 { get; set; }
