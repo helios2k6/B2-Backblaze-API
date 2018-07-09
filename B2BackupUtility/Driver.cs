@@ -113,6 +113,10 @@ namespace B2BackupUtility
                     await DownloadFileActions.DownloadFileAsync(authorizationSession, bucketID, remainingArgs);
                     break;
 
+                case Action.GET_FILE_INFO:
+                    await GetFileInfoActions.ExecuteGetFileInfoAsync(authorizationSession, remainingArgs);
+                    break;
+
                 case Action.LIST:
                     await ListFilesActions.ListFilesAsync(authorizationSession, bucketID);
                     break;
@@ -159,6 +163,9 @@ namespace B2BackupUtility
                     case "--upload-folder":
                         action = Action.UPLOAD_FOLDER;
                         return true;
+                    case "--get-file-info":
+                        action = Action.GET_FILE_INFO;
+                        return true;
                 }
             }
 
@@ -169,7 +176,7 @@ namespace B2BackupUtility
         private static void PrintHelp()
         {
             StringBuilder builder = new StringBuilder();
-            builder.AppendLine("B2 Backup Utility v1.8")
+            builder.AppendLine("B2 Backup Utility v1.9")
                 .AppendLine("Usage: <this program> <necessary switches> <action> [options]")
                 .AppendLine();
 
@@ -200,6 +207,9 @@ namespace B2BackupUtility
                 .AppendLine()
                 .AppendLine("--delete-file")
                 .AppendLine("\t\tDeletes a file on the B2 Backblaze server.")
+                .AppendLine()
+                .AppendLine("--get-file-info")
+                .AppendLine("\t\tGets the info about a file")
                 .AppendLine()
                 .AppendLine("--help")
                 .AppendLine("\t\tDisplay this message")
@@ -246,6 +256,10 @@ namespace B2BackupUtility
                 .AppendLine()
                 .AppendLine("--file-id")
                 .AppendLine("\t\tDelete a file by file ID")
+                .AppendLine()
+                .AppendLine("Get File Info Options")
+                .AppendLine("--file-id")
+                .AppendLine("\t\tThe file ID to get the info about")
                 .AppendLine();
 
             Console.Write(builder.ToString());

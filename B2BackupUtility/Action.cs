@@ -35,6 +35,10 @@ namespace B2BackupUtility
         /// </summary>
         DELETE,
         /// <summary>
+        /// Get the file info action
+        /// </summary>
+        GET_FILE_INFO,
+        /// <summary>
         /// List file action
         /// </summary>
         LIST,
