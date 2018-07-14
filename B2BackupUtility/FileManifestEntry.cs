@@ -54,7 +54,6 @@ namespace B2BackupUtility
         #endregion
 
         #region public methods
-        // override object.Equals
         public override bool Equals(object obj)
         {
             return Equals(obj as FileManifestEntry);
