@@ -21,17 +21,72 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
+using B2BackblazeBridge.Actions;
 using B2BackblazeBridge.Core;
 
 namespace B2BackupUtility
 {
     public static class FileManifestActions
     {
-        public async static Task<FileManifest> ReadManifestFileFromServerAsync(
-            BackblazeB2AuthorizationSession authorizationSession, IEnumerable<string> args
+        private static readonly string TempManifestFileDestination = "tempFileManifest.txt";
+
+        private static readonly string RemoteFileManifestName = "b2_backup_util_file_manifest.txt";
+
+        private static readonly Random RandomNumberGenerator = new Random();
+
+        public async static Task<FileManifest> ReadManifestFileFromServerOrReturnNewOneAsync(
+            BackblazeB2AuthorizationSession authorizationSession,
+            string bucketID,
+            IEnumerable<string> args
         )
         {
+            // First, list the files on the server
+            // Second, find the file manifest
+            // Third, download the file manifest. If you cannot find it, then return an empty file
+            // manifest
+            ListFilesAction listFilesActions = ListFilesAction.CreateListFileActionForFileNames(
+                authorizationSession,
+                bucketID,
+                true
+            );
+
+            BackblazeB2ActionResult<BackblazeB2ListFilesResult> listFilesActionResult = await listFilesActions.ExecuteAsync();
+
+            // If we have issues listing the files, we probably have bigger problems. Going to throw an exception instead
+            if (listFilesActionResult.HasErrors)
+            {
+                throw new InvalidOperationException("We couldn't list the files on the B2 server. Crashing immediately");
+            }
+
+            // Search for the file manifest
+            BackblazeB2ListFilesResult filesResult = listFilesActionResult.Result;
+            BackblazeB2ListFilesResult.FileResult manifestFile = (
+                                                                    from file in filesResult.Files
+                                                                    where string.Equals(file.FileName, RemoteFileManifestName, StringComparison.Ordinal)
+                                                                    select file
+                                                                ).SingleOrDefault();
+            if (manifestFile == null)
+            {
+                // Just return a new file manifest if we can't find
+                // one on the server
+                return new FileManifest
+                {
+                    ID = RandomNumberGenerator.Next(),
+                    Version = 0,
+                    FileEntries = new FileManifestEntry[0],
+                };
+            }
+
+            // Download the file manifest 
+            DownloadFileAction manifestFileDownloadAction = new DownloadFileAction(
+                authorizationSession,
+                TempManifestFileDestination,
+                manifestFile.FileID
+            );
+
+            // Temporary until we can finish this method
             throw new NotImplementedException();
         }
     }
