@@ -23,6 +23,7 @@ using Functional.Maybe;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 
 namespace B2BackblazeBridge.Core
 {
@@ -98,6 +99,29 @@ namespace B2BackblazeBridge.Core
         #endregion
 
         #region public methods
+        public override string ToString()
+        {
+            StringBuilder builder = new StringBuilder();
+            builder.AppendFormat("Action Result").AppendLine()
+                .AppendFormat("Has Result? {0}", HasResult).AppendLine()
+                .AppendFormat("Has Errors? {0}", HasErrors).AppendLine();
+            
+            if (HasResult)
+            {
+                builder.AppendFormat("Result is: {0}", Result.ToString()).AppendLine();
+            }
+
+            if (HasErrors)
+            {
+                foreach (BackblazeB2ActionErrorDetails errorDetails in Errors)
+                {
+                    builder.AppendLine(errorDetails.ToString()).AppendLine();
+                }
+            }
+
+            return builder.ToString();
+        }
+
         public bool Equals(BackblazeB2ActionResult<TResult> other)
         {
             if (EqualsPreamble(other) == false)

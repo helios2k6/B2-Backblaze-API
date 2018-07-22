@@ -41,11 +41,31 @@ namespace B2BackblazeBridge.Actions
 
         private readonly BackblazeB2AuthorizationSession _authorizationSession;
         private readonly string _bucketID;
-        private readonly string _filePath;
+        private readonly byte[] _bytesToUpload;
         private readonly string _fileDestination;
         #endregion
 
         #region ctor
+        /// <summary>
+        /// Construct an UploadFileAction using the provided bytes
+        /// </summary>
+        /// <param name="authorizationSession">The authorization session</param>
+        /// <param name="bytesToUpload">The bytes to upload</param>
+        /// <param name="fileDestination">The remote file path to upload to</param>
+        /// <param name="bucketID">The Bucket ID to upload to</param>
+        public UploadFileAction(
+            BackblazeB2AuthorizationSession authorizationSession,
+            string bucketID,
+            byte[] bytesToUpload,
+            string fileDestination
+        ) : base(CancellationToken.None)
+        {
+            _authorizationSession = authorizationSession ?? throw new ArgumentNullException("The authorization session object must not be null");
+            _bucketID = bucketID;
+            _bytesToUpload = bytesToUpload;
+            _fileDestination = fileDestination;
+        }
+
         /// <summary>
         /// Construct an UploadFileAction
         /// </summary>
@@ -58,17 +78,8 @@ namespace B2BackblazeBridge.Actions
             string filePath,
             string fileDestination,
             string bucketID
-        ) : base(CancellationToken.None)
+        ) : this(authorizationSession, bucketID, File.ReadAllBytes(filePath), fileDestination)
         {
-            if (File.Exists(filePath) == false)
-            {
-                throw new ArgumentException("filePath");
-            }
-
-            _authorizationSession = authorizationSession ?? throw new ArgumentNullException("The authorization session object must not be null");
-            _bucketID = bucketID;
-            _filePath = filePath;
-            _fileDestination = fileDestination;
         }
         #endregion
 
@@ -86,18 +97,16 @@ namespace B2BackblazeBridge.Actions
             {
                 GetUploadFileURLResponse unwrappedResult = getUploadFileUrlResult.MaybeResult.Value;
 
-                byte[] fileBytes = File.ReadAllBytes(_filePath);
-                string sha1Hash = ComputeSHA1Hash(fileBytes);
-                FileInfo info = new FileInfo(_filePath);
+                string sha1Hash = ComputeSHA1Hash(_bytesToUpload);
                 HttpWebRequest webRequest = (HttpWebRequest)WebRequest.Create(unwrappedResult.UploadURL);
                 webRequest.Method = "POST";
                 webRequest.Headers.Add("Authorization", unwrappedResult.AuthorizationToken);
                 webRequest.Headers.Add("X-Bz-File-Name", GetSafeFileName(_fileDestination));
                 webRequest.Headers.Add("X-Bz-Content-Sha1", sha1Hash);
                 webRequest.ContentType = "b2/x-auto";
-                webRequest.ContentLength = info.Length;
+                webRequest.ContentLength = _bytesToUpload.Length;
 
-                BackblazeB2ActionResult<BackblazeB2UploadFileResult> result = await SendWebRequestAndDeserializeAsync<BackblazeB2UploadFileResult>(webRequest, fileBytes);
+                BackblazeB2ActionResult<BackblazeB2UploadFileResult> result = await SendWebRequestAndDeserializeAsync<BackblazeB2UploadFileResult>(webRequest, _bytesToUpload);
                 result.MaybeResult.Do(t => t.FileName = Uri.UnescapeDataString(t.FileName));
                 return result;
             }

@@ -53,7 +53,6 @@ namespace B2BackupUtility
         [JsonProperty(PropertyName = "FileEntries")]
         public FileManifestEntry[] FileEntries { get; set; }
         #endregion
-
         #region public methods
         public override bool Equals(object obj)
         {

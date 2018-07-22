@@ -34,13 +34,13 @@ namespace B2BackblazeBridge.Actions
     /// <summary>
     /// Represents a download file action, either by ID or by file name
     /// </summary>
-    public sealed class DownloadFileAction : BaseAction<BackblazeB2DownloadFileResult>
+    public sealed class DownloadFileAction : BaseAction<BackblazeB2DownloadFileResult>, IDisposable
     {
         #region inner classes
         /// <summary>
         /// The type of identifier to use when looking up the file to download
         /// </summary>
-        public enum IdentifierType
+        private enum IdentifierType
         {
             /// <summary>
             /// Download by using the unique file ID
@@ -58,24 +58,15 @@ namespace B2BackblazeBridge.Actions
 
         private static readonly int BufferSize = 64 * 1024; // 64 kibibytes
 
+        private bool disposedValue;
+
         private readonly BackblazeB2AuthorizationSession _authorizationSession;
-        #endregion
 
-        #region public properties
-        /// <summary>
-        /// The identifier type that will be used to download the file
-        /// </summary>
-        public IdentifierType DownloadIdentifierType { get; }
+        private readonly Stream _outputStream;
 
-        /// <summary>
-        /// The identifier to use when downloading a file
-        /// </summary>
-        public string Identifier { get; }
+        private readonly IdentifierType _downloadIdentifierType;
 
-        /// <summary>
-        /// The file path to download to
-        /// </summary>
-        public string FileDestination { get; }
+        private readonly string _identifier;
         #endregion
 
         #region ctor
@@ -83,20 +74,37 @@ namespace B2BackblazeBridge.Actions
         /// Construct a DownloadFileAction with the given identifier and identifier type
         /// </summary>
         /// <param name="authorizationSession">The authorization session to use</param>
-        /// <param name="fileDestination">The file path to download to</param>
+        /// <param name="outputStream">The output stream of the download file</param>
         /// <param name="identifier">The identifier</param>
         /// <param name="downloadIdentifierType">The type of identifier</param>
-        private DownloadFileAction(BackblazeB2AuthorizationSession authorizationSession, string fileDestination, string identifier, IdentifierType downloadIdentifierType) : base(CancellationToken.None)
+        private DownloadFileAction(
+            BackblazeB2AuthorizationSession authorizationSession,
+            Stream outputStream,
+            string identifier,
+            IdentifierType downloadIdentifierType
+        ) : base(CancellationToken.None)
         {
-            if (File.Exists(fileDestination))
-            {
-                throw new ArgumentException(string.Format("File already exists: {0}", fileDestination));
-            }
-
+            disposedValue = false;
             _authorizationSession = authorizationSession;
-            FileDestination = fileDestination;
-            DownloadIdentifierType = downloadIdentifierType;
-            Identifier = identifier;
+            _outputStream = outputStream;
+            _downloadIdentifierType = downloadIdentifierType;
+            _identifier = identifier;
+        }
+
+        /// <summary>
+        /// Construct a new DownloadFileAction
+        /// </summary>
+        /// <param name="authorizationSession">The authorization session to use</param>
+        /// <param name="fileDestination">The file destination for the downloaded file</param>
+        /// <param name="identifier">The identifier</param>
+        /// <param name="downloadIdentifierType">The type of identifier</param>
+        private DownloadFileAction(
+            BackblazeB2AuthorizationSession authorizationSession,
+            string fileDestination,
+            string identifier,
+            IdentifierType downloadIdentifierType
+        ) : this(authorizationSession, new FileStream(fileDestination, FileMode.CreateNew), identifier, downloadIdentifierType)
+        {
         }
 
         /// <summary>
@@ -105,7 +113,11 @@ namespace B2BackblazeBridge.Actions
         /// <param name="authorizationSession">The authorization session</param>
         /// <param name="fileDestination">The file path to download to</param>
         /// <param name="fileID">The file ID to download</param>
-        public DownloadFileAction(BackblazeB2AuthorizationSession authorizationSession, string fileDestination, string fileID)
+        public DownloadFileAction(
+            BackblazeB2AuthorizationSession authorizationSession,
+            string fileDestination,
+            string fileID
+        )
             : this(authorizationSession, fileDestination, fileID, IdentifierType.ID)
         {
         }
@@ -117,8 +129,47 @@ namespace B2BackblazeBridge.Actions
         /// <param name="fileDestination">The file path to download to</param>
         /// <param name="bucketName">The name of the bucket the file is in</param>
         /// <param name="fileName">The name of the file</param>
-        public DownloadFileAction(BackblazeB2AuthorizationSession authorizationSession, string fileDestination, string bucketName, string fileName)
+        public DownloadFileAction(
+            BackblazeB2AuthorizationSession authorizationSession,
+            string fileDestination,
+            string bucketName,
+            string fileName
+        )
             : this(authorizationSession, fileDestination, bucketName + "/" + fileName, IdentifierType.Name)
+        {
+        }
+
+
+        /// <summary>
+        /// Construct a DownloadFileAction with the given file ID
+        /// </summary>
+        /// <param name="authorizationSession">The authorization session</param>
+        /// <param name="fileDestination">The file path to download to</param>
+        /// <param name="fileID">The file ID to download</param>
+        public DownloadFileAction(
+            BackblazeB2AuthorizationSession authorizationSession,
+            Stream outputStream,
+            string fileID
+        )
+            : this(authorizationSession, outputStream, fileID, IdentifierType.ID)
+        {
+        }
+
+        /// <summary>
+        /// Construct a DownloadFileAction with the given Bucket Name and File Name and output to the
+        /// specified stream
+        /// </summary>
+        /// <param name="authorizationSession">The authorization session</param>
+        /// <param name="fileDestination">The file path to download to</param>
+        /// <param name="bucketName">The name of the bucket the file is in</param>
+        /// <param name="fileName">The name of the file</param>
+        public DownloadFileAction(
+            BackblazeB2AuthorizationSession authorizationSession,
+            Stream outputStream,
+            string bucketName,
+            string fileName
+        )
+            : this(authorizationSession, outputStream, bucketName + "/" + fileName, IdentifierType.Name)
         {
         }
         #endregion
@@ -126,7 +177,7 @@ namespace B2BackblazeBridge.Actions
         #region public methods
         public async override Task<BackblazeB2ActionResult<BackblazeB2DownloadFileResult>> ExecuteAsync()
         {
-            switch (DownloadIdentifierType)
+            switch (_downloadIdentifierType)
             {
                 case IdentifierType.ID:
                     return await DownloadByFileIDAsync();
@@ -141,7 +192,7 @@ namespace B2BackblazeBridge.Actions
         #region private method
         private async Task<BackblazeB2ActionResult<BackblazeB2DownloadFileResult>> DownloadByFileIDAsync()
         {
-            string body = "{\"fileId\":\"" + Identifier + "\"}";
+            string body = "{\"fileId\":\"" + _identifier + "\"}";
             byte[] payload = Encoding.UTF8.GetBytes(body);
 
             HttpWebRequest webRequest = GetHttpWebRequest(_authorizationSession.DownloadURL + DownloadByIDURL);
@@ -182,7 +233,6 @@ namespace B2BackblazeBridge.Actions
 
                 using (HttpWebResponse response = await webRequest.GetResponseAsync() as HttpWebResponse)
                 using (BinaryReader binaryFileReader = new BinaryReader(response.GetResponseStream()))
-                using (FileStream outputFileStream = new FileStream(FileDestination, FileMode.CreateNew))
                 {
                     byte[] fileBuffer;
                     while (true)
@@ -193,7 +243,7 @@ namespace B2BackblazeBridge.Actions
                             break;
                         }
 
-                        await outputFileStream.WriteAsync(fileBuffer, 0, fileBuffer.Length);
+                        await _outputStream.WriteAsync(fileBuffer, 0, fileBuffer.Length);
                     }
 
                     long timeStamp = -1;
@@ -229,8 +279,28 @@ namespace B2BackblazeBridge.Actions
 
         private string GetDownloadByFileURL()
         {
-            return _authorizationSession.DownloadURL + "/file/" + Identifier;
+            return _authorizationSession.DownloadURL + "/file/" + _identifier;
         }
+
+        #region IDisposable Support
+        private void Dispose(bool disposing)
+        {
+            if (!disposedValue)
+            {
+                if (disposing)
+                {
+                    _outputStream.Dispose();
+                }
+
+                disposedValue = true;
+            }
+        }
+
+        public void Dispose()
+        {
+            Dispose(true);
+        }
+        #endregion
         #endregion
     }
 }

@@ -22,6 +22,7 @@
 
 using Newtonsoft.Json;
 using System;
+using System.Text;
 
 namespace B2BackblazeBridge.Core
 {
@@ -53,6 +54,15 @@ namespace B2BackblazeBridge.Core
         #endregion
 
         #region public methods
+        public override string ToString()
+        {
+            return (new StringBuilder())
+                .AppendFormat("Status: {0}", Status).AppendLine()
+                .AppendFormat("Code: {0}", Code).AppendLine()
+                .AppendFormat("Message: {0}", Message).AppendLine()
+                .ToString();
+        }
+
         public bool Equals(BackblazeB2ActionErrorDetails other)
         {
             return Status == other.Status &&

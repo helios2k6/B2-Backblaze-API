@@ -56,22 +56,34 @@ namespace B2BackupUtility
             }
 
             Console.WriteLine("Downloading file");
-            DownloadFileAction downloadAction = string.IsNullOrWhiteSpace(fileName)
+            using (DownloadFileAction downloadAction = GetDownloadAction(authorizationSession, bucketID, fileName, fileID, destination))
+            {
+                Stopwatch watch = new Stopwatch();
+                watch.Start();
+                BackblazeB2ActionResult<BackblazeB2DownloadFileResult> result = await CommonActions.ExecuteActionAsync(downloadAction, "Download file");
+                watch.Stop();
+                if (result.HasResult)
+                {
+                    double bytesPerSecond = result.Result.ContentLength / ((double)watch.ElapsedTicks / Stopwatch.Frequency);
+
+                    Console.WriteLine(string.Format("File successfully downloaded: {0} to {1}", result.Result.FileName, destination));
+                    Console.WriteLine(string.Format("Download Time: {0} seconds", (double)watch.ElapsedTicks / Stopwatch.Frequency));
+                    Console.WriteLine(string.Format("Download Speed: {0:0,0.00} bytes / second", bytesPerSecond.ToString("0,0.00", CultureInfo.InvariantCulture)));
+                }
+            }
+        }
+
+        private static DownloadFileAction GetDownloadAction(
+            BackblazeB2AuthorizationSession authorizationSession,
+            string bucketID,
+            string fileName,
+            string fileID,
+            string destination
+        )
+        {
+            return string.IsNullOrWhiteSpace(fileName) 
                 ? new DownloadFileAction(authorizationSession, destination, fileID)
                 : new DownloadFileAction(authorizationSession, destination, bucketID, fileName);
-
-            Stopwatch watch = new Stopwatch();
-            watch.Start();
-            BackblazeB2ActionResult<BackblazeB2DownloadFileResult> result = await CommonActions.ExecuteActionAsync(downloadAction, "Download file");
-            watch.Stop();
-            if (result.HasResult)
-            {
-                double bytesPerSecond = result.Result.ContentLength / ((double)watch.ElapsedTicks / Stopwatch.Frequency);
-
-                Console.WriteLine(string.Format("File successfully downloaded: {0} to {1}", result.Result.FileName, destination));
-                Console.WriteLine(string.Format("Download Time: {0} seconds", (double)watch.ElapsedTicks / Stopwatch.Frequency));
-                Console.WriteLine(string.Format("Download Speed: {0:0,0.00} bytes / second", bytesPerSecond.ToString("0,0.00", CultureInfo.InvariantCulture)));
-            }
         }
     }
 }

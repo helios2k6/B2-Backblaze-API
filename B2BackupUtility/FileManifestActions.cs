@@ -19,19 +19,20 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using B2BackblazeBridge.Actions;
 using B2BackblazeBridge.Core;
+using Newtonsoft.Json;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 
 namespace B2BackupUtility
 {
     public static class FileManifestActions
     {
-        private static readonly string TempManifestFileDestination = "tempFileManifest.txt";
-
         private static readonly string RemoteFileManifestName = "b2_backup_util_file_manifest.txt";
 
         private static readonly Random RandomNumberGenerator = new Random();
@@ -76,14 +77,53 @@ namespace B2BackupUtility
             }
 
             // Download the file manifest 
-            DownloadFileAction manifestFileDownloadAction = new DownloadFileAction(
+            using (MemoryStream outputStream = new MemoryStream())
+            using (DownloadFileAction manifestFileDownloadAction = new DownloadFileAction(authorizationSession, outputStream, manifestFile.FileID))
+            {
+                BackblazeB2ActionResult<BackblazeB2DownloadFileResult> manifestResultOption = await manifestFileDownloadAction.ExecuteAsync();
+                if (manifestResultOption.HasResult)
+                {
+                    // Now, read string from manifest
+                    await outputStream.FlushAsync();
+                    outputStream.Position = 0;
+                    using (StreamReader outputStreamReader = new StreamReader(outputStream))
+                    {
+                        string fileManifestString = await outputStreamReader.ReadToEndAsync();
+                        return JsonConvert.DeserializeObject<FileManifest>(fileManifestString);
+                    }
+                }
+                else
+                {
+                    return new FileManifest
+                    {
+                        ID = RandomNumberGenerator.Next(),
+                        Version = 0,
+                        FileEntries = new FileManifestEntry[0],
+                    };
+                }
+            }
+        }
+
+        public async static Task WriteManifestFileToServer(
+            BackblazeB2AuthorizationSession authorizationSession,
+            string bucketID,
+            FileManifest manifest
+        )
+        {
+            string serializedManifest = JsonConvert.SerializeObject(manifest);
+            byte[] encodedBytes = Encoding.UTF8.GetBytes(serializedManifest);
+            UploadFileAction uploadAction = new UploadFileAction(
                 authorizationSession,
-                TempManifestFileDestination,
-                manifestFile.FileID
+                bucketID,
+                encodedBytes,
+                RemoteFileManifestName
             );
 
-            // Temporary until we can finish this method
-            throw new NotImplementedException();
+            BackblazeB2ActionResult<BackblazeB2UploadFileResult> uploadResultOption = await uploadAction.ExecuteAsync();
+            if (uploadResultOption.HasErrors)
+            {
+                Console.WriteLine(string.Format("There was an error uploading the File Manifest to the server: {0}", uploadResultOption.ToString()));
+            }
         }
     }
 }
