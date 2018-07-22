@@ -62,11 +62,7 @@ namespace B2BackupUtility
 
             // Search for the file manifest
             BackblazeB2ListFilesResult filesResult = listFilesActionResult.Result;
-            BackblazeB2ListFilesResult.FileResult manifestFile = (
-                                                                    from file in filesResult.Files
-                                                                    where string.Equals(file.FileName, RemoteFileManifestName, StringComparison.Ordinal)
-                                                                    select file
-                                                                ).SingleOrDefault();
+            BackblazeB2ListFilesResult.FileResult manifestFile = filesResult.Files.Where(f => f.FileName.Equals(RemoteFileManifestName, StringComparison.Ordinal)).SingleOrDefault();
             if (manifestFile == null)
             {
                 // Just return a new file manifest if we can't find
