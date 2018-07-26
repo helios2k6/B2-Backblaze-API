@@ -39,8 +39,7 @@ namespace B2BackupUtility
 
         public async static Task<FileManifest> ReadManifestFileFromServerOrReturnNewOneAsync(
             BackblazeB2AuthorizationSession authorizationSession,
-            string bucketID,
-            IEnumerable<string> args
+            string bucketID
         )
         {
             // First, list the files on the server

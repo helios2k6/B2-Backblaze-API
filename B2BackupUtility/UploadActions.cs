@@ -135,6 +135,16 @@ namespace B2BackupUtility
         {
             try
             {
+                Console.WriteLine("Fetching file manifest");
+                FileManifest fileManifest = await FileManifestActions.ReadManifestFileFromServerOrReturnNewOneAsync(authorizationSession, bucketID);
+                FileManifestEntry addedFileEntry = new FileManifestEntry
+                {
+                    OriginalFilePath = file,
+                    DestinationFilePath = destination,
+                    SHA1 = SHA1FileHashStore.Instance.GetFileHash(file),
+                };
+                fileManifest.Version++;
+                fileManifest.FileEntries = fileManifest.FileEntries.Append(addedFileEntry).ToArray();
                 FileInfo info = new FileInfo(file);
                 if (info.Length < 1024 * 1024)
                 {
@@ -161,6 +171,9 @@ namespace B2BackupUtility
 
                     await ExecuteUploadActionAsync(uploadAction);
                 }
+
+                // Write file manifest to the server
+                await FileManifestActions.WriteManifestFileToServer(authorizationSession, bucketID, fileManifest);
             }
             catch (TaskCanceledException)
             {
