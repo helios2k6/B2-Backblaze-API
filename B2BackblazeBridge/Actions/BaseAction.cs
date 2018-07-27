@@ -195,7 +195,7 @@ namespace B2BackblazeBridge.Actions
                 return TimeSpan.FromMilliseconds(154);
             }
 
-            return TimeSpan.FromMilliseconds(_random.Next(0, int.MaxValue));
+            return TimeSpan.FromMilliseconds(_random.Next(0, 120000));
         }
         
         /// <summary>
