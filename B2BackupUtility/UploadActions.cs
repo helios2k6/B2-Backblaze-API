@@ -112,9 +112,6 @@ namespace B2BackupUtility
                     localFileToDestinationFile.RemoteFilePath,
                     GetNumberOfConnections(args)
                 );
-
-                // Write file manifest to the server
-                await FileManifestActions.WriteManifestFileToServer(authorizationSession, bucketID, fileManifest);
             }
         }
 
