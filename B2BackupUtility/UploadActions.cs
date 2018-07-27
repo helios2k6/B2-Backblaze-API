@@ -22,6 +22,7 @@
 using B2BackblazeBridge.Actions;
 using B2BackblazeBridge.Core;
 using B2BackblazeBridge.Exceptions;
+using Functional.Maybe;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -61,18 +62,18 @@ namespace B2BackupUtility
                 return;
             }
 
-            Tuple<bool, IEnumerable<string>> files = await TryGetFilesToUploadAsync(authorizationSession, bucketID, folder, flatten, overrideFiles);
-            if (files.Item1 == false)
-            {
-                Console.WriteLine("Could not get files to upload");
-                return;
-            }
+            FileManifest fileManifest = await FileManifestActions.ReadManifestFileFromServerOrReturnNewOneAsync(authorizationSession, bucketID);
+            IEnumerable<string> localFilesToUpload = GetFilesToUpload(authorizationSession, fileManifest, bucketID, folder, flatten, overrideFiles);
 
             // Deduplicate destination files, especially if stuff is going to be flattened
-            IEnumerable<LocalFileToRemoteFileMapping> deduplicatedLocalFileToDestinationFiles = FilePathUtilities.GenerateLocalToRemotePathMapping(files.Item2, flatten);
+            IEnumerable<LocalFileToRemoteFileMapping> deduplicatedLocalFileToDestinationFiles = FilePathUtilities.GenerateLocalToRemotePathMapping(
+                localFilesToUpload,
+                flatten
+            );
 
             Console.WriteLine("Uploading folder");
             BackblazeB2AuthorizationSession currentAuthorizationSession = authorizationSession;
+
             foreach (LocalFileToRemoteFileMapping localFileToDestinationFile in deduplicatedLocalFileToDestinationFiles)
             {
                 if (CancellationActions.GlobalCancellationToken.IsCancellationRequested)
@@ -86,8 +87,12 @@ namespace B2BackupUtility
                     Console.WriteLine("Session is about to end in less than an hour. Renewing.");
 
                     // Renew the authorization
-                    AuthorizeAccountAction authorizeAction = new AuthorizeAccountAction(currentAuthorizationSession.AccountID, currentAuthorizationSession.ApplicationKey);
-                    BackblazeB2ActionResult<BackblazeB2AuthorizationSession> authorizeActionResult = await CommonActions.ExecuteActionAsync(authorizeAction, "Re-Authorize account");
+                    AuthorizeAccountAction authorizeAction = new AuthorizeAccountAction(
+                        currentAuthorizationSession.AccountID,
+                        currentAuthorizationSession.ApplicationKey
+                    );
+                    BackblazeB2ActionResult<BackblazeB2AuthorizationSession> authorizeActionResult =
+                        await CommonActions.ExecuteActionAsync(authorizeAction, "Re-Authorize account");
                     if (authorizeActionResult.HasErrors)
                     {
                         // Could not reauthorize. Aborting
@@ -98,37 +103,45 @@ namespace B2BackupUtility
                 }
 
                 await UploadFileImplAsync(currentAuthorizationSession, bucketID, localFileToDestinationFile.LocalFilePath, localFileToDestinationFile.RemoteFilePath, GetNumberOfConnections(args));
+
+                fileManifest.FileEntries = fileManifest.FileEntries.Append(new FileManifestEntry
+                {
+                    DestinationFilePath = localFileToDestinationFile.RemoteFilePath,
+                    OriginalFilePath = localFileToDestinationFile.LocalFilePath,
+                    SHA1 = SHA1FileHashStore.Instance.GetFileHash(localFileToDestinationFile.LocalFilePath),
+                }).ToArray();
+                fileManifest.Version++;
+
+                // Write file manifest to the server
+                await FileManifestActions.WriteManifestFileToServer(authorizationSession, bucketID, fileManifest);
             }
         }
 
-        private static async Task<Tuple<bool, IEnumerable<string>>> TryGetFilesToUploadAsync(BackblazeB2AuthorizationSession authorizationSession, string bucketID, string folder, bool flatten, bool overrideFiles)
+        private static IEnumerable<string> GetFilesToUpload(
+            BackblazeB2AuthorizationSession authorizationSession,
+            FileManifest fileManifest,
+            string bucketID,
+            string folder,
+            bool flatten,
+            bool overrideFiles
+        )
         {
             IEnumerable<string> filesToUpload = Directory.EnumerateFiles(folder, "*", SearchOption.AllDirectories);
             if (overrideFiles)
             {
                 Console.WriteLine("Force uploading all files that aren't name collisions and duplicates");
-                return Tuple.Create(true, filesToUpload);
-            }
-
-            // Get a list of files that are already on the server
-            ListFilesAction listFilesAction = ListFilesAction.CreateListFileActionForFileNames(authorizationSession, bucketID, true);
-            BackblazeB2ActionResult<BackblazeB2ListFilesResult> listFilesActionResult = await CommonActions.ExecuteActionAsync(listFilesAction, "List files");
-            if (listFilesActionResult.HasErrors)
-            {
-                Console.WriteLine(string.Format("Unable to prefetch folder. Reason: {0}", listFilesActionResult.Errors.First().Message));
-                return Tuple.Create<bool, IEnumerable<string>>(false, null);
+                return filesToUpload;
             }
 
             Console.WriteLine("Filtered files that are already on the server");
-            BackblazeB2ListFilesResult listFiles = listFilesActionResult.Result;
-            IDictionary<string, string> sha1ToFileNames = listFiles.Files.ToDictionary(e => e.ContentSha1, e => e.FileName);
+            IDictionary<string, string> sha1ToFileNames = fileManifest.FileEntries.ToDictionary(f => f.SHA1, f => f.DestinationFilePath);
             IEnumerable<string> filteredFiles = from localFile in filesToUpload
                                                 let localFileSHA1 = SHA1FileHashStore.Instance.GetFileHash(localFile)
                                                 let destinationFileName = FilePathUtilities.GetDestinationFileName(localFile, flatten)
                                                 where !sha1ToFileNames.ContainsKey(localFileSHA1) || !sha1ToFileNames[localFileSHA1].Equals(destinationFileName, StringComparison.Ordinal)
                                                 select localFile;
 
-            return Tuple.Create(true, filteredFiles);
+            return filteredFiles;
         }
 
         private static async Task UploadFileImplAsync(BackblazeB2AuthorizationSession authorizationSession, string bucketID, string file, string destination, int uploadConnections)
@@ -146,34 +159,28 @@ namespace B2BackupUtility
                 fileManifest.Version++;
                 fileManifest.FileEntries = fileManifest.FileEntries.Append(addedFileEntry).ToArray();
                 FileInfo info = new FileInfo(file);
-                if (info.Length < 1024 * 1024)
+                BackblazeB2ActionResult<IBackblazeB2UploadResult> uploadResult = info.Length < 1024 * 1024
+                ? await ExecuteUploadActionAsync(new UploadFileAction(
+                    authorizationSession,
+                    file,
+                    destination,
+                    bucketID
+                ))
+                : await ExecuteUploadActionAsync(new UploadFileUsingMultipleConnectionsAction(
+                    authorizationSession,
+                    file,
+                    destination,
+                    bucketID,
+                    Constants.FileChunkSize,
+                    uploadConnections,
+                    CancellationActions.GlobalCancellationToken
+                ));
+
+                if (uploadResult.HasResult)
                 {
-                    UploadFileAction uploadAction = new UploadFileAction(
-                        authorizationSession,
-                        file,
-                        destination,
-                        bucketID
-                    );
-
-                    await ExecuteUploadActionAsync(uploadAction);
+                    // Update file manifest if the upload was successful
+                    await FileManifestActions.WriteManifestFileToServer(authorizationSession, bucketID, fileManifest);
                 }
-                else
-                {
-                    UploadFileUsingMultipleConnectionsAction uploadAction = new UploadFileUsingMultipleConnectionsAction(
-                        authorizationSession,
-                        file,
-                        destination,
-                        bucketID,
-                        Constants.FileChunkSize,
-                        uploadConnections,
-                        CancellationActions.GlobalCancellationToken
-                    );
-
-                    await ExecuteUploadActionAsync(uploadAction);
-                }
-
-                // Write file manifest to the server
-                await FileManifestActions.WriteManifestFileToServer(authorizationSession, bucketID, fileManifest);
             }
             catch (TaskCanceledException)
             {
@@ -198,13 +205,14 @@ namespace B2BackupUtility
             }
         }
 
-        private static async Task<BackblazeB2ActionResult<T>> ExecuteUploadActionAsync<T>(BaseAction<T> action) where T : IBackblazeB2UploadResult
+        private static async Task<BackblazeB2ActionResult<IBackblazeB2UploadResult>> ExecuteUploadActionAsync<T>(BaseAction<T> action) where T : IBackblazeB2UploadResult
         {
             Stopwatch watch = new Stopwatch();
             watch.Start();
             BackblazeB2ActionResult<T> uploadResult = await CommonActions.ExecuteActionAsync(action, "Upload File");
             watch.Stop();
-
+            
+            BackblazeB2ActionResult<IBackblazeB2UploadResult> castedResult;
             if (uploadResult.HasResult)
             {
                 double bytesPerSecond = uploadResult.Result.ContentLength / ((double)watch.ElapsedTicks / Stopwatch.Frequency);
@@ -217,9 +225,20 @@ namespace B2BackupUtility
                 builder.AppendFormat("Upload Time: {0} seconds", (double)watch.ElapsedTicks / Stopwatch.Frequency).AppendLine();
                 builder.AppendFormat("Upload Speed: {0:0,0.00} bytes / second", bytesPerSecond.ToString("0,0.00", CultureInfo.InvariantCulture)).AppendLine().AppendLine();
                 Console.Write(builder.ToString());
+
+                castedResult = new BackblazeB2ActionResult<IBackblazeB2UploadResult>(
+                    (IBackblazeB2UploadResult)uploadResult.Result
+                );
+            }
+            else
+            {
+                castedResult = new BackblazeB2ActionResult<IBackblazeB2UploadResult>(
+                    Maybe<IBackblazeB2UploadResult>.Nothing,
+                    uploadResult.Errors
+                );
             }
 
-            return uploadResult;
+            return castedResult;
         }
 
         private static int GetNumberOfConnections(IEnumerable<string> args)
