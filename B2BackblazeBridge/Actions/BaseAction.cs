@@ -49,8 +49,6 @@ namespace B2BackblazeBridge.Actions
         #endregion
 
         #region fields
-        private static readonly int TicksPerMicrosecond = 10;
-
         private readonly Random _random;
 
         protected readonly CancellationToken _cancellationToken;
@@ -172,7 +170,7 @@ namespace B2BackblazeBridge.Actions
         {
             if (attemptNumber == 1)
             {
-                return new TimeSpan(_random.Next(0, 52) * TicksPerMicrosecond);
+                return TimeSpan.FromMilliseconds(_random.Next(0, 52));
             }
 
             if (attemptNumber == 2)
@@ -181,23 +179,23 @@ namespace B2BackblazeBridge.Actions
 
                 if (timeFrameSelection == 0)
                 {
-                    return new TimeSpan(0);
+                    return TimeSpan.FromMilliseconds(0);
                 }
 
                 if (timeFrameSelection == 1)
                 {
-                    return new TimeSpan(52 * TicksPerMicrosecond);
+                    return TimeSpan.FromMilliseconds(52);
                 }
 
                 if (timeFrameSelection == 2)
                 {
-                    return new TimeSpan(103 * TicksPerMicrosecond);
+                    return TimeSpan.FromMilliseconds(103);
                 }
 
-                return new TimeSpan(154 * TicksPerMicrosecond);
+                return TimeSpan.FromMilliseconds(154);
             }
 
-            return new TimeSpan(_random.Next(0, int.MaxValue) * TicksPerMicrosecond);
+            return TimeSpan.FromMilliseconds(_random.Next(0, int.MaxValue));
         }
         
         /// <summary>
