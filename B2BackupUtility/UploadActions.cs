@@ -47,8 +47,10 @@ namespace B2BackupUtility
                 return;
             }
 
+            FileManifest fileManifest = await FileManifestActions.ReadManifestFileFromServerOrReturnNewOneAsync(authorizationSession, bucketID);
+
             Console.WriteLine("Uploading file");
-            await UploadFileImplAsync(authorizationSession, bucketID, fileToUpload, destination, GetNumberOfConnections(args));
+            await UploadFileImplAsync(authorizationSession, fileManifest, bucketID, fileToUpload, destination, GetNumberOfConnections(args));
         }
 
         public static async Task UploadFolderAsync(BackblazeB2AuthorizationSession authorizationSession, string bucketID, IEnumerable<string> args)
@@ -102,15 +104,14 @@ namespace B2BackupUtility
                     currentAuthorizationSession = authorizeActionResult.Result;
                 }
 
-                await UploadFileImplAsync(currentAuthorizationSession, bucketID, localFileToDestinationFile.LocalFilePath, localFileToDestinationFile.RemoteFilePath, GetNumberOfConnections(args));
-
-                fileManifest.FileEntries = fileManifest.FileEntries.Append(new FileManifestEntry
-                {
-                    DestinationFilePath = localFileToDestinationFile.RemoteFilePath,
-                    OriginalFilePath = localFileToDestinationFile.LocalFilePath,
-                    SHA1 = SHA1FileHashStore.Instance.GetFileHash(localFileToDestinationFile.LocalFilePath),
-                }).ToArray();
-                fileManifest.Version++;
+                await UploadFileImplAsync(
+                    currentAuthorizationSession,
+                    fileManifest,
+                    bucketID,
+                    localFileToDestinationFile.LocalFilePath,
+                    localFileToDestinationFile.RemoteFilePath,
+                    GetNumberOfConnections(args)
+                );
 
                 // Write file manifest to the server
                 await FileManifestActions.WriteManifestFileToServer(authorizationSession, bucketID, fileManifest);
@@ -144,20 +145,17 @@ namespace B2BackupUtility
             return filteredFiles;
         }
 
-        private static async Task UploadFileImplAsync(BackblazeB2AuthorizationSession authorizationSession, string bucketID, string file, string destination, int uploadConnections)
+        private static async Task UploadFileImplAsync(
+            BackblazeB2AuthorizationSession authorizationSession,
+            FileManifest fileManifest,
+            string bucketID,
+            string file,
+            string destination,
+            int uploadConnections
+        )
         {
             try
             {
-                Console.WriteLine("Fetching file manifest");
-                FileManifest fileManifest = await FileManifestActions.ReadManifestFileFromServerOrReturnNewOneAsync(authorizationSession, bucketID);
-                FileManifestEntry addedFileEntry = new FileManifestEntry
-                {
-                    OriginalFilePath = file,
-                    DestinationFilePath = destination,
-                    SHA1 = SHA1FileHashStore.Instance.GetFileHash(file),
-                };
-                fileManifest.Version++;
-                fileManifest.FileEntries = fileManifest.FileEntries.Append(addedFileEntry).ToArray();
                 FileInfo info = new FileInfo(file);
                 BackblazeB2ActionResult<IBackblazeB2UploadResult> uploadResult = info.Length < 1024 * 1024
                 ? await ExecuteUploadActionAsync(new UploadFileAction(
@@ -178,6 +176,14 @@ namespace B2BackupUtility
 
                 if (uploadResult.HasResult)
                 {
+                    FileManifestEntry addedFileEntry = new FileManifestEntry
+                    {
+                        OriginalFilePath = file,
+                        DestinationFilePath = destination,
+                        SHA1 = SHA1FileHashStore.Instance.GetFileHash(file),
+                    };
+                    fileManifest.Version++;
+                    fileManifest.FileEntries = fileManifest.FileEntries.Append(addedFileEntry).ToArray();
                     // Update file manifest if the upload was successful
                     await FileManifestActions.WriteManifestFileToServer(authorizationSession, bucketID, fileManifest);
                 }
