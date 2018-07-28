@@ -36,7 +36,7 @@ namespace B2BackupUtility
 {
     public static class UploadActions
     {
-        public static async Task UploadFileAsync(BackblazeB2AuthorizationSession authorizationSession, string bucketID, IEnumerable<string> args)
+        public static void UploadFile(BackblazeB2AuthorizationSession authorizationSession, string bucketID, IEnumerable<string> args)
         {
             string fileToUpload = CommonActions.GetArgument(args, "--file");
             string destination = CommonActions.GetArgument(args, "--destination");
@@ -47,13 +47,13 @@ namespace B2BackupUtility
                 return;
             }
 
-            FileManifest fileManifest = await FileManifestActions.ReadManifestFileFromServerOrReturnNewOneAsync(authorizationSession, bucketID);
+            FileManifest fileManifest = FileManifestActions.ReadManifestFileFromServerOrReturnNewOne(authorizationSession, bucketID);
 
             Console.WriteLine("Uploading file");
-            await UploadFileImplAsync(authorizationSession, fileManifest, bucketID, fileToUpload, destination, GetNumberOfConnections(args));
+            UploadFileImpl(authorizationSession, fileManifest, bucketID, fileToUpload, destination, GetNumberOfConnections(args));
         }
 
-        public static async Task UploadFolderAsync(BackblazeB2AuthorizationSession authorizationSession, string bucketID, IEnumerable<string> args)
+        public static void UploadFolder(BackblazeB2AuthorizationSession authorizationSession, string bucketID, IEnumerable<string> args)
         {
             string folder = CommonActions.GetArgument(args, "--folder");
             bool flatten = CommonActions.DoesOptionExist(args, "--flatten");
@@ -64,7 +64,7 @@ namespace B2BackupUtility
                 return;
             }
 
-            FileManifest fileManifest = await FileManifestActions.ReadManifestFileFromServerOrReturnNewOneAsync(authorizationSession, bucketID);
+            FileManifest fileManifest = FileManifestActions.ReadManifestFileFromServerOrReturnNewOne(authorizationSession, bucketID);
             IEnumerable<string> localFilesToUpload = GetFilesToUpload(authorizationSession, fileManifest, bucketID, folder, flatten, overrideFiles);
 
             // Deduplicate destination files, especially if stuff is going to be flattened
@@ -94,7 +94,7 @@ namespace B2BackupUtility
                         currentAuthorizationSession.ApplicationKey
                     );
                     BackblazeB2ActionResult<BackblazeB2AuthorizationSession> authorizeActionResult =
-                        await CommonActions.ExecuteActionAsync(authorizeAction, "Re-Authorize account");
+                        CommonActions.ExecuteAction(authorizeAction, "Re-Authorize account");
                     if (authorizeActionResult.HasErrors)
                     {
                         // Could not reauthorize. Aborting
@@ -104,7 +104,7 @@ namespace B2BackupUtility
                     currentAuthorizationSession = authorizeActionResult.Result;
                 }
 
-                await UploadFileImplAsync(
+                UploadFileImpl(
                     currentAuthorizationSession,
                     fileManifest,
                     bucketID,
@@ -142,7 +142,7 @@ namespace B2BackupUtility
             return filteredFiles;
         }
 
-        private static async Task UploadFileImplAsync(
+        private static void UploadFileImpl(
             BackblazeB2AuthorizationSession authorizationSession,
             FileManifest fileManifest,
             string bucketID,
@@ -155,13 +155,13 @@ namespace B2BackupUtility
             {
                 FileInfo info = new FileInfo(file);
                 BackblazeB2ActionResult<IBackblazeB2UploadResult> uploadResult = info.Length < 1024 * 1024
-                ? await ExecuteUploadActionAsync(new UploadFileAction(
+                ? ExecuteUploadAction(new UploadFileAction(
                     authorizationSession,
                     file,
                     destination,
                     bucketID
                 ))
-                : await ExecuteUploadActionAsync(new UploadFileUsingMultipleConnectionsAction(
+                : ExecuteUploadAction(new UploadFileUsingMultipleConnectionsAction(
                     authorizationSession,
                     file,
                     destination,
@@ -182,7 +182,7 @@ namespace B2BackupUtility
                     fileManifest.Version++;
                     fileManifest.FileEntries = fileManifest.FileEntries.Append(addedFileEntry).ToArray();
                     // Update file manifest if the upload was successful
-                    await FileManifestActions.WriteManifestFileToServer(authorizationSession, bucketID, fileManifest);
+                    FileManifestActions.WriteManifestFileToServer(authorizationSession, bucketID, fileManifest);
                 }
             }
             catch (TaskCanceledException)
@@ -208,11 +208,11 @@ namespace B2BackupUtility
             }
         }
 
-        private static async Task<BackblazeB2ActionResult<IBackblazeB2UploadResult>> ExecuteUploadActionAsync<T>(BaseAction<T> action) where T : IBackblazeB2UploadResult
+        private static BackblazeB2ActionResult<IBackblazeB2UploadResult> ExecuteUploadAction<T>(BaseAction<T> action) where T : IBackblazeB2UploadResult
         {
             Stopwatch watch = new Stopwatch();
             watch.Start();
-            BackblazeB2ActionResult<T> uploadResult = await CommonActions.ExecuteActionAsync(action, "Upload File");
+            BackblazeB2ActionResult<T> uploadResult = CommonActions.ExecuteAction(action, "Upload File");
             watch.Stop();
             
             BackblazeB2ActionResult<IBackblazeB2UploadResult> castedResult;

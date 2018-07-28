@@ -25,7 +25,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Threading.Tasks;
 
 namespace B2BackupUtility
 {
@@ -65,9 +64,9 @@ namespace B2BackupUtility
             return true;
         }
 
-        public static async Task<BackblazeB2ActionResult<T>> ExecuteActionAsync<T>(BaseAction<T> action, string actionName)
+        public static BackblazeB2ActionResult<T> ExecuteAction<T>(BaseAction<T> action, string actionName)
         {
-            BackblazeB2ActionResult<T> actionResult = await action.ExecuteAsync();
+            BackblazeB2ActionResult<T> actionResult = action.Execute();
             if (actionResult.HasErrors)
             {
                 string errorMessagesComposed = actionResult.Errors.Select(t => t.Message).Aggregate((a, b) => string.Format("{0}\n{1}", a, b));

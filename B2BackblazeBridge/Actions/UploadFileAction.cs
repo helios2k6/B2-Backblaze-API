@@ -27,7 +27,6 @@ using System.IO;
 using System.Net;
 using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
 
 namespace B2BackblazeBridge.Actions
 {
@@ -84,14 +83,14 @@ namespace B2BackblazeBridge.Actions
         #endregion
 
         #region public methods
-        public async override Task<BackblazeB2ActionResult<BackblazeB2UploadFileResult>> ExecuteAsync()
+        public override BackblazeB2ActionResult<BackblazeB2UploadFileResult> Execute()
         {
-            return await UploadFileAsync(await GetUploadURLAsync());
+            return UploadFile(GetUploadURL());
         }
         #endregion
 
         #region private methods
-        private async Task<BackblazeB2ActionResult<BackblazeB2UploadFileResult>> UploadFileAsync(BackblazeB2ActionResult<GetUploadFileURLResponse> getUploadFileUrlResult)
+        private BackblazeB2ActionResult<BackblazeB2UploadFileResult> UploadFile(BackblazeB2ActionResult<GetUploadFileURLResponse> getUploadFileUrlResult)
         {
             if (getUploadFileUrlResult.HasResult)
             {
@@ -106,7 +105,7 @@ namespace B2BackblazeBridge.Actions
                 webRequest.ContentType = "b2/x-auto";
                 webRequest.ContentLength = _bytesToUpload.Length;
 
-                BackblazeB2ActionResult<BackblazeB2UploadFileResult> result = await SendWebRequestAndDeserializeAsync<BackblazeB2UploadFileResult>(webRequest, _bytesToUpload);
+                BackblazeB2ActionResult<BackblazeB2UploadFileResult> result = SendWebRequestAndDeserialize<BackblazeB2UploadFileResult>(webRequest, _bytesToUpload);
                 result.MaybeResult.Do(t => t.FileName = Uri.UnescapeDataString(t.FileName));
                 return result;
             }
@@ -116,7 +115,7 @@ namespace B2BackblazeBridge.Actions
             }
         }
 
-        private async Task<BackblazeB2ActionResult<GetUploadFileURLResponse>> GetUploadURLAsync()
+        private BackblazeB2ActionResult<GetUploadFileURLResponse> GetUploadURL()
         {
             HttpWebRequest webRequest = GetHttpWebRequest(_authorizationSession.APIURL + GetUploadURIURI);
             webRequest.Headers.Add("Authorization", _authorizationSession.AuthorizationToken);
@@ -125,7 +124,7 @@ namespace B2BackblazeBridge.Actions
             string body = "{\"bucketId\":\"" + _bucketID + "\"}";
             byte[] encodedBody = Encoding.UTF8.GetBytes(body);
             webRequest.ContentLength = encodedBody.Length;
-            return await SendWebRequestAndDeserializeAsync<GetUploadFileURLResponse>(webRequest, encodedBody);
+            return SendWebRequestAndDeserialize<GetUploadFileURLResponse>(webRequest, encodedBody);
         }
         #endregion
     }

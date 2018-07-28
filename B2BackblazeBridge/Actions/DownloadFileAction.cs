@@ -19,15 +19,14 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+using B2BackblazeBridge.Core;
+using Functional.Maybe;
+using Newtonsoft.Json;
 using System;
 using System.IO;
 using System.Net;
 using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
-using B2BackblazeBridge.Core;
-using Functional.Maybe;
-using Newtonsoft.Json;
 
 namespace B2BackblazeBridge.Actions
 {
@@ -175,14 +174,14 @@ namespace B2BackblazeBridge.Actions
         #endregion
 
         #region public methods
-        public async override Task<BackblazeB2ActionResult<BackblazeB2DownloadFileResult>> ExecuteAsync()
+        public override BackblazeB2ActionResult<BackblazeB2DownloadFileResult> Execute()
         {
             switch (_downloadIdentifierType)
             {
                 case IdentifierType.ID:
-                    return await DownloadByFileIDAsync();
+                    return DownloadByFileID();
                 case IdentifierType.Name:
-                    return await DownloadByFileNameAsync();
+                    return DownloadByFileName();
                 default:
                     throw new InvalidOperationException();
             }
@@ -190,7 +189,7 @@ namespace B2BackblazeBridge.Actions
         #endregion
 
         #region private method
-        private async Task<BackblazeB2ActionResult<BackblazeB2DownloadFileResult>> DownloadByFileIDAsync()
+        private BackblazeB2ActionResult<BackblazeB2DownloadFileResult> DownloadByFileID()
         {
             string body = "{\"fileId\":\"" + _identifier + "\"}";
             byte[] payload = Encoding.UTF8.GetBytes(body);
@@ -200,23 +199,23 @@ namespace B2BackblazeBridge.Actions
             webRequest.Headers.Add("Authorization", _authorizationSession.AuthorizationToken);
             webRequest.ContentLength = payload.Length;
 
-            return await ExecuteWebDownloadRequest(webRequest, payload);
+            return ExecuteWebDownloadRequest(webRequest, payload);
         }
 
-        private async Task<BackblazeB2ActionResult<BackblazeB2DownloadFileResult>> DownloadByFileNameAsync()
+        private BackblazeB2ActionResult<BackblazeB2DownloadFileResult> DownloadByFileName()
         {
             HttpWebRequest webRequest = GetHttpWebRequest(GetDownloadByFileURL());
             webRequest.Method = "GET";
             webRequest.Headers.Add("Authorization", _authorizationSession.AuthorizationToken);
 
-            return await ExecuteWebDownloadRequest(webRequest, null);
+            return ExecuteWebDownloadRequest(webRequest, null);
         }
 
         /// <summary>
         /// A custom web request execution function because the one used by the BaseAction isn't sufficient 
         /// </summary>
         /// <returns>The download result</returns>
-        private async Task<BackblazeB2ActionResult<BackblazeB2DownloadFileResult>> ExecuteWebDownloadRequest(
+        private BackblazeB2ActionResult<BackblazeB2DownloadFileResult> ExecuteWebDownloadRequest(
             HttpWebRequest webRequest,
             byte[] payload
         )
@@ -225,13 +224,13 @@ namespace B2BackblazeBridge.Actions
             {
                 if (payload != null)
                 {
-                    using (Stream stream = await webRequest.GetRequestStreamAsync())
+                    using (Stream stream = webRequest.GetRequestStream())
                     {
-                        await stream.WriteAsync(payload, 0, payload.Length);
+                        stream.Write(payload, 0, payload.Length);
                     }
                 }
 
-                using (HttpWebResponse response = await webRequest.GetResponseAsync() as HttpWebResponse)
+                using (HttpWebResponse response = webRequest.GetResponse() as HttpWebResponse)
                 using (BinaryReader binaryFileReader = new BinaryReader(response.GetResponseStream()))
                 {
                     byte[] fileBuffer;
@@ -243,7 +242,7 @@ namespace B2BackblazeBridge.Actions
                             break;
                         }
 
-                        await _outputStream.WriteAsync(fileBuffer, 0, fileBuffer.Length);
+                        _outputStream.Write(fileBuffer, 0, fileBuffer.Length);
                     }
 
                     long timeStamp = -1;
@@ -268,7 +267,7 @@ namespace B2BackblazeBridge.Actions
                 HttpWebResponse response = (HttpWebResponse)ex.Response;
                 using (StreamReader reader = new StreamReader(response.GetResponseStream()))
                 {
-                    string responseJson = await reader.ReadToEndAsync();
+                    string responseJson = reader.ReadToEnd();
                     return new BackblazeB2ActionResult<BackblazeB2DownloadFileResult>(
                         Maybe<BackblazeB2DownloadFileResult>.Nothing,
                         JsonConvert.DeserializeObject<BackblazeB2ActionErrorDetails>(responseJson)

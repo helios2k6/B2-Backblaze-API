@@ -23,13 +23,12 @@ using B2BackblazeBridge.Actions;
 using B2BackblazeBridge.Core;
 using System;
 using System.Collections.Generic;
-using System.Threading.Tasks;
 
 namespace B2BackupUtility
 {
     public static class DeleteFileActions
     {
-        public static async Task DeleteFileAsync(BackblazeB2AuthorizationSession authorizationSession, IEnumerable<string> args)
+        public static void DeleteFile(BackblazeB2AuthorizationSession authorizationSession, IEnumerable<string> args)
         {
             string fileName = CommonActions.GetArgument(args, "--file-name");
             string fileID = CommonActions.GetArgument(args, "--file-id");
@@ -41,7 +40,7 @@ namespace B2BackupUtility
 
             Console.WriteLine("Deleting File");
             DeleteFileAction deleteFileAction = new DeleteFileAction(authorizationSession, fileID, fileName);
-            BackblazeB2ActionResult<BackblazeB2DeleteFileResult> result = await CommonActions.ExecuteActionAsync(deleteFileAction, "Delete file");
+            BackblazeB2ActionResult<BackblazeB2DeleteFileResult> result = CommonActions.ExecuteAction(deleteFileAction, "Delete file");
             if (result.HasResult)
             {
                 Console.WriteLine(string.Format("File successfully deleted: {0} | {1}", result.Result.FileName, result.Result.FileID));

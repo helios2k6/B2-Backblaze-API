@@ -26,7 +26,6 @@ using System;
 using System.Net;
 using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
 
 namespace B2BackblazeBridge.Actions
 {
@@ -63,7 +62,7 @@ namespace B2BackblazeBridge.Actions
         #endregion
 
         #region public methods
-        public async override Task<BackblazeB2ActionResult<BackblazeB2DeleteFileResult>> ExecuteAsync()
+        public override BackblazeB2ActionResult<BackblazeB2DeleteFileResult> Execute()
         {
             DeleteFileVersionRequest deleteRequest = new DeleteFileVersionRequest
             {
@@ -78,7 +77,7 @@ namespace B2BackblazeBridge.Actions
             webRequest.Headers.Add("Authorization", _authorizationSession.AuthorizationToken);
             webRequest.ContentLength = payload.Length;
 
-            BackblazeB2ActionResult<BackblazeB2DeleteFileResult> deletionResult = await SendWebRequestAndDeserializeAsync<BackblazeB2DeleteFileResult>(webRequest, payload);
+            BackblazeB2ActionResult<BackblazeB2DeleteFileResult> deletionResult = SendWebRequestAndDeserialize<BackblazeB2DeleteFileResult>(webRequest, payload);
             if (deletionResult.HasResult)
             {
                 string escapedFileName = deletionResult.Result.FileName;

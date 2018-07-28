@@ -24,13 +24,12 @@ using B2BackblazeBridge.Core;
 using System;
 using System.Collections.Generic;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace B2BackupUtility
 {
     public static class GetFileInfoActions
     {
-        public async static Task ExecuteGetFileInfoAsync(
+        public static void ExecuteGetFileInfo(
             BackblazeB2AuthorizationSession authorizationSession,
             IEnumerable<string> args
         )
@@ -43,7 +42,7 @@ namespace B2BackupUtility
             }
 
             GetFileInfoAction getFileInfoAction = new GetFileInfoAction(authorizationSession, fileID);
-            BackblazeB2ActionResult<BackblazeB2GetFileInfoResult> getFileInfoResultMaybe = await getFileInfoAction.ExecuteAsync();
+            BackblazeB2ActionResult<BackblazeB2GetFileInfoResult> getFileInfoResultMaybe = getFileInfoAction.Execute();
             if (getFileInfoResultMaybe.HasErrors)
             {
                 Console.WriteLine(string.Format("Could not get file info for {0}", fileID));

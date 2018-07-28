@@ -30,7 +30,6 @@ using System.Net;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
 
 namespace B2BackblazeBridge.Actions
 {
@@ -63,7 +62,7 @@ namespace B2BackblazeBridge.Actions
         #endregion
 
         #region public methods
-        public abstract Task<BackblazeB2ActionResult<T>> ExecuteAsync();
+        public abstract BackblazeB2ActionResult<T> Execute();
         #endregion
 
         #region protected methods
@@ -205,14 +204,14 @@ namespace B2BackblazeBridge.Actions
         /// <param name="webRequest">The web request</param>
         /// <param name="payload">The payload to send</param>
         /// <returns>An action result</returns>
-        protected async Task<BackblazeB2ActionResult<TResult>> SendWebRequestAndDeserializeAsync<TResult>(HttpWebRequest webRequest, byte[] payload)
+        protected BackblazeB2ActionResult<TResult> SendWebRequestAndDeserialize<TResult>(HttpWebRequest webRequest, byte[] payload)
         {
             if (webRequest == null)
             {
                 throw new ArgumentNullException("webRequest");
             }
 
-            RawHttpCallResult rawHttpCallResult = await SendWebRequestAsyncRaw(webRequest, payload);
+            RawHttpCallResult rawHttpCallResult = SendWebRequestRaw(webRequest, payload);
             Maybe<TResult> resultMaybe = rawHttpCallResult.SuccessResult.Select(t => JsonConvert.DeserializeObject<TResult>(t));
             Maybe<BackblazeB2ActionErrorDetails> errorMaybe = rawHttpCallResult.ErrorResult.Select(e => JsonConvert.DeserializeObject<BackblazeB2ActionErrorDetails>(e));
 
@@ -227,22 +226,22 @@ namespace B2BackblazeBridge.Actions
         /// <param name="webRequest">The web request</param>
         /// <param name="payload">The optional payload to send</param>
         /// <returns>A raw http result</returns>
-        private async Task<RawHttpCallResult> SendWebRequestAsyncRaw(HttpWebRequest webRequest, byte[] payload)
+        private RawHttpCallResult SendWebRequestRaw(HttpWebRequest webRequest, byte[] payload)
         {
             try
             {
                 if (payload != null)
                 {
-                    using (Stream stream = await webRequest.GetRequestStreamAsync())
+                    using (Stream stream = webRequest.GetRequestStream())
                     {
-                        await stream.WriteAsync(payload, 0, payload.Length, _cancellationToken);
+                        stream.Write(payload, 0, payload.Length);
                     }
                 }
 
-                using (HttpWebResponse response = await webRequest.GetResponseAsync() as HttpWebResponse)
+                using (HttpWebResponse response = webRequest.GetResponse() as HttpWebResponse)
                 using (StreamReader reader = new StreamReader(response.GetResponseStream()))
                 {
-                    string jsonResult = await reader.ReadToEndAsync();
+                    string jsonResult = reader.ReadToEnd();
                     return new RawHttpCallResult
                     {
                         SuccessResult = jsonResult.ToMaybe(),
@@ -256,7 +255,7 @@ namespace B2BackblazeBridge.Actions
                 {
                     using (StreamReader reader = new StreamReader(response.GetResponseStream()))
                     {
-                        string responseJson = await reader.ReadToEndAsync();
+                        string responseJson = reader.ReadToEnd();
                         return new RawHttpCallResult
                         {
                             ErrorResult = responseJson.ToMaybe(),

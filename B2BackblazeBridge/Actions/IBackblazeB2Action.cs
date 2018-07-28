@@ -20,7 +20,6 @@
  */
 
 using B2BackblazeBridge.Core;
-using System.Threading.Tasks;
 
 namespace B2BackblazeBridge.Actions
 {
@@ -29,6 +28,6 @@ namespace B2BackblazeBridge.Actions
     /// </summary>
     interface IBackblazeB2Action<TResult>
     {
-        Task<BackblazeB2ActionResult<TResult>> ExecuteAsync();
+        BackblazeB2ActionResult<TResult> Execute();
     }
 }

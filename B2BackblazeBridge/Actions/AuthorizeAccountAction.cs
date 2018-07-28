@@ -25,7 +25,6 @@ using System;
 using System.Net;
 using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
 
 namespace B2BackblazeBridge.Actions
 {
@@ -55,14 +54,14 @@ namespace B2BackblazeBridge.Actions
         #endregion
 
         #region public methods
-        public async override Task<BackblazeB2ActionResult<BackblazeB2AuthorizationSession>> ExecuteAsync()
+        public override BackblazeB2ActionResult<BackblazeB2AuthorizationSession> Execute()
         {
             HttpWebRequest webRequest = GetHttpWebRequest(APIURL);
             string credentialsHeader = Convert.ToBase64String(
                 Encoding.UTF8.GetBytes(_acccountID + ":" + _applicationKey)
             );
             webRequest.Headers.Add("Authorization", "Basic " + credentialsHeader);
-            BackblazeB2ActionResult<BackblazeB2AuthorizationSession> response = await SendWebRequestAndDeserializeAsync<BackblazeB2AuthorizationSession>(webRequest, null);
+            BackblazeB2ActionResult<BackblazeB2AuthorizationSession> response = SendWebRequestAndDeserialize<BackblazeB2AuthorizationSession>(webRequest, null);
             response.MaybeResult.Do(r => {
                 r.ApplicationKey = _applicationKey;
                 r.SessionExpirationDate = DateTime.Now + TimeSpan.FromHours(24);

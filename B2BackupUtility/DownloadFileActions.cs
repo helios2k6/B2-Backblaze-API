@@ -26,13 +26,12 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
-using System.Threading.Tasks;
 
 namespace B2BackupUtility
 {
     public static class DownloadFileActions
     {
-        public static async Task DownloadFileAsync(BackblazeB2AuthorizationSession authorizationSession, string bucketID, IEnumerable<string> args)
+        public static void DownloadFile(BackblazeB2AuthorizationSession authorizationSession, string bucketID, IEnumerable<string> args)
         {
             string fileName = CommonActions.GetArgument(args, "--file-name");
             string fileID = CommonActions.GetArgument(args, "--file-id");
@@ -60,7 +59,7 @@ namespace B2BackupUtility
             {
                 Stopwatch watch = new Stopwatch();
                 watch.Start();
-                BackblazeB2ActionResult<BackblazeB2DownloadFileResult> result = await CommonActions.ExecuteActionAsync(downloadAction, "Download file");
+                BackblazeB2ActionResult<BackblazeB2DownloadFileResult> result = CommonActions.ExecuteAction(downloadAction, "Download file");
                 watch.Stop();
                 if (result.HasResult)
                 {

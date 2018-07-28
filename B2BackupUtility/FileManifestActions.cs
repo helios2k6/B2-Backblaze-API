@@ -23,11 +23,9 @@ using B2BackblazeBridge.Actions;
 using B2BackblazeBridge.Core;
 using Newtonsoft.Json;
 using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace B2BackupUtility
 {
@@ -37,7 +35,7 @@ namespace B2BackupUtility
 
         private static readonly Random RandomNumberGenerator = new Random();
 
-        public async static Task<FileManifest> ReadManifestFileFromServerOrReturnNewOneAsync(
+        public static FileManifest ReadManifestFileFromServerOrReturnNewOne(
             BackblazeB2AuthorizationSession authorizationSession,
             string bucketID
         )
@@ -52,7 +50,7 @@ namespace B2BackupUtility
                 true
             );
 
-            BackblazeB2ActionResult<BackblazeB2ListFilesResult> listFilesActionResult = await listFilesActions.ExecuteAsync();
+            BackblazeB2ActionResult<BackblazeB2ListFilesResult> listFilesActionResult = listFilesActions.Execute();
 
             // If we have issues listing the files, we probably have bigger problems. Going to throw an exception instead
             if (listFilesActionResult.HasErrors)
@@ -79,15 +77,15 @@ namespace B2BackupUtility
             using (MemoryStream outputStream = new MemoryStream())
             using (DownloadFileAction manifestFileDownloadAction = new DownloadFileAction(authorizationSession, outputStream, manifestFile.FileID))
             {
-                BackblazeB2ActionResult<BackblazeB2DownloadFileResult> manifestResultOption = await manifestFileDownloadAction.ExecuteAsync();
+                BackblazeB2ActionResult<BackblazeB2DownloadFileResult> manifestResultOption = manifestFileDownloadAction.Execute();
                 if (manifestResultOption.HasResult)
                 {
                     // Now, read string from manifest
-                    await outputStream.FlushAsync();
+                    outputStream.Flush();
                     outputStream.Position = 0;
                     using (StreamReader outputStreamReader = new StreamReader(outputStream))
                     {
-                        string fileManifestString = await outputStreamReader.ReadToEndAsync();
+                        string fileManifestString = outputStreamReader.ReadToEnd();
                         return JsonConvert.DeserializeObject<FileManifest>(fileManifestString);
                     }
                 }
@@ -103,7 +101,7 @@ namespace B2BackupUtility
             }
         }
 
-        public async static Task WriteManifestFileToServer(
+        public static void WriteManifestFileToServer(
             BackblazeB2AuthorizationSession authorizationSession,
             string bucketID,
             FileManifest manifest
@@ -118,7 +116,7 @@ namespace B2BackupUtility
                 RemoteFileManifestName
             );
 
-            BackblazeB2ActionResult<BackblazeB2UploadFileResult> uploadResultOption = await uploadAction.ExecuteAsync();
+            BackblazeB2ActionResult<BackblazeB2UploadFileResult> uploadResultOption = uploadAction.Execute();
             if (uploadResultOption.HasErrors)
             {
                 Console.WriteLine(string.Format("There was an error uploading the File Manifest to the server: {0}", uploadResultOption.ToString()));

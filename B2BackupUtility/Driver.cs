@@ -36,9 +36,7 @@ namespace B2BackupUtility
     {
         public static void Main(string[] args)
         {
-            // Just to add space between the command and the output
-            Console.WriteLine();
-
+            PrintHeader();
             if (args.Length < 4 || CommonActions.DoesOptionExist(args, "--help"))
             {
                 PrintHelp();
@@ -65,27 +63,9 @@ namespace B2BackupUtility
                 return;
             }
 
-            ExecuteAsync(accountID, applicationKey, bucketID, action, args).Wait();
-        }
-
-        private static void HookUpCancellationHandler(Action action)
-        {
-            switch (action)
-            {
-                // Cancellation is only significant for these actions
-                case Action.DOWNLOAD:
-                case Action.UPLOAD:
-                case Action.UPLOAD_FOLDER:
-                    Console.CancelKeyPress += CancellationActions.HandleCancel;
-                    break;
-            }
-        }
-
-        private static async Task ExecuteAsync(string accountID, string applicationKey, string bucketID, Action action, IEnumerable<string> remainingArgs)
-        {
             Console.WriteLine("Authorizing account");
             AuthorizeAccountAction authorizeAccountAction = new AuthorizeAccountAction(accountID, applicationKey);
-            BackblazeB2ActionResult<BackblazeB2AuthorizationSession> authorizationSessionResult = await authorizeAccountAction.ExecuteAsync();
+            BackblazeB2ActionResult<BackblazeB2AuthorizationSession> authorizationSessionResult = authorizeAccountAction.Execute();
             if (authorizationSessionResult.HasErrors)
             {
                 Console.WriteLine(
@@ -106,32 +86,45 @@ namespace B2BackupUtility
             switch (action)
             {
                 case Action.DELETE:
-                    await DeleteFileActions.DeleteFileAsync(authorizationSession, remainingArgs);
+                    DeleteFileActions.DeleteFile(authorizationSession, args);
                     break;
 
                 case Action.DOWNLOAD:
-                    await DownloadFileActions.DownloadFileAsync(authorizationSession, bucketID, remainingArgs);
+                    DownloadFileActions.DownloadFile(authorizationSession, bucketID, args);
                     break;
 
                 case Action.GET_FILE_INFO:
-                    await GetFileInfoActions.ExecuteGetFileInfoAsync(authorizationSession, remainingArgs);
+                    GetFileInfoActions.ExecuteGetFileInfo(authorizationSession, args);
                     break;
 
                 case Action.LIST:
-                    await ListFilesActions.ListFilesAsync(authorizationSession, bucketID);
+                    ListFilesActions.ListFiles(authorizationSession, bucketID);
                     break;
 
                 case Action.UPLOAD:
-                    await UploadActions.UploadFileAsync(authorizationSession, bucketID, remainingArgs);
+                    UploadActions.UploadFile(authorizationSession, bucketID, args);
                     break;
 
                 case Action.UPLOAD_FOLDER:
-                    await UploadActions.UploadFolderAsync(authorizationSession, bucketID, remainingArgs);
+                    UploadActions.UploadFolder(authorizationSession, bucketID, args);
                     break;
 
                 case Action.UNKNOWN:
                 default:
                     Console.WriteLine("Unknown action specified");
+                    break;
+            }
+        }
+
+        private static void HookUpCancellationHandler(Action action)
+        {
+            switch (action)
+            {
+                // Cancellation is only significant for these actions
+                case Action.DOWNLOAD:
+                case Action.UPLOAD:
+                case Action.UPLOAD_FOLDER:
+                    Console.CancelKeyPress += CancellationActions.HandleCancel;
                     break;
             }
         }
@@ -173,11 +166,16 @@ namespace B2BackupUtility
             return false;
         }
 
+        private static void PrintHeader()
+        {
+            Console.WriteLine("B2 Backup Utility v2.0");
+            Console.WriteLine();
+        }
+
         private static void PrintHelp()
         {
             StringBuilder builder = new StringBuilder();
-            builder.AppendLine("B2 Backup Utility v1.9")
-                .AppendLine("Usage: <this program> <necessary switches> <action> [options]")
+            builder.AppendLine("Usage: <this program> <necessary switches> <action> [options]")
                 .AppendLine();
 
             builder.AppendLine("Necessary Switches")

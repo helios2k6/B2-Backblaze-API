@@ -22,17 +22,16 @@
 using B2BackblazeBridge.Actions;
 using B2BackblazeBridge.Core;
 using System;
-using System.Threading.Tasks;
 
 namespace B2BackupUtility
 {
     public static class ListFilesActions
     {
-        public static async Task ListFilesAsync(BackblazeB2AuthorizationSession authorizationSession, string bucketID)
+        public static void ListFiles(BackblazeB2AuthorizationSession authorizationSession, string bucketID)
         {
             Console.WriteLine("Fetching file list");
             ListFilesAction action = ListFilesAction.CreateListFileActionForFileNames(authorizationSession, bucketID, true);
-            BackblazeB2ActionResult<BackblazeB2ListFilesResult> actionResult = await CommonActions.ExecuteActionAsync(action, "List files");
+            BackblazeB2ActionResult<BackblazeB2ListFilesResult> actionResult = CommonActions.ExecuteAction(action, "List files");
             if (actionResult.HasResult)
             {
                 foreach (BackblazeB2ListFilesResult.FileResult file in actionResult.Result.Files)

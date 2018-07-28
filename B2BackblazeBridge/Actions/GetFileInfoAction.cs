@@ -24,7 +24,6 @@ using System;
 using System.Net;
 using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
 
 namespace B2BackblazeBridge.Actions
 {
@@ -49,7 +48,7 @@ namespace B2BackblazeBridge.Actions
         #endregion
 
         #region public methods
-        public async override Task<BackblazeB2ActionResult<BackblazeB2GetFileInfoResult>> ExecuteAsync()
+        public override BackblazeB2ActionResult<BackblazeB2GetFileInfoResult> Execute()
         {
             string getFileInfoRequest = "{\"fileId\":\"" + _fileID + "\"}";
             byte[] payload = Encoding.UTF8.GetBytes(getFileInfoRequest);
@@ -59,7 +58,7 @@ namespace B2BackblazeBridge.Actions
             webRequest.Headers.Add("Authorization", _authorizationSession.AuthorizationToken);
             webRequest.ContentLength = payload.Length;
 
-            BackblazeB2ActionResult<BackblazeB2GetFileInfoResult> getInfoResult = await SendWebRequestAndDeserializeAsync<BackblazeB2GetFileInfoResult>(webRequest, payload);
+            BackblazeB2ActionResult<BackblazeB2GetFileInfoResult> getInfoResult = SendWebRequestAndDeserialize<BackblazeB2GetFileInfoResult>(webRequest, payload);
             if (getInfoResult.HasResult)
             {
                 string escapedFileName = getInfoResult.Result.FileName;

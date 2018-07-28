@@ -19,16 +19,15 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+using B2BackblazeBridge.Core;
+using B2BackblazeBridge.Processing;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
-using B2BackblazeBridge.Core;
-using B2BackblazeBridge.Processing;
-using Newtonsoft.Json;
 
 namespace B2BackblazeBridge.Actions
 {
@@ -82,14 +81,14 @@ namespace B2BackblazeBridge.Actions
             return new ListFilesAction(authorizationSession, bucketID, ListFileMethod.FILE_NAMES, shouldFetchAllFiles);
         }
 
-        public async override Task<BackblazeB2ActionResult<BackblazeB2ListFilesResult>> ExecuteAsync()
+        public override BackblazeB2ActionResult<BackblazeB2ListFilesResult> Execute()
         {
             switch (_method)
             {
                 case ListFileMethod.FILE_VERSIONS:
-                    return await GetFileListAsync(ListFileVersionsAPIURL);
+                    return GetFileList(ListFileVersionsAPIURL);
                 case ListFileMethod.FILE_NAMES:
-                    return await GetFileListAsync(ListFileNamesAPIURL);
+                    return GetFileList(ListFileNamesAPIURL);
             }
 
             throw new InvalidOperationException("Invalid List File Method was pass in");
@@ -97,14 +96,14 @@ namespace B2BackblazeBridge.Actions
         #endregion
 
         #region private methods
-        private async Task<BackblazeB2ActionResult<BackblazeB2ListFilesResult>> GetFileListAsync(string url)
+        private BackblazeB2ActionResult<BackblazeB2ListFilesResult> GetFileList(string url)
         {
             string startFileName = null;
             BackblazeB2ActionResult<BackblazeB2ListFilesResult> currentResult = null;
             IEnumerable<BackblazeB2ListFilesResult.FileResult> fileResults = Enumerable.Empty<BackblazeB2ListFilesResult.FileResult>();
             do
             {
-                currentResult = await ExecuteWebRequestImpl(url, startFileName);
+                currentResult = ExecuteWebRequestImpl(url, startFileName);
                 if (currentResult.HasErrors)
                 {
                     // If there was an error, just return immediately
@@ -134,7 +133,7 @@ namespace B2BackblazeBridge.Actions
             });
         }
 
-        private async Task<BackblazeB2ActionResult<BackblazeB2ListFilesResult>> ExecuteWebRequestImpl(string url, string startFileName)
+        private BackblazeB2ActionResult<BackblazeB2ListFilesResult> ExecuteWebRequestImpl(string url, string startFileName)
         {
             ListFileNamesRequest request = new ListFileNamesRequest
             {
@@ -149,7 +148,7 @@ namespace B2BackblazeBridge.Actions
             webRequest.Headers.Add("Authorization", _authorizationSession.AuthorizationToken);
             webRequest.ContentLength = payload.Length;
 
-            return await SendWebRequestAndDeserializeAsync<BackblazeB2ListFilesResult>(webRequest, payload);
+            return SendWebRequestAndDeserialize<BackblazeB2ListFilesResult>(webRequest, payload);
         }
         #endregion
     }

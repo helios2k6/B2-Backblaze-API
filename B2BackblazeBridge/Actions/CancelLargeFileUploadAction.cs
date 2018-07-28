@@ -19,12 +19,11 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+using B2BackblazeBridge.Core;
 using System;
 using System.Net;
 using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
-using B2BackblazeBridge.Core;
 
 namespace B2BackblazeBridge.Actions
 {
@@ -58,7 +57,7 @@ namespace B2BackblazeBridge.Actions
         #endregion
 
         #region public methods
-        public async override Task<BackblazeB2ActionResult<BackblazeB2CancelLargeFileUploadResult>> ExecuteAsync()
+        public override BackblazeB2ActionResult<BackblazeB2CancelLargeFileUploadResult> Execute()
         {
             String getUploadUrlJsonStr = "{\"fileId\":\"" + _fileId + "\"}";
             byte[] payload = Encoding.UTF8.GetBytes(getUploadUrlJsonStr);
@@ -69,7 +68,7 @@ namespace B2BackblazeBridge.Actions
             webRequest.ContentLength = payload.Length;
 
             BackblazeB2ActionResult<BackblazeB2CancelLargeFileUploadResult> cancellationRequest =
-                await SendWebRequestAndDeserializeAsync<BackblazeB2CancelLargeFileUploadResult>(webRequest, payload);
+                SendWebRequestAndDeserialize<BackblazeB2CancelLargeFileUploadResult>(webRequest, payload);
             if (cancellationRequest.HasResult)
             {
                 string escapedFileName = cancellationRequest.Result.FileName;

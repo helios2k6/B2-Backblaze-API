@@ -96,6 +96,24 @@ namespace B2BackblazeBridge.Core
             MaybeResult = result;
             Errors = errors;
         }
+
+        /// <summary>
+        /// Constructs a new BackblazeB2ActionResult with error details and default to "Nothing" for the result
+        /// </summary>
+        /// <param name="errors">The errors to save to this result</param>
+        public BackblazeB2ActionResult(IEnumerable<BackblazeB2ActionErrorDetails> errors)
+            : this(Maybe<TResult>.Nothing, errors)
+        {
+        }
+
+        /// <summary>
+        /// Constructs a new BackblazeB2ActionResult with just one error detail and default to "Nothing" for the result
+        /// </summary>
+        /// <param name="error">The error to save to this result</param>
+        public BackblazeB2ActionResult(BackblazeB2ActionErrorDetails error)
+            : this(Maybe<TResult>.Nothing, error)
+        {
+        }
         #endregion
 
         #region public methods

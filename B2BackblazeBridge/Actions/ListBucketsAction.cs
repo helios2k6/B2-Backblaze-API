@@ -19,11 +19,10 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+using B2BackblazeBridge.Core;
 using System.Net;
 using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
-using B2BackblazeBridge.Core;
 
 namespace B2BackblazeBridge.Actions
 {
@@ -43,7 +42,7 @@ namespace B2BackblazeBridge.Actions
         #endregion
 
         #region public methods
-        public async override Task<BackblazeB2ActionResult<BackblazeB2ListBucketsResult>> ExecuteAsync()
+        public override BackblazeB2ActionResult<BackblazeB2ListBucketsResult> Execute()
         {
             string body = "{\"accountId\":\"" + _authorizationSession.AccountID + "\"}";
             byte[] payload = Encoding.UTF8.GetBytes(body);
@@ -53,7 +52,7 @@ namespace B2BackblazeBridge.Actions
             webRequest.Headers.Add("Authorization", _authorizationSession.AuthorizationToken);
             webRequest.ContentLength = payload.Length;
 
-            return await SendWebRequestAndDeserializeAsync<BackblazeB2ListBucketsResult>(webRequest, payload);
+            return SendWebRequestAndDeserialize<BackblazeB2ListBucketsResult>(webRequest, payload);
         }
         #endregion
     }
