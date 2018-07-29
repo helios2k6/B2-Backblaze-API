@@ -24,6 +24,7 @@ using B2BackblazeBridge.Core;
 using Newtonsoft.Json;
 using System;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Text;
 
@@ -31,7 +32,7 @@ namespace B2BackupUtility
 {
     public static class FileManifestActions
     {
-        private static readonly string RemoteFileManifestName = "b2_backup_util_file_manifest.txt";
+        private static readonly string RemoteFileManifestName = "b2_backup_util_file_manifest.txt.gz";
 
         private static readonly Random RandomNumberGenerator = new Random();
 
@@ -82,12 +83,7 @@ namespace B2BackupUtility
                 {
                     // Now, read string from manifest
                     outputStream.Flush();
-                    outputStream.Position = 0;
-                    using (StreamReader outputStreamReader = new StreamReader(outputStream))
-                    {
-                        string fileManifestString = outputStreamReader.ReadToEnd();
-                        return JsonConvert.DeserializeObject<FileManifest>(fileManifestString);
-                    }
+                    return GetDecompressedDeserializedManifest(outputStream.ToArray());
                 }
                 else
                 {
@@ -107,12 +103,10 @@ namespace B2BackupUtility
             FileManifest manifest
         )
         {
-            string serializedManifest = JsonConvert.SerializeObject(manifest);
-            byte[] encodedBytes = Encoding.UTF8.GetBytes(serializedManifest);
             UploadFileAction uploadAction = new UploadFileAction(
                 authorizationSession,
                 bucketID,
-                encodedBytes,
+                GetCompressedSerializedBytes(manifest),
                 RemoteFileManifestName
             );
 
@@ -120,6 +114,39 @@ namespace B2BackupUtility
             if (uploadResultOption.HasErrors)
             {
                 Console.WriteLine(string.Format("There was an error uploading the File Manifest to the server: {0}", uploadResultOption.ToString()));
+            }
+        }
+
+        private static byte[] GetCompressedSerializedBytes(FileManifest manifest)
+        {
+            using (MemoryStream serializedManifestStream = new MemoryStream(Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(manifest))))
+            using (MemoryStream compressedMemoryStream = new MemoryStream())
+            {
+                // It's very important that we dispose of the GZipStream before reading from the memory stream
+                using (GZipStream compressionStream = new GZipStream(compressedMemoryStream, CompressionMode.Compress, true))
+                {
+                    serializedManifestStream.CopyTo(compressionStream);
+                }
+
+                return compressedMemoryStream.ToArray();
+            }
+        }
+
+        private static FileManifest GetDecompressedDeserializedManifest(byte[] compressedBytes)
+        {
+            using (MemoryStream deserializedMemoryStream = new MemoryStream())
+            {
+                using (MemoryStream compressedBytesStream = new MemoryStream(compressedBytes))
+                using (GZipStream decompressionStream = new GZipStream(compressedBytesStream, CompressionMode.Decompress))
+                {
+                    decompressionStream.CopyTo(deserializedMemoryStream);
+                }
+
+                return JsonConvert.DeserializeObject<FileManifest>(
+                    Encoding.UTF8.GetString(
+                        deserializedMemoryStream.ToArray()
+                    )
+                );
             }
         }
     }

@@ -230,7 +230,7 @@ namespace B2BackupUtility
             {
                 Console.WriteLine("Cancelled upload");
             }
-            catch (B2ContractBrokenException ex)
+            catch (Exception ex)
             {
                 Console.Write(new StringBuilder()
                     .AppendFormat("An unexpected exception occurred while uploading file {0}", file)
