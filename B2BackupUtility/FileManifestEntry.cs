@@ -51,6 +51,18 @@ namespace B2BackupUtility
         /// </summary>
         [JsonProperty(PropertyName = "SHA1")]
         public string SHA1 { get; set; }
+
+        /// <summary>
+        /// The length of this file
+        /// </summary>
+        [JsonProperty(PropertyName = "Length")]
+        public long Length { get; set;  }
+
+        /// <summary>
+        /// The last time this file was modified
+        /// </summary>
+        [JsonProperty(PropertyName = "LastModified")]
+        public long LastModified { get; set;  }
         #endregion
 
         #region public methods
@@ -63,7 +75,9 @@ namespace B2BackupUtility
         {
             return OriginalFilePath?.GetHashCode() ?? 0 ^
                 DestinationFilePath?.GetHashCode() ?? 0 ^
-                SHA1?.GetHashCode() ?? 0;
+                SHA1?.GetHashCode() ?? 0 ^
+                Length.GetHashCode() ^
+                LastModified.GetHashCode();
         }
 
         public bool Equals(FileManifestEntry other)
@@ -73,7 +87,10 @@ namespace B2BackupUtility
                 return false;
             }
 
-            return string.Equals(OriginalFilePath, other.OriginalFilePath, StringComparison.Ordinal) &&
+            return
+                Length == other.Length &&
+                LastModified == other.LastModified &&
+                string.Equals(OriginalFilePath, other.OriginalFilePath, StringComparison.Ordinal) &&
                 string.Equals(DestinationFilePath, other.DestinationFilePath, StringComparison.Ordinal) &&
                 string.Equals(SHA1, other.SHA1, StringComparison.OrdinalIgnoreCase);
         }

@@ -124,22 +124,61 @@ namespace B2BackupUtility
             bool overrideFiles
         )
         {
-            IEnumerable<string> filesToUpload = Directory.EnumerateFiles(folder, "*", SearchOption.AllDirectories);
+            IEnumerable<string> allLocalFiles = Directory.EnumerateFiles(folder, "*", SearchOption.AllDirectories);
             if (overrideFiles)
             {
                 Console.WriteLine("Force uploading all files that aren't name collisions and duplicates");
-                return filesToUpload;
+                return allLocalFiles;
             }
 
             Console.WriteLine("Filtered files that are already on the server");
-            IDictionary<string, string> sha1ToFileNames = fileManifest.FileEntries.ToDictionary(f => f.SHA1, f => f.DestinationFilePath);
-            IEnumerable<string> filteredFiles = from localFile in filesToUpload
-                                                let localFileSHA1 = SHA1FileHashStore.Instance.GetFileHash(localFile)
-                                                let destinationFileName = FilePathUtilities.GetDestinationFileName(localFile, flatten)
-                                                where !sha1ToFileNames.ContainsKey(localFileSHA1) || !sha1ToFileNames[localFileSHA1].Equals(destinationFileName, StringComparison.Ordinal)
-                                                select localFile;
+            IDictionary<string, FileManifestEntry> destinationFileEntryToFileManifestEntry = fileManifest.FileEntries.ToDictionary(t => t.DestinationFilePath, t => t);
+            // If there's nothing to compare, then there's no point in iterating
+            if (destinationFileEntryToFileManifestEntry.Any() == false)
+            {
+                return allLocalFiles;
+            }
 
-            return filteredFiles;
+            ISet<string> filesToUpload = new HashSet<string>();
+            foreach (string localFile in allLocalFiles)
+            {
+                string destinationFileEntry = FilePathUtilities.GetDestinationFileName(localFile, flatten);
+                FileManifestEntry remoteFileManifestEntry;
+                if (destinationFileEntryToFileManifestEntry.TryGetValue(destinationFileEntry, out remoteFileManifestEntry))
+                {
+                    // Need confirm if this is a duplicate or not
+                    // 1. If the lengths and last modified dates are the same, then just assume the files are equals (do not upload)
+                    // 2. If the lengths are different then the files are not the same (upload)
+                    // 3. If the lengths are the same but the last modified dates are different, then we need to perform a SHA-1 check to see
+                    //    if the contents are actually different (upload if SHA-1's are different)
+                    FileInfo localFileInfo = new FileInfo(localFile);
+                    if (localFileInfo.Length == remoteFileManifestEntry.Length)
+                    {
+                        // Scenario 3
+                        if (localFileInfo.LastWriteTimeUtc.Equals(DateTime.FromBinary(remoteFileManifestEntry.LastModified)) == false)
+                        {
+                            string sha1OfLocalFile = SHA1FileHashStore.Instance.GetFileHash(localFile);
+                            if (string.Equals(sha1OfLocalFile, remoteFileManifestEntry.SHA1 , StringComparison.OrdinalIgnoreCase) == false)
+                            {
+                                filesToUpload.Add(localFile);
+                            }
+                        }
+                        // Scenario 1 is implied 
+                    }
+                    else
+                    {
+                        // Scenario 2
+                        filesToUpload.Add(localFile);
+                    }
+                }
+                else
+                {
+                    // We have never uploaded this file to the server
+                    filesToUpload.Add(localFile);
+                }
+            }
+
+            return filesToUpload;
         }
 
         private static void UploadFileImpl(
@@ -178,6 +217,8 @@ namespace B2BackupUtility
                         OriginalFilePath = file,
                         DestinationFilePath = destination,
                         SHA1 = SHA1FileHashStore.Instance.GetFileHash(file),
+                        Length = info.Length,
+                        LastModified = info.LastWriteTimeUtc.ToBinary(),
                     };
                     fileManifest.Version++;
                     fileManifest.FileEntries = fileManifest.FileEntries.Append(addedFileEntry).ToArray();
@@ -224,14 +265,12 @@ namespace B2BackupUtility
                 builder.AppendLine("Upload Successful:");
                 builder.AppendFormat("File: {0}", uploadResult.Result.FileName).AppendLine();
                 builder.AppendFormat("File ID: {0}", uploadResult.Result.FileID).AppendLine();
-                builder.AppendFormat("Total Content Length: {0}", uploadResult.Result.ContentLength).AppendLine();
+                builder.AppendFormat("Total Content Length: {0:n0} bytes", uploadResult.Result.ContentLength).AppendLine();
                 builder.AppendFormat("Upload Time: {0} seconds", (double)watch.ElapsedTicks / Stopwatch.Frequency).AppendLine();
                 builder.AppendFormat("Upload Speed: {0:0,0.00} bytes / second", bytesPerSecond.ToString("0,0.00", CultureInfo.InvariantCulture)).AppendLine().AppendLine();
                 Console.Write(builder.ToString());
 
-                castedResult = new BackblazeB2ActionResult<IBackblazeB2UploadResult>(
-                    (IBackblazeB2UploadResult)uploadResult.Result
-                );
+                castedResult = new BackblazeB2ActionResult<IBackblazeB2UploadResult>(uploadResult.Result);
             }
             else
             {

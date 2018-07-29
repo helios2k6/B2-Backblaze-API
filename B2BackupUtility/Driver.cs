@@ -168,7 +168,7 @@ namespace B2BackupUtility
 
         private static void PrintHeader()
         {
-            Console.WriteLine("B2 Backup Utility v2.0");
+            Console.WriteLine("B2 Backup Utility v2.2");
             Console.WriteLine();
         }
 

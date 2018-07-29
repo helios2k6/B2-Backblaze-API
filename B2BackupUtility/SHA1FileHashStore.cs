@@ -67,7 +67,7 @@ namespace B2BackupUtility
                 throw new InvalidOperationException("File does not exist. Cannot compute SHA-1");
             }
 
-            using (FileStream stream = new FileStream(filePath, FileMode.Open, FileAccess.Read))
+            using (FileStream stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read))
             using (SHA1 shaHash = SHA1.Create())
             {
                 byte[] hashData = shaHash.ComputeHash(stream);
