@@ -80,9 +80,9 @@ namespace B2BackupUtility
                         RemoteFilePath = destination,
                     });
                 }
-
-                return fileMappings;
             }
+            
+            return fileMappings;
         }
 
         public static string GetDestinationFileName(string localFileName, bool flatten)
