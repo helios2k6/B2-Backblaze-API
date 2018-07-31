@@ -29,6 +29,7 @@ namespace B2BackupUtility
         public static IEnumerable<LocalFileToRemoteFileMapping> GenerateLocalToRemotePathMapping(IEnumerable<string> localFilePaths, bool flattenDirectoryStructure)
         {
             IDictionary<string, ISet<string>> possiblyDuplicateFiles = new Dictionary<string, ISet<string>>();
+            IList<LocalFileToRemoteFileMapping> fileMappings = new List<LocalFileToRemoteFileMapping>();
             foreach (string localFilePath in localFilePaths)
             {
                 string destination = GetDestinationFileName(localFilePath, flattenDirectoryStructure);
@@ -48,18 +49,21 @@ namespace B2BackupUtility
 
                     // Remember to add this file to the list of possible duplicates
                     possiblyDuplicateFiles[destination].Add(localFilePath);
-                    if (isDuplicate)
+                    if (isDuplicate == false)
                     {
-                        continue;
+                        // If we're not a duplicate, then we need to rename the destination file to something we know is unique
+                        destination = string.Format(
+                            "{0}_non_duplicate({1}){2}",
+                            Path.GetFileNameWithoutExtension(destination),
+                            possiblyDuplicateFiles[destination].Count,
+                            Path.GetExtension(destination)
+                        );
+                        fileMappings.Add(new LocalFileToRemoteFileMapping
+                        {
+                            LocalFilePath = localFilePath,
+                            RemoteFilePath = destination,
+                        });
                     }
-
-                    // If we're not a duplicate, then we need to rename the destination file to something we know is unique
-                    destination = string.Format(
-                        "{0}_non_duplicate({1}){2}",
-                        Path.GetFileNameWithoutExtension(destination),
-                        possiblyDuplicateFiles[destination].Count,
-                        Path.GetExtension(destination)
-                    );
                 }
                 else
                 {
@@ -69,13 +73,15 @@ namespace B2BackupUtility
                         localFilePath,
                     };
                     possiblyDuplicateFiles[destination] = possibleDuplicates;
+
+                    fileMappings.Add(new LocalFileToRemoteFileMapping
+                    {
+                        LocalFilePath = localFilePath,
+                        RemoteFilePath = destination,
+                    });
                 }
 
-                yield return new LocalFileToRemoteFileMapping
-                {
-                    LocalFilePath = localFilePath,
-                    RemoteFilePath = destination,
-                };
+                return fileMappings;
             }
         }
 
