@@ -169,32 +169,24 @@ namespace B2BackblazeBridge.Actions
         {
             if (attemptNumber == 1)
             {
-                return TimeSpan.FromMilliseconds(_random.Next(0, 52));
+                return TimeSpan.FromSeconds(_random.Next(5, 10));
             }
 
             if (attemptNumber == 2)
             {
-                int timeFrameSelection = _random.Next(0, 4);
-
-                if (timeFrameSelection == 0)
-                {
-                    return TimeSpan.FromMilliseconds(0);
+                switch (_random.Next(0, 4)) {
+                    case 0:
+                        return TimeSpan.FromSeconds(10);
+                    case 1:
+                        return TimeSpan.FromSeconds(15);
+                    case 2:
+                        return TimeSpan.FromSeconds(30);
+                    default:
+                        return TimeSpan.FromSeconds(60);
                 }
-
-                if (timeFrameSelection == 1)
-                {
-                    return TimeSpan.FromMilliseconds(52);
-                }
-
-                if (timeFrameSelection == 2)
-                {
-                    return TimeSpan.FromMilliseconds(103);
-                }
-
-                return TimeSpan.FromMilliseconds(154);
             }
 
-            return TimeSpan.FromMilliseconds(_random.Next(0, 120000));
+            return TimeSpan.FromSeconds(_random.Next(15, 60));
         }
         
         /// <summary>
