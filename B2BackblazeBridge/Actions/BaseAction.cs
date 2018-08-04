@@ -188,7 +188,7 @@ namespace B2BackblazeBridge.Actions
 
             return TimeSpan.FromSeconds(_random.Next(15, 60));
         }
-        
+
         /// <summary>
         /// Sends a web request with the optional payload and attempts to deserialize the result. Otherwise, it deserializes the error
         /// </summary>
@@ -196,30 +196,16 @@ namespace B2BackblazeBridge.Actions
         /// <param name="webRequest">The web request</param>
         /// <param name="payload">The payload to send</param>
         /// <returns>An action result</returns>
-        protected BackblazeB2ActionResult<TResult> SendWebRequestAndDeserialize<TResult>(HttpWebRequest webRequest, byte[] payload)
+        protected BackblazeB2ActionResult<TResult> SendWebRequestAndDeserialize<TResult>(
+            HttpWebRequest webRequest,
+            byte[] payload
+        )
         {
             if (webRequest == null)
             {
                 throw new ArgumentNullException("webRequest");
             }
 
-            RawHttpCallResult rawHttpCallResult = SendWebRequestRaw(webRequest, payload);
-            Maybe<TResult> resultMaybe = rawHttpCallResult.SuccessResult.Select(t => JsonConvert.DeserializeObject<TResult>(t));
-            Maybe<BackblazeB2ActionErrorDetails> errorMaybe = rawHttpCallResult.ErrorResult.Select(e => JsonConvert.DeserializeObject<BackblazeB2ActionErrorDetails>(e));
-
-            return new BackblazeB2ActionResult<TResult>(resultMaybe, errorMaybe.ToEnumerable());
-        }
-        #endregion
-
-        #region private methods
-        /// <summary>
-        /// Send a raw web request to the B2 Backblaze API
-        /// </summary>
-        /// <param name="webRequest">The web request</param>
-        /// <param name="payload">The optional payload to send</param>
-        /// <returns>A raw http result</returns>
-        private RawHttpCallResult SendWebRequestRaw(HttpWebRequest webRequest, byte[] payload)
-        {
             try
             {
                 if (payload != null)
@@ -231,47 +217,57 @@ namespace B2BackblazeBridge.Actions
                 }
 
                 using (HttpWebResponse response = webRequest.GetResponse() as HttpWebResponse)
-                using (StreamReader reader = new StreamReader(response.GetResponseStream()))
                 {
-                    string jsonResult = reader.ReadToEnd();
-                    return new RawHttpCallResult
-                    {
-                        SuccessResult = jsonResult.ToMaybe(),
-                    };
+                    return new BackblazeB2ActionResult<TResult>(
+                        HandleSuccessfulWebRequest<TResult>(response)
+                    );
                 }
             }
             catch (WebException ex)
             {
-                HttpWebResponse response = (HttpWebResponse)ex.Response;
-                if (response != null)
-                {
-                    using (StreamReader reader = new StreamReader(response.GetResponseStream()))
-                    {
-                        string responseJson = reader.ReadToEnd();
-                        return new RawHttpCallResult
-                        {
-                            ErrorResult = responseJson.ToMaybe(),
-                        };
-                    }
-                }
-                else
-                {
-                    BackblazeB2ActionErrorDetails customErrorDetails = new BackblazeB2ActionErrorDetails
-                    {
-                        Status = (int)ex.Status,
-                        Code = "Unknown B2 Error",
-                        Message = ex.Message,
-                    };
-                    string customErrorJson = JsonConvert.SerializeObject(customErrorDetails);
-                    return new RawHttpCallResult
-                    {
-                        ErrorResult = customErrorJson.ToMaybe(),
-                    };
-                }
+                return new BackblazeB2ActionResult<TResult>(HandleErrorWebRequest(ex));
             }
             catch (Exception ex)
             {
-                throw new B2ContractBrokenException("An exception occurred while attempting to talk to the B2 API", ex);
+                throw new B2ContractBrokenException(
+                    "An exception occurred while attempting to talk to the B2 API",
+                    ex
+                );
+            }
+        }
+
+        /// <summary>
+        /// A overriddable method that handles successful web requests to the B2 Backblaze API
+        /// </summary>
+        /// <param name="response">The response that was returned from the APIq</param>
+        /// <typeparam name="TResult"></typeparam>
+        /// <returns></returns>
+        protected virtual TResult HandleSuccessfulWebRequest<TResult>(HttpWebResponse response)
+        {
+            using (StreamReader reader = new StreamReader(response.GetResponseStream()))
+            {
+                return JsonConvert.DeserializeObject<TResult>(reader.ReadToEnd());
+            }
+        }
+
+        protected virtual BackblazeB2ActionErrorDetails HandleErrorWebRequest(WebException ex)
+        {
+            HttpWebResponse response = (HttpWebResponse)ex.Response;
+            if (response != null)
+            {
+                using (StreamReader reader = new StreamReader(response.GetResponseStream()))
+                {
+                    return JsonConvert.DeserializeObject<BackblazeB2ActionErrorDetails>(reader.ReadToEnd());
+                }
+            }
+            else
+            {
+                return new BackblazeB2ActionErrorDetails
+                {
+                    Status = (int)ex.Status,
+                    Code = "Unknown B2 Error",
+                    Message = ex.Message,
+                };
             }
         }
         #endregion
