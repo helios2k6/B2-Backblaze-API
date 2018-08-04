@@ -342,32 +342,27 @@ namespace B2BackblazeBridge.Actions
 
         private IEnumerable<BackblazeB2ActionResult<GetUploadPartURLResponse>> GetUploadPartURLs(string fileID)
         {
-            Task<BackblazeB2ActionResult<GetUploadPartURLResponse>>[] uploadPartURLWorkers = new Task<BackblazeB2ActionResult<GetUploadPartURLResponse>>[_numberOfConnections];
+            Task<BackblazeB2ActionResult<GetUploadPartURLResponse>>[] uploadPartURLWorkers =
+                new Task<BackblazeB2ActionResult<GetUploadPartURLResponse>>[_numberOfConnections];
             for (int i = 0; i < _numberOfConnections; i++)
             {
-                uploadPartURLWorkers[i] = Task.Factory.StartNew(() => GetUploadPartURL(fileID));
+                uploadPartURLWorkers[i] = Task.Factory.StartNew(() => new GetUploadPartURLAction(
+                    _authorizationSession,
+                    _bucketID,
+                    fileID
+                ).Execute());
             }
 
             Task.WaitAll(uploadPartURLWorkers);
 
-            List<BackblazeB2ActionResult<GetUploadPartURLResponse>> uploadPartURLs = new List<BackblazeB2ActionResult<GetUploadPartURLResponse>>();
+            List<BackblazeB2ActionResult<GetUploadPartURLResponse>> uploadPartURLs =
+                new List<BackblazeB2ActionResult<GetUploadPartURLResponse>>();
             for (int i = 0; i < _numberOfConnections; i++)
             {
                 uploadPartURLs.Add(uploadPartURLWorkers[i].Result);
             }
 
             return uploadPartURLs;
-        }
-
-        private BackblazeB2ActionResult<GetUploadPartURLResponse> GetUploadPartURL(string fileID)
-        {
-            byte[] jsonPayloadBytes = Encoding.UTF8.GetBytes("{\"fileId\":\"" + fileID + "\"}");
-            HttpWebRequest webRequest = GetHttpWebRequest(_authorizationSession.APIURL + GetUploadPartURLURL);
-            webRequest.Method = "POST";
-            webRequest.Headers.Add("Authorization", _authorizationSession.AuthorizationToken);
-            webRequest.ContentLength = jsonPayloadBytes.Length;
-
-            return SendWebRequestAndDeserialize<GetUploadPartURLResponse>(webRequest, jsonPayloadBytes);
         }
 
         private BackblazeB2ActionResult<UploadFilePartResponse> UploadFilePart(
