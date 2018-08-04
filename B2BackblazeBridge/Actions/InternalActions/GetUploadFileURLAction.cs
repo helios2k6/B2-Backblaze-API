@@ -20,53 +20,44 @@
  */
 
 using B2BackblazeBridge.Core;
-using System;
+using B2BackblazeBridge.Processing;
 using System.Net;
 using System.Text;
 using System.Threading;
 
-namespace B2BackblazeBridge.Actions
+namespace B2BackblazeBridge.Actions.InternalActions
 {
     /// <summary>
-    /// Represents an action to list all of the files within a Bucket on B2
+    /// An internal class that will fetch the URL to upload to
     /// </summary>
-    public sealed class GetFileInfoAction : BaseAction<BackblazeB2GetFileInfoResult>
+    internal sealed class GetUploadFileURLAction : BaseAction<GetUploadFileURLResponse>
     {
         #region private fields
-        private static readonly string APIURL = "/b2api/v1/b2_get_file_info";
+        private static readonly string GetUploadURIURI = "/b2api/v1/b2_get_upload_url";
 
         private readonly BackblazeB2AuthorizationSession _authorizationSession;
-        private readonly string _fileID;
+        private readonly string _bucketID;
         #endregion
 
-        #region ctor
-        public GetFileInfoAction(BackblazeB2AuthorizationSession authorizationSession, string fileID) : base(CancellationToken.None)
+        public GetUploadFileURLAction(
+            BackblazeB2AuthorizationSession authorizationSession,
+            string bucketID
+        ) : base(CancellationToken.None)
         {
             _authorizationSession = authorizationSession;
-            _fileID = fileID;
+            _bucketID = bucketID;
         }
-        #endregion
 
-        #region public methods
-        public override BackblazeB2ActionResult<BackblazeB2GetFileInfoResult> Execute()
+        public override BackblazeB2ActionResult<GetUploadFileURLResponse> Execute()
         {
-            string getFileInfoRequest = "{\"fileId\":\"" + _fileID + "\"}";
-            byte[] payload = Encoding.UTF8.GetBytes(getFileInfoRequest);
-
-            HttpWebRequest webRequest = GetHttpWebRequest(_authorizationSession.APIURL + APIURL);
-            webRequest.Method = "POST";
+            HttpWebRequest webRequest = GetHttpWebRequest(_authorizationSession.APIURL + GetUploadURIURI);
             webRequest.Headers.Add("Authorization", _authorizationSession.AuthorizationToken);
-            webRequest.ContentLength = payload.Length;
+            webRequest.Method = "POST";
 
-            BackblazeB2ActionResult<BackblazeB2GetFileInfoResult> getInfoResult = SendWebRequestAndDeserialize(webRequest, payload);
-            if (getInfoResult.HasResult)
-            {
-                string escapedFileName = getInfoResult.Result.FileName;
-                getInfoResult.Result.FileName = Uri.UnescapeDataString(escapedFileName);
-            }
-
-            return getInfoResult;
+            string body = "{\"bucketId\":\"" + _bucketID + "\"}";
+            byte[] encodedBody = Encoding.UTF8.GetBytes(body);
+            webRequest.ContentLength = encodedBody.Length;
+            return SendWebRequestAndDeserialize(webRequest, encodedBody);
         }
-        #endregion
     }
 }

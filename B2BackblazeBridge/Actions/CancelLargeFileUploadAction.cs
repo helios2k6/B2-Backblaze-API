@@ -68,7 +68,7 @@ namespace B2BackblazeBridge.Actions
             webRequest.ContentLength = payload.Length;
 
             BackblazeB2ActionResult<BackblazeB2CancelLargeFileUploadResult> cancellationRequest =
-                SendWebRequestAndDeserialize<BackblazeB2CancelLargeFileUploadResult>(webRequest, payload);
+                SendWebRequestAndDeserialize(webRequest, payload);
             if (cancellationRequest.HasResult)
             {
                 string escapedFileName = cancellationRequest.Result.FileName;

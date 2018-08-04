@@ -148,7 +148,7 @@ namespace B2BackblazeBridge.Actions
             webRequest.Headers.Add("Authorization", _authorizationSession.AuthorizationToken);
             webRequest.ContentLength = payload.Length;
 
-            return SendWebRequestAndDeserialize<BackblazeB2ListFilesResult>(webRequest, payload);
+            return SendWebRequestAndDeserialize(webRequest, payload);
         }
         #endregion
     }

@@ -196,7 +196,7 @@ namespace B2BackblazeBridge.Actions
         /// <param name="webRequest">The web request</param>
         /// <param name="payload">The payload to send</param>
         /// <returns>An action result</returns>
-        protected BackblazeB2ActionResult<TResult> SendWebRequestAndDeserialize<TResult>(
+        protected BackblazeB2ActionResult<T> SendWebRequestAndDeserialize(
             HttpWebRequest webRequest,
             byte[] payload
         )
@@ -218,14 +218,14 @@ namespace B2BackblazeBridge.Actions
 
                 using (HttpWebResponse response = webRequest.GetResponse() as HttpWebResponse)
                 {
-                    return new BackblazeB2ActionResult<TResult>(
-                        HandleSuccessfulWebRequest<TResult>(response)
+                    return new BackblazeB2ActionResult<T>(
+                        HandleSuccessfulWebRequest(response)
                     );
                 }
             }
             catch (WebException ex)
             {
-                return new BackblazeB2ActionResult<TResult>(HandleErrorWebRequest(ex));
+                return new BackblazeB2ActionResult<T>(HandleErrorWebRequest(ex));
             }
             catch (Exception ex)
             {
@@ -237,19 +237,23 @@ namespace B2BackblazeBridge.Actions
         }
 
         /// <summary>
-        /// A overriddable method that handles successful web requests to the B2 Backblaze API
+        /// A overridable method that handles successful web requests to the B2 Backblaze API
         /// </summary>
         /// <param name="response">The response that was returned from the APIq</param>
-        /// <typeparam name="TResult"></typeparam>
         /// <returns></returns>
-        protected virtual TResult HandleSuccessfulWebRequest<TResult>(HttpWebResponse response)
+        protected virtual T HandleSuccessfulWebRequest(HttpWebResponse response)
         {
             using (StreamReader reader = new StreamReader(response.GetResponseStream()))
             {
-                return JsonConvert.DeserializeObject<TResult>(reader.ReadToEnd());
+                return JsonConvert.DeserializeObject<T>(reader.ReadToEnd());
             }
         }
 
+        /// <summary>
+        /// An overridable method that handles web requests that fail
+        /// </summary>
+        /// <param name="ex">The WebException that occurs during the request</param>
+        /// <returns>A BackblazeB2ActionErrorDetails Request</returns>
         protected virtual BackblazeB2ActionErrorDetails HandleErrorWebRequest(WebException ex)
         {
             HttpWebResponse response = (HttpWebResponse)ex.Response;

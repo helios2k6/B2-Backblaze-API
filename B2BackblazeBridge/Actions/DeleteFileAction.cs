@@ -77,7 +77,7 @@ namespace B2BackblazeBridge.Actions
             webRequest.Headers.Add("Authorization", _authorizationSession.AuthorizationToken);
             webRequest.ContentLength = payload.Length;
 
-            BackblazeB2ActionResult<BackblazeB2DeleteFileResult> deletionResult = SendWebRequestAndDeserialize<BackblazeB2DeleteFileResult>(webRequest, payload);
+            BackblazeB2ActionResult<BackblazeB2DeleteFileResult> deletionResult = SendWebRequestAndDeserialize(webRequest, payload);
             if (deletionResult.HasResult)
             {
                 string escapedFileName = deletionResult.Result.FileName;

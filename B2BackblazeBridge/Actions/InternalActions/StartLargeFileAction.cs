@@ -19,54 +19,52 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-using B2BackblazeBridge.Core;
-using System;
 using System.Net;
 using System.Text;
 using System.Threading;
+using B2BackblazeBridge.Core;
+using B2BackblazeBridge.Processing;
+using Newtonsoft.Json;
 
-namespace B2BackblazeBridge.Actions
+namespace B2BackblazeBridge.Actions.InternalActions
 {
-    /// <summary>
-    /// Represents an action to list all of the files within a Bucket on B2
-    /// </summary>
-    public sealed class GetFileInfoAction : BaseAction<BackblazeB2GetFileInfoResult>
+    internal sealed class StartLargeFileAction : BaseAction<StartLargeFileResponse>
     {
         #region private fields
-        private static readonly string APIURL = "/b2api/v1/b2_get_file_info";
+        private static readonly string StartLargeFileURL = "/b2api/v1/b2_start_large_file";
 
         private readonly BackblazeB2AuthorizationSession _authorizationSession;
-        private readonly string _fileID;
+        private readonly string _bucketID;
+        private readonly string _fileDestination;
         #endregion
-
-        #region ctor
-        public GetFileInfoAction(BackblazeB2AuthorizationSession authorizationSession, string fileID) : base(CancellationToken.None)
+        
+        public StartLargeFileAction(
+            BackblazeB2AuthorizationSession authorizationSession,
+            string bucketID,
+            string fileDestination
+        ) : base(CancellationToken.None)
         {
             _authorizationSession = authorizationSession;
-            _fileID = fileID;
+            _bucketID = bucketID;
+            _fileDestination = fileDestination;
         }
-        #endregion
 
-        #region public methods
-        public override BackblazeB2ActionResult<BackblazeB2GetFileInfoResult> Execute()
+        public override BackblazeB2ActionResult<StartLargeFileResponse> Execute()
         {
-            string getFileInfoRequest = "{\"fileId\":\"" + _fileID + "\"}";
-            byte[] payload = Encoding.UTF8.GetBytes(getFileInfoRequest);
+            StartLargeFileRequest request = new StartLargeFileRequest
+            {
+                BucketID = _bucketID,
+                ContentType = "b2/x-auto",
+                FileName = GetSafeFileName(_fileDestination),
+            };
 
-            HttpWebRequest webRequest = GetHttpWebRequest(_authorizationSession.APIURL + APIURL);
+            byte[] jsonBodyBytes = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(request));
+            HttpWebRequest webRequest = GetHttpWebRequest(_authorizationSession.APIURL + StartLargeFileURL);
             webRequest.Method = "POST";
             webRequest.Headers.Add("Authorization", _authorizationSession.AuthorizationToken);
-            webRequest.ContentLength = payload.Length;
+            webRequest.ContentLength = jsonBodyBytes.Length;
 
-            BackblazeB2ActionResult<BackblazeB2GetFileInfoResult> getInfoResult = SendWebRequestAndDeserialize(webRequest, payload);
-            if (getInfoResult.HasResult)
-            {
-                string escapedFileName = getInfoResult.Result.FileName;
-                getInfoResult.Result.FileName = Uri.UnescapeDataString(escapedFileName);
-            }
-
-            return getInfoResult;
+            return SendWebRequestAndDeserialize(webRequest, jsonBodyBytes);
         }
-        #endregion
     }
 }

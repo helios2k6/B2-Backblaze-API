@@ -188,6 +188,40 @@ namespace B2BackblazeBridge.Actions
         }
         #endregion
 
+        #region protected methods
+        protected override BackblazeB2DownloadFileResult HandleSuccessfulWebRequest(
+            HttpWebResponse response
+        )
+        {
+            using (BinaryReader binaryFileReader = new BinaryReader(response.GetResponseStream()))
+            {
+                byte[] fileBuffer;
+                while (true)
+                {
+                    fileBuffer = binaryFileReader.ReadBytes(BufferSize);
+                    if (fileBuffer == null || fileBuffer.Length < 1)
+                    {
+                        break;
+                    }
+
+                    _outputStream.Write(fileBuffer, 0, fileBuffer.Length);
+                }
+
+                long timeStamp = -1;
+                long.TryParse(response.Headers.Get("X-Bz-Upload-Timestamp"), out timeStamp);
+
+                return new BackblazeB2DownloadFileResult
+                {
+                    ContentLength = response.ContentLength,
+                    ContentSha1 = response.Headers.Get("X-Bz-Content-Sha1"),
+                    ContentType = response.ContentType,
+                    FileName = response.Headers.Get("X-Bz-File-Name"),
+                    TimeStamp = timeStamp,
+                };
+            }
+        }
+        #endregion
+
         #region private method
         private BackblazeB2ActionResult<BackblazeB2DownloadFileResult> DownloadByFileID()
         {
@@ -199,7 +233,7 @@ namespace B2BackblazeBridge.Actions
             webRequest.Headers.Add("Authorization", _authorizationSession.AuthorizationToken);
             webRequest.ContentLength = payload.Length;
 
-            return ExecuteWebDownloadRequest(webRequest, payload);
+            return SendWebRequestAndDeserialize(webRequest, payload);
         }
 
         private BackblazeB2ActionResult<BackblazeB2DownloadFileResult> DownloadByFileName()
@@ -208,72 +242,7 @@ namespace B2BackblazeBridge.Actions
             webRequest.Method = "GET";
             webRequest.Headers.Add("Authorization", _authorizationSession.AuthorizationToken);
 
-            return ExecuteWebDownloadRequest(webRequest, null);
-        }
-
-        /// <summary>
-        /// A custom web request execution function because the one used by the BaseAction isn't sufficient 
-        /// </summary>
-        /// <returns>The download result</returns>
-        private BackblazeB2ActionResult<BackblazeB2DownloadFileResult> ExecuteWebDownloadRequest(
-            HttpWebRequest webRequest,
-            byte[] payload
-        )
-        {
-            try
-            {
-                if (payload != null)
-                {
-                    using (Stream stream = webRequest.GetRequestStream())
-                    {
-                        stream.Write(payload, 0, payload.Length);
-                    }
-                }
-
-                using (HttpWebResponse response = webRequest.GetResponse() as HttpWebResponse)
-                using (BinaryReader binaryFileReader = new BinaryReader(response.GetResponseStream()))
-                {
-                    byte[] fileBuffer;
-                    while (true)
-                    {
-                        fileBuffer = binaryFileReader.ReadBytes(BufferSize);
-                        if (fileBuffer == null || fileBuffer.Length < 1)
-                        {
-                            break;
-                        }
-
-                        _outputStream.Write(fileBuffer, 0, fileBuffer.Length);
-                    }
-
-                    long timeStamp = -1;
-                    long.TryParse(response.Headers.Get("X-Bz-Upload-Timestamp"), out timeStamp);
-
-                    BackblazeB2DownloadFileResult result = new BackblazeB2DownloadFileResult
-                    {
-                        ContentLength = response.ContentLength,
-                        ContentSha1 = response.Headers.Get("X-Bz-Content-Sha1"),
-                        ContentType = response.ContentType,
-                        FileName = response.Headers.Get("X-Bz-File-Name"),
-                        TimeStamp = timeStamp,
-                    };
-
-                    return new BackblazeB2ActionResult<BackblazeB2DownloadFileResult>(
-                        result
-                    );
-                }
-            }
-            catch (WebException ex)
-            {
-                HttpWebResponse response = (HttpWebResponse)ex.Response;
-                using (StreamReader reader = new StreamReader(response.GetResponseStream()))
-                {
-                    string responseJson = reader.ReadToEnd();
-                    return new BackblazeB2ActionResult<BackblazeB2DownloadFileResult>(
-                        Maybe<BackblazeB2DownloadFileResult>.Nothing,
-                        JsonConvert.DeserializeObject<BackblazeB2ActionErrorDetails>(responseJson)
-                    );
-                }
-            }
+            return SendWebRequestAndDeserialize(webRequest, null);
         }
 
         private string GetDownloadByFileURL()

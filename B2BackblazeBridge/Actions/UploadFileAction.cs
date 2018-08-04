@@ -19,6 +19,7 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+using B2BackblazeBridge.Actions.InternalActions;
 using B2BackblazeBridge.Core;
 using B2BackblazeBridge.Processing;
 using Functional.Maybe;
@@ -36,8 +37,6 @@ namespace B2BackblazeBridge.Actions
     public sealed class UploadFileAction : BaseAction<BackblazeB2UploadFileResult>
     {
         #region private fields
-        private static readonly string GetUploadURIURI = "/b2api/v1/b2_get_upload_url";
-
         private readonly BackblazeB2AuthorizationSession _authorizationSession;
         private readonly string _bucketID;
         private readonly byte[] _bytesToUpload;
@@ -85,12 +84,14 @@ namespace B2BackblazeBridge.Actions
         #region public methods
         public override BackblazeB2ActionResult<BackblazeB2UploadFileResult> Execute()
         {
-            return UploadFile(GetUploadURL());
+            return UploadFile(new GetUploadFileURLAction(_authorizationSession, _bucketID).Execute());
         }
         #endregion
 
         #region private methods
-        private BackblazeB2ActionResult<BackblazeB2UploadFileResult> UploadFile(BackblazeB2ActionResult<GetUploadFileURLResponse> getUploadFileUrlResult)
+        private BackblazeB2ActionResult<BackblazeB2UploadFileResult> UploadFile(
+            BackblazeB2ActionResult<GetUploadFileURLResponse> getUploadFileUrlResult
+        )
         {
             if (getUploadFileUrlResult.HasResult)
             {
@@ -105,7 +106,7 @@ namespace B2BackblazeBridge.Actions
                 webRequest.ContentType = "b2/x-auto";
                 webRequest.ContentLength = _bytesToUpload.Length;
 
-                BackblazeB2ActionResult<BackblazeB2UploadFileResult> result = SendWebRequestAndDeserialize<BackblazeB2UploadFileResult>(webRequest, _bytesToUpload);
+                BackblazeB2ActionResult<BackblazeB2UploadFileResult> result = SendWebRequestAndDeserialize(webRequest, _bytesToUpload);
                 result.MaybeResult.Do(t => t.FileName = Uri.UnescapeDataString(t.FileName));
                 return result;
             }
@@ -113,18 +114,6 @@ namespace B2BackblazeBridge.Actions
             {
                 return new BackblazeB2ActionResult<BackblazeB2UploadFileResult>(Maybe<BackblazeB2UploadFileResult>.Nothing, getUploadFileUrlResult.Errors);
             }
-        }
-
-        private BackblazeB2ActionResult<GetUploadFileURLResponse> GetUploadURL()
-        {
-            HttpWebRequest webRequest = GetHttpWebRequest(_authorizationSession.APIURL + GetUploadURIURI);
-            webRequest.Headers.Add("Authorization", _authorizationSession.AuthorizationToken);
-            webRequest.Method = "POST";
-
-            string body = "{\"bucketId\":\"" + _bucketID + "\"}";
-            byte[] encodedBody = Encoding.UTF8.GetBytes(body);
-            webRequest.ContentLength = encodedBody.Length;
-            return SendWebRequestAndDeserialize<GetUploadFileURLResponse>(webRequest, encodedBody);
         }
         #endregion
     }

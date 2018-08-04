@@ -19,6 +19,7 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+using B2BackblazeBridge.Actions.InternalActions;
 using B2BackblazeBridge.Core;
 using B2BackblazeBridge.Processing;
 using Functional.Maybe;
@@ -41,8 +42,6 @@ namespace B2BackblazeBridge.Actions
     public sealed class UploadFileUsingMultipleConnectionsAction : BaseAction<BackblazeB2UploadMultipartFileResult>
     {
         #region private fields
-        private static readonly string StartLargeFileURL = "/b2api/v1/b2_start_large_file";
-
         private static readonly string GetUploadPartURLURL = "/b2api/v1/b2_get_upload_part_url";
 
         private static readonly string FinishLargeFileURL = "/b2api/v1/b2_finish_large_file";
@@ -125,7 +124,15 @@ namespace B2BackblazeBridge.Actions
             string bucketID,
             int fileChunkSizesInBytes,
             int numberOfConnections
-        ) : this(authorizationSession, filePath, fileDestination, bucketID, fileChunkSizesInBytes, numberOfConnections, CancellationToken.None)
+        ) : this(
+            authorizationSession,
+            filePath,
+            fileDestination,
+            bucketID,
+            fileChunkSizesInBytes,
+            numberOfConnections,
+            CancellationToken.None
+        )
         {
         }
         #endregion
@@ -133,7 +140,11 @@ namespace B2BackblazeBridge.Actions
         #region public methods
         public override BackblazeB2ActionResult<BackblazeB2UploadMultipartFileResult> Execute()
         {
-            BackblazeB2ActionResult<StartLargeFileResponse> fileIDResponse = GetFileID();
+            BackblazeB2ActionResult<StartLargeFileResponse> fileIDResponse = new StartLargeFileAction(
+                _authorizationSession,
+                _bucketID,
+                _fileDestination
+            ).Execute();
             if (fileIDResponse.HasErrors)
             {
                 return new BackblazeB2ActionResult<BackblazeB2UploadMultipartFileResult>(
@@ -329,24 +340,6 @@ namespace B2BackblazeBridge.Actions
             }
         }
 
-        private BackblazeB2ActionResult<StartLargeFileResponse> GetFileID()
-        {
-            StartLargeFileRequest request = new StartLargeFileRequest
-            {
-                BucketID = _bucketID,
-                ContentType = "b2/x-auto",
-                FileName = GetSafeFileName(_fileDestination),
-            };
-
-            byte[] jsonBodyBytes = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(request));
-            HttpWebRequest webRequest = GetHttpWebRequest(_authorizationSession.APIURL + StartLargeFileURL);
-            webRequest.Method = "POST";
-            webRequest.Headers.Add("Authorization", _authorizationSession.AuthorizationToken);
-            webRequest.ContentLength = jsonBodyBytes.Length;
-
-            return SendWebRequestAndDeserialize<StartLargeFileResponse>(webRequest, jsonBodyBytes);
-        }
-
         private IEnumerable<BackblazeB2ActionResult<GetUploadPartURLResponse>> GetUploadPartURLs(string fileID)
         {
             Task<BackblazeB2ActionResult<GetUploadPartURLResponse>>[] uploadPartURLWorkers = new Task<BackblazeB2ActionResult<GetUploadPartURLResponse>>[_numberOfConnections];
@@ -478,7 +471,7 @@ namespace B2BackblazeBridge.Actions
             webRequest.Headers.Add("Authorization", _authorizationSession.AuthorizationToken);
 
             BackblazeB2ActionResult<BackblazeB2UploadMultipartFileResult> response =
-                SendWebRequestAndDeserialize<BackblazeB2UploadMultipartFileResult>(webRequest, requestBytes);
+                SendWebRequestAndDeserialize(webRequest, requestBytes);
 
             response.MaybeResult.Do(r =>
             {
