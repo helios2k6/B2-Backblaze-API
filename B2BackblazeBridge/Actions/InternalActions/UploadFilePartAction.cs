@@ -114,8 +114,9 @@ namespace B2BackblazeBridge.Actions.InternalActions
                         return uploadResponse;
                     }
                 }
-                else if (uploadResponse.Errors.First().Code.Equals("service_unavailable", StringComparison.OrdinalIgnoreCase) && attemptNumber < MaxUploadAttempts)
+                else if (uploadResponse.Errors.Any(e => e.Status >= 500 && e.Status < 600) && attemptNumber < MaxUploadAttempts)
                 {
+                    // Internal error. We need to do exponential backoff
                     attemptNumber++;
                 }
                 else
