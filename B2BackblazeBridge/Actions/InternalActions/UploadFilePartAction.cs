@@ -32,7 +32,6 @@ namespace B2BackblazeBridge.Actions.InternalActions
     internal sealed class UploadFilePartAction : BaseAction<UploadFilePartResponse>
     {
         #region private fields
-        private static readonly string GetUploadPartURLURL = "/b2api/v1/b2_get_upload_part_url";
         private static readonly int MaxUploadAttempts = 10;
 
         private readonly BackblazeB2AuthorizationSession _authorizationSession;
@@ -46,12 +45,13 @@ namespace B2BackblazeBridge.Actions.InternalActions
         #region ctor
         public UploadFilePartAction(
             BackblazeB2AuthorizationSession authorizationSession,
+            CancellationToken cancellationToken,
             string bucketID,
             long filePart,
             GetUploadPartURLResponse getUploadPartUrl,
             byte[] rawBytes,
             string sha1
-        ) : base(CancellationToken.None)
+        ) : base(cancellationToken)
         {
             _authorizationSession = authorizationSession;
             _bucketID = bucketID;
@@ -63,7 +63,7 @@ namespace B2BackblazeBridge.Actions.InternalActions
         #endregion
 
         #region public methods
-        public override Core.BackblazeB2ActionResult<UploadFilePartResponse> Execute()
+        public override BackblazeB2ActionResult<UploadFilePartResponse> Execute()
         {
             // Loop because we want to retry to upload the file part should it fail for
             // recoverable reasons. We will break out of this loop should the upload succeed

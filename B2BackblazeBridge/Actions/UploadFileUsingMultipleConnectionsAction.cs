@@ -42,11 +42,7 @@ namespace B2BackblazeBridge.Actions
     public sealed class UploadFileUsingMultipleConnectionsAction : BaseAction<BackblazeB2UploadMultipartFileResult>
     {
         #region private fields
-        private static readonly string GetUploadPartURLURL = "/b2api/v1/b2_get_upload_part_url";
-
         private static readonly string FinishLargeFileURL = "/b2api/v1/b2_finish_large_file";
-
-        private static readonly int MaxUploadAttempts = 10;
 
         private static readonly int MinimumFileChunkSize = 1024 * 1024; // 1 mebibyte
 
@@ -275,12 +271,16 @@ namespace B2BackblazeBridge.Actions
                         }
 
                         // Then upload the bytes
-                        BackblazeB2ActionResult<UploadFilePartResponse> uploadResponse = UploadFilePart(
-                            fileBytes,
-                            job.SHA1,
-                            job.FilePartNumber,
-                            urlEndpoint
-                        );
+                        BackblazeB2ActionResult<UploadFilePartResponse> uploadResponse = 
+                            new UploadFilePartAction(
+                                _authorizationSession,
+                                _cancellationToken,
+                                _bucketID,
+                                job.FilePartNumber,
+                                urlEndpoint,
+                                fileBytes,
+                                job.SHA1
+                            ).Execute();
 
                         responses.Add(uploadResponse);
                     }
@@ -363,73 +363,6 @@ namespace B2BackblazeBridge.Actions
             }
 
             return uploadPartURLs;
-        }
-
-        private BackblazeB2ActionResult<UploadFilePartResponse> UploadFilePart(
-            byte[] fileBytes,
-            string sha1Hash,
-            long partNumber,
-            GetUploadPartURLResponse getUploadPartUrl
-        )
-        {
-            // Loop because we want to retry to upload the file part should it fail for
-            // recoverable reasons. We will break out of this loop should the upload succeed
-            // or throw an exception should we determine we can't upload to the server
-            int attemptNumber = 0;
-            while (true)
-            {
-                // Throw an exception is we are being interrupted
-                _cancellationToken.ThrowIfCancellationRequested();
-
-                // Sleep the current thread so that we can give the server some time to recover
-                if (attemptNumber > 0)
-                {
-                    TimeSpan backoffSleepTime = CalculateExponentialBackoffSleepTime(attemptNumber);
-                    Thread.Sleep(backoffSleepTime);
-                }
-
-                HttpWebRequest webRequest = GetHttpWebRequest(getUploadPartUrl.UploadURL);
-                webRequest.Method = "POST";
-                webRequest.Headers.Add("Authorization", getUploadPartUrl.AuthorizationToken);
-                webRequest.Headers.Add("X-Bz-Part-Number", partNumber.ToString());
-                webRequest.Headers.Add("X-Bz-Content-Sha1", sha1Hash);
-                webRequest.ContentLength = fileBytes.Length;
-
-                BackblazeB2ActionResult<UploadFilePartResponse> uploadResponse = SendWebRequestAndDeserialize<UploadFilePartResponse>(webRequest, fileBytes);
-                if (uploadResponse.HasResult)
-                {
-                    // Verify result
-                    UploadFilePartResponse unwrappedResponse = uploadResponse.MaybeResult.Value;
-                    if (
-                        unwrappedResponse.ContentLength != fileBytes.Length ||
-                        unwrappedResponse.ContentSHA1.Equals(sha1Hash, StringComparison.Ordinal) == false ||
-                        unwrappedResponse.PartNumber != partNumber
-                    )
-                    {
-                        return new BackblazeB2ActionResult<UploadFilePartResponse>(
-                            Maybe<UploadFilePartResponse>.Nothing,
-                            new BackblazeB2ActionErrorDetails
-                            {
-                                Code = "CUSTOM_ERROR",
-                                Message = string.Format("File part number {0} uploaded successfully but could not be verified", partNumber),
-                                Status = -1,
-                            }
-                        );
-                    }
-                    else
-                    {
-                        return uploadResponse;
-                    }
-                }
-                else if (uploadResponse.Errors.First().Code.Equals("service_unavailable", StringComparison.OrdinalIgnoreCase) && attemptNumber < MaxUploadAttempts)
-                {
-                    attemptNumber++;
-                }
-                else
-                {
-                    return uploadResponse;
-                }
-            }
         }
 
         private BackblazeB2ActionResult<BackblazeB2UploadMultipartFileResult> FinishUploadingLargeFile(
