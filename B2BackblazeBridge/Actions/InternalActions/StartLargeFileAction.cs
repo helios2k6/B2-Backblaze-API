@@ -35,18 +35,18 @@ namespace B2BackblazeBridge.Actions.InternalActions
 
         private readonly BackblazeB2AuthorizationSession _authorizationSession;
         private readonly string _bucketID;
-        private readonly string _fileDestination;
+        private readonly string _remoteFilePath;
         #endregion
         
         public StartLargeFileAction(
             BackblazeB2AuthorizationSession authorizationSession,
             string bucketID,
-            string fileDestination
+            string remoteFilePath
         ) : base(CancellationToken.None)
         {
             _authorizationSession = authorizationSession;
             _bucketID = bucketID;
-            _fileDestination = fileDestination;
+            _remoteFilePath = remoteFilePath;
         }
 
         public override BackblazeB2ActionResult<StartLargeFileResponse> Execute()
@@ -55,7 +55,7 @@ namespace B2BackblazeBridge.Actions.InternalActions
             {
                 BucketID = _bucketID,
                 ContentType = "b2/x-auto",
-                FileName = GetSafeFileName(_fileDestination),
+                FileName = _remoteFilePath,
             };
 
             byte[] jsonBodyBytes = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(request));

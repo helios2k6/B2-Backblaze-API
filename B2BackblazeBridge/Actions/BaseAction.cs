@@ -66,6 +66,57 @@ namespace B2BackblazeBridge.Actions
 
         #region protected methods
         /// <summary>
+        /// This method validates the remote file path for B2.
+        /// 
+        /// Here are the current set of rules:
+        /// 1. Max length is 1024 characters
+        /// 2. The characters must be in UTF-8
+        /// 3. Backslashes are not allowed
+        /// 4. DEL characters (127) are not allowed
+        /// 5. File names cannot start with a "/", end with a "/", or contain "//" anywhere
+        /// 6. For each segment of the file path, which is the part of the string between each "/", there can only be 
+        ///    250 bytes of UTF-8 characters (for multi-byte characters, that can reduce this down to less than 250 characters)
+        /// </summary>
+        /// <param name="rawRemotePath"></param>
+        protected static void ValidateRawPath(string rawRemotePath)
+        {
+            if (rawRemotePath.Length > 1024)
+            {
+                throw new ArgumentException("Remote path cannot be more than 1024 characters long");
+            }
+
+            if (rawRemotePath[0] == '/')
+            {
+                throw new ArgumentException("File path cannot begin with a forward slash");
+            }
+
+            if (rawRemotePath[rawRemotePath.Length - 1] == '/')
+            {
+                throw new ArgumentException("File path cannot end with a forward slash");
+            }
+
+            if (rawRemotePath.IndexOf("//") != -1)
+            {
+                throw new ArgumentException("File path cannot have any double forward slashes in it");
+            }
+
+            if (rawRemotePath.IndexOf('\\') != -1)
+            {
+                throw new ArgumentException("Remote path cannot have backslashes in it");
+            }
+
+            string[] segments = rawRemotePath.Split('/');
+            foreach (string segment in segments)
+            {
+                byte[] rawBytes = Encoding.UTF8.GetBytes(segment);
+                if (rawBytes.Length > 250)
+                {
+                    throw new ArgumentException("No segment of the file path may be greater than 250 bytes when encoded with UTF-8");
+                }
+            }
+        }
+
+        /// <summary>
         /// Create an HTTP Web Request with the given URL and, optionally, set the 
         /// content type to JSON
         /// </summary>
@@ -78,70 +129,6 @@ namespace B2BackblazeBridge.Actions
             webRequest.ContentType = "application/json; charset=utf-8";
 
             return webRequest;
-        }
-
-        /// <summary>
-        /// This method sanitizes the the file path so that it can be used on B2. Here are the current set of rules:
-        /// 1. Max length is 1024 characters
-        /// 2. The characters must be in UTF-8
-        /// 3. Backslashes are not allowed
-        /// 4. DEL characters (127) are not allowed
-        /// 5. File names cannot start with a "/", end with a "/", or contain "//" anywhere
-        /// 6. For each segment of the file path, which is the part of the string between each "/", there can only be 
-        ///    250 bytes of UTF-8 characters (for multi-byte characters, that can reduce this down to less than 250 characters)
-        ///
-        /// The following encodings will be used to fix file names for the given rules above:
-        /// 1. An exception will be thrown for file paths above 1024 characters
-        /// 2. Nothing will be done to ensure UTF-8 encoding, since all strings in C# are UTF-16
-        /// 3. All backslashes will be replaced with forward slashes
-        /// 4. Nothing, since file paths can't have the DEL character anyways
-        /// 5. The very first "/" will be replaced with an empty string. An exception will be thrown for any file path that ends with a "/" or contains a "//"
-        /// 6. An exception will be thrown if any segment is longer than 250 bytes
-        /// 7. If there's a Windows style drive letter (e.g. "C:\"), this will be converted to the drive letter followed by a forward slash (e.g. "c/")
-        /// 
-        /// Additionally, we will remove drive letters
-        /// </summary>
-        /// <param name="filePath">The file path to sanitize</param>
-        /// <returns>A santitized file path</returns>
-        protected string GetSafeFileName(string filePath)
-        {
-            if (filePath.Length > 1024)
-            {
-                throw new InvalidOperationException("The file path cannot be longer than 1024 characters");
-            }
-
-            string updatedString = filePath;
-
-            // Convert Windows style drive letters
-            if (filePath.IndexOf(":") == 1)
-            {
-                char driveLetter = Char.ToLowerInvariant(filePath[0]);
-                updatedString = updatedString.Substring(3);
-                updatedString = updatedString.Insert(0, new string(new[] { driveLetter, '/' }));
-            }
-
-            updatedString = updatedString.Replace('\\', '/');
-            if (updatedString[0] == '/')
-            {
-                updatedString = updatedString.Substring(1);
-            }
-
-            if (updatedString[updatedString.Length - 1] == '/' || updatedString.IndexOf("//") != -1)
-            {
-                throw new InvalidOperationException("The file path cannot start or end with a forward slash and cannot have double forward slashes anywhere");
-            }
-
-            string[] segments = updatedString.Split('/');
-            foreach (string segment in segments)
-            {
-                byte[] rawBytes = Encoding.UTF8.GetBytes(segment);
-                if (rawBytes.Length > 250)
-                {
-                    throw new InvalidOperationException("No segment of the file path may be greater than 250 bytes when encoded with UTF-8");
-                }
-            }
-
-            return Uri.EscapeDataString(updatedString);
         }
 
         /// <summary>

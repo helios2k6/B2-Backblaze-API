@@ -70,10 +70,17 @@ namespace B2BackupUtility
                 {
                     DeleteFileAction deleteFileAction = new DeleteFileAction(authorizationSession, fileResult.FileID, fileResult.FileName);
                     BackblazeB2ActionResult<BackblazeB2DeleteFileResult> deleteFileActionResult = deleteFileAction.Execute();
-                    if (deleteFileActionResult.HasErrors)
+
+                    if (deleteFileActionResult.HasResult)
+                    {
+                        Console.WriteLine(string.Format("File successfully deleted: {0} | {1}", fileResult.FileName, fileResult.FileID));
+                       
+                    }
+                    else
                     {
                         Console.WriteLine(string.Format("Could not delete file: {0} - {1}", fileResult.FileName, fileResult.FileID));
                     }
+
                 }
                 catch (Exception ex)
                 {

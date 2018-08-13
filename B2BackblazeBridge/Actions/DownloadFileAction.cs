@@ -20,8 +20,6 @@
  */
 
 using B2BackblazeBridge.Core;
-using Functional.Maybe;
-using Newtonsoft.Json;
 using System;
 using System.IO;
 using System.Net;
@@ -247,7 +245,7 @@ namespace B2BackblazeBridge.Actions
 
         private string GetDownloadByFileURL()
         {
-            return _authorizationSession.DownloadURL + "/file/" + _identifier;
+            return _authorizationSession.DownloadURL + "/file/" + Uri.EscapeDataString(_identifier);
         }
 
         #region IDisposable Support

@@ -20,7 +20,6 @@
  */
 
 using B2BackblazeBridge.Core;
-using System;
 using System.Net;
 using System.Text;
 using System.Threading;
@@ -58,14 +57,7 @@ namespace B2BackblazeBridge.Actions
             webRequest.Headers.Add("Authorization", _authorizationSession.AuthorizationToken);
             webRequest.ContentLength = payload.Length;
 
-            BackblazeB2ActionResult<BackblazeB2GetFileInfoResult> getInfoResult = SendWebRequestAndDeserialize(webRequest, payload);
-            if (getInfoResult.HasResult)
-            {
-                string escapedFileName = getInfoResult.Result.FileName;
-                getInfoResult.Result.FileName = Uri.UnescapeDataString(escapedFileName);
-            }
-
-            return getInfoResult;
+            return SendWebRequestAndDeserialize(webRequest, payload);
         }
         #endregion
     }

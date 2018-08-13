@@ -51,7 +51,6 @@ namespace B2BackblazeBridge.Actions.InternalActions
         #endregion
 
         #region public methods
-        #endregion
         public override BackblazeB2ActionResult<GetUploadPartURLResponse> Execute()
         {
             byte[] jsonPayloadBytes = Encoding.UTF8.GetBytes("{\"fileId\":\"" + _fileID + "\"}");
@@ -62,5 +61,6 @@ namespace B2BackblazeBridge.Actions.InternalActions
 
             return SendWebRequestAndDeserialize(webRequest, jsonPayloadBytes);
         }
+        #endregion
     }
 }

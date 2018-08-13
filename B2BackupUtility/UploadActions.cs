@@ -39,11 +39,10 @@ namespace B2BackupUtility
         public static void UploadFile(BackblazeB2AuthorizationSession authorizationSession, string bucketID, IEnumerable<string> args)
         {
             string fileToUpload = CommonUtils.GetArgument(args, "--file");
-            string destination = CommonUtils.GetArgument(args, "--destination");
             int numberOfConnections = GetNumberOfConnections(args);
-            if (string.IsNullOrWhiteSpace(fileToUpload) || string.IsNullOrWhiteSpace(destination) || File.Exists(fileToUpload) == false)
+            if (string.IsNullOrWhiteSpace(fileToUpload) || File.Exists(fileToUpload) == false)
             {
-                Console.WriteLine(string.Format("Invalid arguments sent for --file ({0}) or --destination ({1})", fileToUpload, destination));
+                Console.WriteLine(string.Format("Invalid arguments sent for --file ({0})", fileToUpload));
                 return;
             }
 
@@ -191,24 +190,24 @@ namespace B2BackupUtility
             BackblazeB2AuthorizationSession authorizationSession,
             FileManifest fileManifest,
             string bucketID,
-            string file,
+            string localFilePath,
             int uploadConnections
         )
         {
             try
             {
-                FileInfo info = new FileInfo(file);
+                FileInfo info = new FileInfo(localFilePath);
                 BackblazeB2ActionResult<IBackblazeB2UploadResult> uploadResult = info.Length < 1024 * 1024 || uploadConnections == 1
                 ? ExecuteUploadAction(new UploadFileAction(
                     authorizationSession,
-                    file,
-                    file,
+                    localFilePath,
+                    GetSafeFileName(localFilePath),
                     bucketID
                 ))
                 : ExecuteUploadAction(new UploadFileUsingMultipleConnectionsAction(
                     authorizationSession,
-                    file,
-                    file,
+                    localFilePath,
+                    GetSafeFileName(localFilePath),
                     bucketID,
                     Constants.FileChunkSize,
                     uploadConnections,
@@ -219,9 +218,9 @@ namespace B2BackupUtility
                 {
                     FileManifestEntry addedFileEntry = new FileManifestEntry
                     {
-                        OriginalFilePath = file,
+                        OriginalFilePath = localFilePath,
                         DestinationFilePath = uploadResult.Result.FileName,
-                        SHA1 = SHA1FileHashStore.Instance.GetFileHash(file),
+                        SHA1 = SHA1FileHashStore.Instance.GetFileHash(localFilePath),
                         Length = info.Length,
                         LastModified = info.LastWriteTimeUtc.ToBinary(),
                     };
@@ -240,7 +239,7 @@ namespace B2BackupUtility
             catch (Exception ex)
             {
                 Console.Write(new StringBuilder()
-                    .AppendFormat("An unexpected exception occurred while uploading file {0}", file)
+                    .AppendFormat("An unexpected exception occurred while uploading file {0}", localFilePath)
                     .AppendLine()
                     .AppendLine("==Exception Details==")
                     .AppendLine("Message")
@@ -299,6 +298,70 @@ namespace B2BackupUtility
             int.TryParse(connections, out numberOfConnections);
 
             return numberOfConnections > 0 ? numberOfConnections : Constants.TargetUploadConnections;
+        }
+
+        /// <summary>
+        /// This method sanitizes the the file path so that it can be used on B2. Here are the current set of rules:
+        /// 1. Max length is 1024 characters
+        /// 2. The characters must be in UTF-8
+        /// 3. Backslashes are not allowed
+        /// 4. DEL characters (127) are not allowed
+        /// 5. File names cannot start with a "/", end with a "/", or contain "//" anywhere
+        /// 6. For each segment of the file path, which is the part of the string between each "/", there can only be 
+        ///    250 bytes of UTF-8 characters (for multi-byte characters, that can reduce this down to less than 250 characters)
+        ///
+        /// The following encodings will be used to fix file names for the given rules above:
+        /// 1. An exception will be thrown for file paths above 1024 characters
+        /// 2. Nothing will be done to ensure UTF-8 encoding, since all strings in C# are UTF-16
+        /// 3. All backslashes will be replaced with forward slashes
+        /// 4. Nothing, since file paths can't have the DEL character anyways
+        /// 5. The very first "/" will be replaced with an empty string. An exception will be thrown for any file path that ends with a "/" or contains a "//"
+        /// 6. An exception will be thrown if any segment is longer than 250 bytes
+        /// 7. If there's a Windows style drive letter (e.g. "C:\"), this will be converted to the drive letter followed by a forward slash (e.g. "c/")
+        /// 
+        /// Additionally, we will remove drive letters
+        /// </summary>
+        /// <param name="filePath">The file path to sanitize</param>
+        /// <returns>A santitized file path</returns>
+        private static string GetSafeFileName(string filePath)
+        {
+            if (filePath.Length > 1024)
+            {
+                throw new InvalidOperationException("The file path cannot be longer than 1024 characters");
+            }
+
+            string updatedString = filePath;
+
+            // Convert Windows style drive letters
+            if (filePath.IndexOf(":") == 1)
+            {
+                char driveLetter = Char.ToLowerInvariant(filePath[0]);
+                updatedString = updatedString.Substring(3);
+                updatedString = updatedString.Insert(0, new string(new[] { driveLetter, '/' }));
+            }
+
+            updatedString = updatedString.Replace('\\', '/');
+            if (updatedString[0] == '/')
+            {
+                updatedString = updatedString.Substring(1);
+            }
+
+            if (updatedString[updatedString.Length - 1] == '/' || updatedString.IndexOf("//") != -1)
+            {
+                throw new InvalidOperationException("The file path cannot start or end with a forward slash and cannot have double forward slashes anywhere");
+            }
+
+            string[] segments = updatedString.Split('/');
+            foreach (string segment in segments)
+            {
+                byte[] rawBytes = Encoding.UTF8.GetBytes(segment);
+                if (rawBytes.Length > 250)
+                {
+                    throw new InvalidOperationException("No segment of the file path may be greater than 250 bytes when encoded with UTF-8");
+                }
+            }
+
+            return updatedString;
         }
         #endregion
     }

@@ -67,15 +67,7 @@ namespace B2BackblazeBridge.Actions
             webRequest.Headers.Add("Authorization", _authorizationSession.AuthorizationToken);
             webRequest.ContentLength = payload.Length;
 
-            BackblazeB2ActionResult<BackblazeB2CancelLargeFileUploadResult> cancellationRequest =
-                SendWebRequestAndDeserialize(webRequest, payload);
-            if (cancellationRequest.HasResult)
-            {
-                string escapedFileName = cancellationRequest.Result.FileName;
-                cancellationRequest.Result.FileName = Uri.UnescapeDataString(escapedFileName);
-            }
-
-            return cancellationRequest;
+            return SendWebRequestAndDeserialize(webRequest, payload);
         }
         #endregion
     }

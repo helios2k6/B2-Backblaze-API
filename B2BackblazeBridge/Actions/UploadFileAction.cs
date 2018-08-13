@@ -26,7 +26,6 @@ using Functional.Maybe;
 using System;
 using System.IO;
 using System.Net;
-using System.Text;
 using System.Threading;
 
 namespace B2BackblazeBridge.Actions
@@ -58,6 +57,8 @@ namespace B2BackblazeBridge.Actions
             string fileDestination
         ) : base(CancellationToken.None)
         {
+            ValidateRawPath(fileDestination);
+
             _authorizationSession = authorizationSession ?? throw new ArgumentNullException("The authorization session object must not be null");
             _bucketID = bucketID;
             _bytesToUpload = bytesToUpload;
@@ -101,14 +102,12 @@ namespace B2BackblazeBridge.Actions
                 HttpWebRequest webRequest = (HttpWebRequest)WebRequest.Create(unwrappedResult.UploadURL);
                 webRequest.Method = "POST";
                 webRequest.Headers.Add("Authorization", unwrappedResult.AuthorizationToken);
-                webRequest.Headers.Add("X-Bz-File-Name", GetSafeFileName(_fileDestination));
+                webRequest.Headers.Add("X-Bz-File-Name", Uri.EscapeDataString(_fileDestination));
                 webRequest.Headers.Add("X-Bz-Content-Sha1", sha1Hash);
                 webRequest.ContentType = "b2/x-auto";
                 webRequest.ContentLength = _bytesToUpload.Length;
 
-                BackblazeB2ActionResult<BackblazeB2UploadFileResult> result = SendWebRequestAndDeserialize(webRequest, _bytesToUpload);
-                result.MaybeResult.Do(t => t.FileName = Uri.UnescapeDataString(t.FileName));
-                return result;
+                return SendWebRequestAndDeserialize(webRequest, _bytesToUpload);
             }
             else
             {

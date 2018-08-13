@@ -22,7 +22,6 @@
 using B2BackblazeBridge.Core;
 using B2BackblazeBridge.Processing;
 using Newtonsoft.Json;
-using System;
 using System.Net;
 using System.Text;
 using System.Threading;
@@ -39,7 +38,7 @@ namespace B2BackblazeBridge.Actions
 
         private readonly BackblazeB2AuthorizationSession _authorizationSession;
         private readonly string _fileId;
-        private readonly string _fileName;
+        private readonly string _remoteFilePath;
         #endregion
 
         #region ctor
@@ -48,16 +47,16 @@ namespace B2BackblazeBridge.Actions
         /// </summary>
         /// <param name="authorizationSession">The authorization session</param>
         /// <param name="fileId">The file ID to delete</param>
-        /// <param name="fileName">The file name to delete</param>
+        /// <param name="remoteFilePath">The file name to delete</param>
         public DeleteFileAction(
             BackblazeB2AuthorizationSession authorizationSession,
             string fileId,
-            string fileName
+            string remoteFilePath
         ) : base(CancellationToken.None)
         {
             _authorizationSession = authorizationSession;
             _fileId = fileId;
-            _fileName = fileName;
+            _remoteFilePath = remoteFilePath;
         }
         #endregion
 
@@ -66,7 +65,7 @@ namespace B2BackblazeBridge.Actions
         {
             DeleteFileVersionRequest deleteRequest = new DeleteFileVersionRequest
             {
-                FileName = GetSafeFileName(_fileName),
+                FileName = _remoteFilePath,
                 FileId = _fileId,
             };
             string deleteRequestJson = JsonConvert.SerializeObject(deleteRequest);
@@ -77,14 +76,7 @@ namespace B2BackblazeBridge.Actions
             webRequest.Headers.Add("Authorization", _authorizationSession.AuthorizationToken);
             webRequest.ContentLength = payload.Length;
 
-            BackblazeB2ActionResult<BackblazeB2DeleteFileResult> deletionResult = SendWebRequestAndDeserialize(webRequest, payload);
-            if (deletionResult.HasResult)
-            {
-                string escapedFileName = deletionResult.Result.FileName;
-                deletionResult.Result.FileName = Uri.UnescapeDataString(escapedFileName);
-            }
-
-            return deletionResult;
+            return SendWebRequestAndDeserialize(webRequest, payload);
         }
         #endregion
     }

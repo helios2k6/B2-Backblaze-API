@@ -43,19 +43,13 @@ namespace B2BackblazeBridge.Actions
     {
         #region private fields
         private static readonly string FinishLargeFileURL = "/b2api/v1/b2_finish_large_file";
-
         private static readonly int MinimumFileChunkSize = 1024 * 1024; // 1 mebibyte
 
         private readonly BackblazeB2AuthorizationSession _authorizationSession;
-
         private readonly string _bucketID;
-
-        private readonly string _filePath;
-
-        private readonly string _fileDestination;
-
+        private readonly string _localFilePath;
+        private readonly string _remoteFilePath;
         private readonly int _numberOfConnections;
-
         private readonly int _fileChunkSizesInBytes;
         #endregion
 
@@ -64,25 +58,27 @@ namespace B2BackblazeBridge.Actions
         /// Constructs a new UploadFileUsingMultipleConnectionsActions
         /// </summary>
         /// <param name="authorizationSession">The authorization session</param>
-        /// <param name="filePath">The (local) path to the file you want to upload</param>
-        /// <param name="fileDestination">The remote path you want to upload to</param>
+        /// <param name="localFilePath">The (local) path to the file you want to upload</param>
+        /// <param name="remoteFilePath">The remote path you want to upload to</param>
         /// <param name="bucketID">The B2 bucket you want to upload to</param>
         /// <param name="fileChunkSizesInBytes">The size (in bytes) of the file chunks you want to use when uploading</param>
         /// <param name="numberOfConnections">The number of connections to use when uploading</param>
         /// <param name="cancellationToken">The cancellation token to pass in when this upload needs to be cancelled</param>
         public UploadFileUsingMultipleConnectionsAction(
             BackblazeB2AuthorizationSession authorizationSession,
-            string filePath,
-            string fileDestination,
+            string localFilePath,
+            string remoteFilePath,
             string bucketID,
             int fileChunkSizesInBytes,
             int numberOfConnections,
             CancellationToken cancellationToken
         ) : base(cancellationToken)
         {
-            if (File.Exists(filePath) == false)
+            ValidateRawPath(remoteFilePath);
+
+            if (File.Exists(localFilePath) == false)
             {
-                throw new ArgumentException(string.Format("{0} does not exist", filePath));
+                throw new ArgumentException(string.Format("{0} does not exist", localFilePath));
             }
 
             if (fileChunkSizesInBytes < MinimumFileChunkSize)
@@ -97,8 +93,8 @@ namespace B2BackblazeBridge.Actions
 
             _authorizationSession = authorizationSession ?? throw new ArgumentNullException("The authorization session object must not be mull");
             _bucketID = bucketID;
-            _filePath = filePath;
-            _fileDestination = fileDestination;
+            _localFilePath = localFilePath;
+            _remoteFilePath = remoteFilePath;
             _fileChunkSizesInBytes = fileChunkSizesInBytes;
             _numberOfConnections = numberOfConnections;
         }
@@ -139,7 +135,7 @@ namespace B2BackblazeBridge.Actions
             BackblazeB2ActionResult<StartLargeFileResponse> fileIDResponse = new StartLargeFileAction(
                 _authorizationSession,
                 _bucketID,
-                _fileDestination
+                _remoteFilePath
             ).Execute();
             if (fileIDResponse.HasErrors)
             {
@@ -260,7 +256,7 @@ namespace B2BackblazeBridge.Actions
                     _cancellationToken.ThrowIfCancellationRequested();
 
                     // Read bytes first
-                    using (FileStream stream = new FileStream(_filePath, FileMode.Open, FileAccess.Read, FileShare.Read))
+                    using (FileStream stream = new FileStream(_localFilePath, FileMode.Open, FileAccess.Read, FileShare.Read))
                     {
                         stream.Seek(job.FileCursorPosition, SeekOrigin.Begin);
                         byte[] fileBytes = new byte[job.ContentLength];
@@ -292,7 +288,7 @@ namespace B2BackblazeBridge.Actions
         private IEnumerable<UploadPartJob> GenerateUploadParts()
         {
             IList<UploadPartJob> jobs = new List<UploadPartJob>();
-            FileInfo fileInfo = new FileInfo(_filePath);
+            FileInfo fileInfo = new FileInfo(_localFilePath);
             long numberOfChunks = (fileInfo.Length / _fileChunkSizesInBytes); // We can't have more than 4 billion chunks per file. 
             for (long currentChunk = 0; currentChunk < numberOfChunks; currentChunk++)
             {
@@ -325,7 +321,7 @@ namespace B2BackblazeBridge.Actions
 
         private string ComputeSHA1HashOfChunk(long fileCursorPosition, long length)
         {
-            using (FileStream fileStream = new FileStream(_filePath, FileMode.Open, FileAccess.Read, FileShare.Read))
+            using (FileStream fileStream = new FileStream(_localFilePath, FileMode.Open, FileAccess.Read, FileShare.Read))
             using (SHA1 shaHash = SHA1.Create())
             {
                 fileStream.Seek(fileCursorPosition, SeekOrigin.Begin);
@@ -401,12 +397,7 @@ namespace B2BackblazeBridge.Actions
             BackblazeB2ActionResult<BackblazeB2UploadMultipartFileResult> response =
                 SendWebRequestAndDeserialize(webRequest, requestBytes);
 
-            response.MaybeResult.Do(r =>
-            {
-                r.FileHashes = sha1Hashes;
-                r.FileName = Uri.UnescapeDataString(r.FileName);
-            });
-
+            response.MaybeResult.Do(r => r.FileHashes = sha1Hashes);
             return response;
         }
         #endregion
