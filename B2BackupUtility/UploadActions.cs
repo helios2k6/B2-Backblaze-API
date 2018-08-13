@@ -91,6 +91,7 @@ namespace B2BackupUtility
                     if (authorizeActionResult.HasErrors)
                     {
                         // Could not reauthorize. Aborting
+                        Console.WriteLine("Could not reauthorize account. Aborting");
                         return;
                     }
 
