@@ -66,6 +66,7 @@ namespace B2BackupUtility
 
             FileManifest fileManifest = FileManifestActions.ReadManifestFileFromServerOrReturnNewOne(authorizationSession, bucketID);
             IEnumerable<string> localFilesToUpload = GetFilesToUpload(fileManifest, folder, overrideFiles);
+            IList<string> failedUploads = new List<string>();
 
             Console.WriteLine("Uploading folder");
             BackblazeB2AuthorizationSession currentAuthorizationSession = authorizationSession;
@@ -98,13 +99,28 @@ namespace B2BackupUtility
                     currentAuthorizationSession = authorizeActionResult.Result;
                 }
 
-                UploadFileImpl(
+                bool uploadResult = UploadFileImpl(
                     currentAuthorizationSession,
                     fileManifest,
                     bucketID,
                     localFile,
                     numberOfConnections
                 );
+
+                if (uploadResult == false)
+                {
+                    failedUploads.Add(localFile);
+                }
+            }
+
+            // Cycle through and print out files we could not upload
+            if (failedUploads.Any())
+            {
+                Console.WriteLine("Failed to upload the following files:");
+                foreach (string failedUpload in failedUploads)
+                {
+                    Console.WriteLine(failedUpload);
+                }
             }
         }
         #endregion
@@ -171,7 +187,7 @@ namespace B2BackupUtility
             return filesToUpload;
         }
 
-        private static void UploadFileImpl(
+        private static bool UploadFileImpl(
             BackblazeB2AuthorizationSession authorizationSession,
             FileManifest fileManifest,
             string bucketID,
@@ -213,6 +229,8 @@ namespace B2BackupUtility
                     fileManifest.FileEntries = fileManifest.FileEntries.Append(addedFileEntry).ToArray();
                     // Update file manifest if the upload was successful
                     FileManifestActions.WriteManifestFileToServer(authorizationSession, bucketID, fileManifest);
+
+                    return true;
                 }
             }
             catch (TaskCanceledException)
@@ -236,6 +254,8 @@ namespace B2BackupUtility
                     .AppendLine().ToString()
                 );
             }
+
+            return false;
         }
 
         private static BackblazeB2ActionResult<IBackblazeB2UploadResult> ExecuteUploadAction<T>(BaseAction<T> action) where T : IBackblazeB2UploadResult

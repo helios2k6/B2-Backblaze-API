@@ -35,6 +35,10 @@ namespace B2BackupUtility
         /// </summary>
         DELETE,
         /// <summary>
+        /// Delete all files in the Bucket
+        /// </summary>
+        DELETE_ALL_FILES,
+        /// <summary>
         /// Get the file info action
         /// </summary>
         GET_FILE_INFO,

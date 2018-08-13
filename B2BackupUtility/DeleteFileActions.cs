@@ -46,5 +46,41 @@ namespace B2BackupUtility
                 Console.WriteLine(string.Format("File successfully deleted: {0} | {1}", result.Result.FileName, result.Result.FileID));
             }
         }
+
+        public static void DeleteAllFiles(BackblazeB2AuthorizationSession authorizationSession, string bucketID)
+        {
+            Console.WriteLine(string.Format("Deleting all files in {0}", bucketID));
+
+            ListFilesAction allFileVersionsAction = ListFilesAction.CreateListFileActionForFileVersions(authorizationSession, bucketID, true);
+            BackblazeB2ActionResult<BackblazeB2ListFilesResult> allFileVersionsActionResult = allFileVersionsAction.Execute();
+            if (allFileVersionsActionResult.HasErrors)
+            {
+                Console.WriteLine(string.Format("Unable to get the list of files. {0}", allFileVersionsActionResult.ToString()));
+                return;
+            }
+
+            foreach (BackblazeB2ListFilesResult.FileResult fileResult in allFileVersionsActionResult.Result.Files)
+            {
+                if (CancellationActions.GlobalCancellationToken.IsCancellationRequested)
+                {
+                    return;
+                }
+
+                try
+                {
+                    DeleteFileAction deleteFileAction = new DeleteFileAction(authorizationSession, fileResult.FileID, fileResult.FileName);
+                    BackblazeB2ActionResult<BackblazeB2DeleteFileResult> deleteFileActionResult = deleteFileAction.Execute();
+                    if (deleteFileActionResult.HasErrors)
+                    {
+                        Console.WriteLine(string.Format("Could not delete file: {0} - {1}", fileResult.FileName, fileResult.FileID));
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine(string.Format("An exception occurred while deleting file {0} - {1}", fileResult.FileName, fileResult.FileID));
+                    Console.WriteLine(ex.Message);
+                }
+            }
+        }
     }
 }

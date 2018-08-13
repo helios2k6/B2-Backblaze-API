@@ -87,6 +87,10 @@ namespace B2BackupUtility
                     DeleteFileActions.DeleteFile(authorizationSession, args);
                     break;
 
+                case Action.DELETE_ALL_FILES:
+                    DeleteFileActions.DeleteAllFiles(authorizationSession, bucketID);
+                    break;
+
                 case Action.DOWNLOAD:
                     DownloadFileActions.DownloadFile(authorizationSession, bucketID, args);
                     break;
@@ -107,7 +111,6 @@ namespace B2BackupUtility
                     UploadActions.UploadFolder(authorizationSession, bucketID, args);
                     break;
 
-                case Action.UNKNOWN:
                 default:
                     Console.WriteLine("Unknown action specified");
                     break;
@@ -122,6 +125,7 @@ namespace B2BackupUtility
                 case Action.DOWNLOAD:
                 case Action.UPLOAD:
                 case Action.UPLOAD_FOLDER:
+                case Action.DELETE_ALL_FILES:
                     Console.CancelKeyPress += CancellationActions.HandleCancel;
                     break;
             }
@@ -157,6 +161,9 @@ namespace B2BackupUtility
                     case "--get-file-info":
                         action = Action.GET_FILE_INFO;
                         return true;
+                    case "--delete-all-files":
+                        action = Action.DELETE_ALL_FILES;
+                        return true;
                 }
             }
 
@@ -166,7 +173,7 @@ namespace B2BackupUtility
 
         private static void PrintHeader()
         {
-            Console.WriteLine("B2 Backup Utility v3.0");
+            Console.WriteLine("B2 Backup Utility v3.1");
             Console.WriteLine();
         }
 
@@ -203,6 +210,9 @@ namespace B2BackupUtility
                 .AppendLine()
                 .AppendLine("--delete-file")
                 .AppendLine("\t\tDeletes a file on the B2 Backblaze server.")
+                .AppendLine()
+                .AppendLine("--delete-all-files")
+                .AppendLine("\t\tDeletes all files in the specified Bucket on the B2 Backblaze server.")
                 .AppendLine()
                 .AppendLine("--get-file-info")
                 .AppendLine("\t\tGets the info about a file")
