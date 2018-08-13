@@ -25,7 +25,6 @@ using Functional.Maybe;
 using Newtonsoft.Json;
 using System;
 using System.IO;
-using System.Linq;
 using System.Net;
 using System.Security.Cryptography;
 using System.Text;
@@ -98,6 +97,7 @@ namespace B2BackblazeBridge.Actions
         /// 4. Nothing, since file paths can't have the DEL character anyways
         /// 5. The very first "/" will be replaced with an empty string. An exception will be thrown for any file path that ends with a "/" or contains a "//"
         /// 6. An exception will be thrown if any segment is longer than 250 bytes
+        /// 7. If there's a Windows style drive letter (e.g. "C:\"), this will be converted to the drive letter followed by a forward slash (e.g. "c/")
         /// 
         /// Additionally, we will remove drive letters
         /// </summary>
@@ -111,10 +111,13 @@ namespace B2BackblazeBridge.Actions
             }
 
             string updatedString = filePath;
-            // Drive letters cannot be more than 2 letters, so this is always true
+
+            // Convert Windows style drive letters
             if (filePath.IndexOf(":") == 1)
             {
+                char driveLetter = Char.ToLowerInvariant(filePath[0]);
                 updatedString = updatedString.Substring(2);
+                updatedString = updatedString.Insert(0, new string(new[] { driveLetter, '/' }));
             }
 
             updatedString = updatedString.Replace('\\', '/');

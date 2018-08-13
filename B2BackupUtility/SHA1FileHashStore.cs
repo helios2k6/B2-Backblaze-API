@@ -59,6 +59,7 @@ namespace B2BackupUtility
             return fileSHA1;
         }
         #endregion
+
         #region private methods
         private string ComputeSHA1Hash(string filePath)
         {

@@ -28,7 +28,7 @@ using System.Linq;
 
 namespace B2BackupUtility
 {
-    public static class CommonActions
+    public static class CommonUtils
     {
         public static bool AreFilesEqual(string fileA, string fileB)
         {

@@ -21,7 +21,6 @@
 
 using B2BackblazeBridge.Actions;
 using B2BackblazeBridge.Core;
-using B2BackblazeBridge.Exceptions;
 using Functional.Maybe;
 using System;
 using System.Collections.Generic;
@@ -36,11 +35,12 @@ namespace B2BackupUtility
 {
     public static class UploadActions
     {
+        #region public methods
         public static void UploadFile(BackblazeB2AuthorizationSession authorizationSession, string bucketID, IEnumerable<string> args)
         {
-            string fileToUpload = CommonActions.GetArgument(args, "--file");
-            string destination = CommonActions.GetArgument(args, "--destination");
-
+            string fileToUpload = CommonUtils.GetArgument(args, "--file");
+            string destination = CommonUtils.GetArgument(args, "--destination");
+            int numberOfConnections = GetNumberOfConnections(args);
             if (string.IsNullOrWhiteSpace(fileToUpload) || string.IsNullOrWhiteSpace(destination) || File.Exists(fileToUpload) == false)
             {
                 Console.WriteLine(string.Format("Invalid arguments sent for --file ({0}) or --destination ({1})", fileToUpload, destination));
@@ -50,14 +50,14 @@ namespace B2BackupUtility
             FileManifest fileManifest = FileManifestActions.ReadManifestFileFromServerOrReturnNewOne(authorizationSession, bucketID);
 
             Console.WriteLine("Uploading file");
-            UploadFileImpl(authorizationSession, fileManifest, bucketID, fileToUpload, destination, GetNumberOfConnections(args));
+            UploadFileImpl(authorizationSession, fileManifest, bucketID, fileToUpload, numberOfConnections);
         }
 
         public static void UploadFolder(BackblazeB2AuthorizationSession authorizationSession, string bucketID, IEnumerable<string> args)
         {
-            string folder = CommonActions.GetArgument(args, "--folder");
-            bool flatten = CommonActions.DoesOptionExist(args, "--flatten");
-            bool overrideFiles = CommonActions.DoesOptionExist(args, "--force-override-files");
+            string folder = CommonUtils.GetArgument(args, "--folder");
+            bool overrideFiles = CommonUtils.DoesOptionExist(args, "--force-override-files");
+            int numberOfConnections = GetNumberOfConnections(args);
             if (Directory.Exists(folder) == false)
             {
                 Console.WriteLine(string.Format("Folder does not exist: {0}", folder));
@@ -65,18 +65,11 @@ namespace B2BackupUtility
             }
 
             FileManifest fileManifest = FileManifestActions.ReadManifestFileFromServerOrReturnNewOne(authorizationSession, bucketID);
-            IEnumerable<string> localFilesToUpload = GetFilesToUpload(authorizationSession, fileManifest, bucketID, folder, flatten, overrideFiles);
-
-            // Deduplicate destination files, especially if stuff is going to be flattened
-            IEnumerable<LocalFileToRemoteFileMapping> deduplicatedLocalFileToDestinationFiles = FilePathUtilities.GenerateLocalToRemotePathMapping(
-                localFilesToUpload,
-                flatten
-            );
+            IEnumerable<string> localFilesToUpload = GetFilesToUpload(fileManifest, folder, overrideFiles);
 
             Console.WriteLine("Uploading folder");
             BackblazeB2AuthorizationSession currentAuthorizationSession = authorizationSession;
-
-            foreach (LocalFileToRemoteFileMapping localFileToDestinationFile in deduplicatedLocalFileToDestinationFiles)
+            foreach (string localFile in localFilesToUpload)
             {
                 if (CancellationActions.GlobalCancellationToken.IsCancellationRequested)
                 {
@@ -94,7 +87,7 @@ namespace B2BackupUtility
                         currentAuthorizationSession.ApplicationKey
                     );
                     BackblazeB2ActionResult<BackblazeB2AuthorizationSession> authorizeActionResult =
-                        CommonActions.ExecuteAction(authorizeAction, "Re-Authorize account");
+                        CommonUtils.ExecuteAction(authorizeAction, "Re-Authorize account");
                     if (authorizeActionResult.HasErrors)
                     {
                         // Could not reauthorize. Aborting
@@ -108,19 +101,17 @@ namespace B2BackupUtility
                     currentAuthorizationSession,
                     fileManifest,
                     bucketID,
-                    localFileToDestinationFile.LocalFilePath,
-                    localFileToDestinationFile.RemoteFilePath,
-                    GetNumberOfConnections(args)
+                    localFile,
+                    numberOfConnections
                 );
             }
         }
+        #endregion
 
+        #region private methods
         private static IEnumerable<string> GetFilesToUpload(
-            BackblazeB2AuthorizationSession authorizationSession,
             FileManifest fileManifest,
-            string bucketID,
             string folder,
-            bool flatten,
             bool overrideFiles
         )
         {
@@ -132,9 +123,9 @@ namespace B2BackupUtility
             }
 
             Console.WriteLine("Filtered files that are already on the server");
-            IDictionary<string, FileManifestEntry> destinationFileEntryToFileManifestEntry = fileManifest.FileEntries.ToDictionary(t => t.DestinationFilePath, t => t);
+            IDictionary<string, FileManifestEntry> originalFilePathToFileManifest = fileManifest.FileEntries.ToDictionary(t => t.OriginalFilePath, t => t);
             // If there's nothing to compare, then there's no point in iterating
-            if (destinationFileEntryToFileManifestEntry.Any() == false)
+            if (originalFilePathToFileManifest.Any() == false)
             {
                 return allLocalFiles;
             }
@@ -142,9 +133,7 @@ namespace B2BackupUtility
             ISet<string> filesToUpload = new HashSet<string>();
             foreach (string localFile in allLocalFiles)
             {
-                string destinationFileEntry = FilePathUtilities.GetDestinationFileName(localFile, flatten);
-                FileManifestEntry remoteFileManifestEntry;
-                if (destinationFileEntryToFileManifestEntry.TryGetValue(destinationFileEntry, out remoteFileManifestEntry))
+                if (originalFilePathToFileManifest.TryGetValue(localFile, out FileManifestEntry remoteFileManifestEntry))
                 {
                     // Need confirm if this is a duplicate or not
                     // 1. If the lengths and last modified dates are the same, then just assume the files are equals (do not upload)
@@ -158,7 +147,7 @@ namespace B2BackupUtility
                         if (localFileInfo.LastWriteTimeUtc.Equals(DateTime.FromBinary(remoteFileManifestEntry.LastModified)) == false)
                         {
                             string sha1OfLocalFile = SHA1FileHashStore.Instance.GetFileHash(localFile);
-                            if (string.Equals(sha1OfLocalFile, remoteFileManifestEntry.SHA1 , StringComparison.OrdinalIgnoreCase) == false)
+                            if (string.Equals(sha1OfLocalFile, remoteFileManifestEntry.SHA1, StringComparison.OrdinalIgnoreCase) == false)
                             {
                                 filesToUpload.Add(localFile);
                             }
@@ -186,24 +175,23 @@ namespace B2BackupUtility
             FileManifest fileManifest,
             string bucketID,
             string file,
-            string destination,
             int uploadConnections
         )
         {
             try
             {
                 FileInfo info = new FileInfo(file);
-                BackblazeB2ActionResult<IBackblazeB2UploadResult> uploadResult = info.Length < 1024 * 1024
+                BackblazeB2ActionResult<IBackblazeB2UploadResult> uploadResult = info.Length < 1024 * 1024 || uploadConnections == 1
                 ? ExecuteUploadAction(new UploadFileAction(
                     authorizationSession,
                     file,
-                    destination,
+                    file,
                     bucketID
                 ))
                 : ExecuteUploadAction(new UploadFileUsingMultipleConnectionsAction(
                     authorizationSession,
                     file,
-                    destination,
+                    file,
                     bucketID,
                     Constants.FileChunkSize,
                     uploadConnections,
@@ -215,7 +203,7 @@ namespace B2BackupUtility
                     FileManifestEntry addedFileEntry = new FileManifestEntry
                     {
                         OriginalFilePath = file,
-                        DestinationFilePath = destination,
+                        DestinationFilePath = uploadResult.Result.FileName,
                         SHA1 = SHA1FileHashStore.Instance.GetFileHash(file),
                         Length = info.Length,
                         LastModified = info.LastWriteTimeUtc.ToBinary(),
@@ -253,9 +241,9 @@ namespace B2BackupUtility
         {
             Stopwatch watch = new Stopwatch();
             watch.Start();
-            BackblazeB2ActionResult<T> uploadResult = CommonActions.ExecuteAction(action, "Upload File");
+            BackblazeB2ActionResult<T> uploadResult = CommonUtils.ExecuteAction(action, "Upload File");
             watch.Stop();
-            
+
             BackblazeB2ActionResult<IBackblazeB2UploadResult> castedResult;
             if (uploadResult.HasResult)
             {
@@ -285,11 +273,12 @@ namespace B2BackupUtility
 
         private static int GetNumberOfConnections(IEnumerable<string> args)
         {
-            string connections = CommonActions.GetArgument(args, "--connections");
+            string connections = CommonUtils.GetArgument(args, "--connections");
             int numberOfConnections = Constants.TargetUploadConnections;
             int.TryParse(connections, out numberOfConnections);
 
             return numberOfConnections > 0 ? numberOfConnections : Constants.TargetUploadConnections;
         }
+        #endregion
     }
 }

@@ -22,10 +22,8 @@
 using B2BackblazeBridge.Actions;
 using B2BackblazeBridge.Core;
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace B2BackupUtility
 {
@@ -37,7 +35,7 @@ namespace B2BackupUtility
         public static void Main(string[] args)
         {
             PrintHeader();
-            if (args.Length < 4 || CommonActions.DoesOptionExist(args, "--help"))
+            if (args.Length < 4 || CommonUtils.DoesOptionExist(args, "--help"))
             {
                 PrintHelp();
                 return;
@@ -52,9 +50,9 @@ namespace B2BackupUtility
 
             HookUpCancellationHandler(action);
 
-            string accountID = CommonActions.GetArgument(args, "--account-id");
-            string applicationKey = CommonActions.GetArgument(args, "--application-key");
-            string bucketID = CommonActions.GetArgument(args, "--bucket-id");
+            string accountID = CommonUtils.GetArgument(args, "--account-id");
+            string applicationKey = CommonUtils.GetArgument(args, "--application-key");
+            string bucketID = CommonUtils.GetArgument(args, "--bucket-id");
 
             if (string.IsNullOrWhiteSpace(accountID) || string.IsNullOrWhiteSpace(applicationKey) || string.IsNullOrWhiteSpace(bucketID))
             {
@@ -168,7 +166,7 @@ namespace B2BackupUtility
 
         private static void PrintHeader()
         {
-            Console.WriteLine("B2 Backup Utility v2.2");
+            Console.WriteLine("B2 Backup Utility v3.0");
             Console.WriteLine();
         }
 
@@ -228,9 +226,6 @@ namespace B2BackupUtility
                 .AppendLine("Upload Folder Options")
                 .AppendLine("--folder")
                 .AppendLine("\t\tThe folder to upload.")
-                .AppendLine()
-                .AppendLine("--flatten")
-                .AppendLine("\t\tFlatten all folders and upload all files to a single directory on B2")
                 .AppendLine()
                 .AppendLine("--force-override-files")
                 .AppendLine("\t\tUpload files to the server regardless if their SHA-1 hashes match")

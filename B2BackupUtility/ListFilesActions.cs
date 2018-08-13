@@ -31,7 +31,7 @@ namespace B2BackupUtility
         {
             Console.WriteLine("Fetching file list");
             ListFilesAction action = ListFilesAction.CreateListFileActionForFileNames(authorizationSession, bucketID, true);
-            BackblazeB2ActionResult<BackblazeB2ListFilesResult> actionResult = CommonActions.ExecuteAction(action, "List files");
+            BackblazeB2ActionResult<BackblazeB2ListFilesResult> actionResult = CommonUtils.ExecuteAction(action, "List files");
             if (actionResult.HasResult)
             {
                 foreach (BackblazeB2ListFilesResult.FileResult file in actionResult.Result.Files)

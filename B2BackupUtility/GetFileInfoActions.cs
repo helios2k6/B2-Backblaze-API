@@ -34,7 +34,7 @@ namespace B2BackupUtility
             IEnumerable<string> args
         )
         {
-            string fileID = CommonActions.GetArgument(args, "--file-id");
+            string fileID = CommonUtils.GetArgument(args, "--file-id");
             if (string.IsNullOrWhiteSpace(fileID))
             {
                 Console.WriteLine("A file name and file ID must be provided");

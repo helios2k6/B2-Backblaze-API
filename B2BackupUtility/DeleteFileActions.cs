@@ -30,8 +30,8 @@ namespace B2BackupUtility
     {
         public static void DeleteFile(BackblazeB2AuthorizationSession authorizationSession, IEnumerable<string> args)
         {
-            string fileName = CommonActions.GetArgument(args, "--file-name");
-            string fileID = CommonActions.GetArgument(args, "--file-id");
+            string fileName = CommonUtils.GetArgument(args, "--file-name");
+            string fileID = CommonUtils.GetArgument(args, "--file-id");
             if (string.IsNullOrWhiteSpace(fileName) || string.IsNullOrWhiteSpace(fileID))
             {
                 Console.WriteLine("A file name and file ID must be provided");
@@ -40,7 +40,7 @@ namespace B2BackupUtility
 
             Console.WriteLine("Deleting File");
             DeleteFileAction deleteFileAction = new DeleteFileAction(authorizationSession, fileID, fileName);
-            BackblazeB2ActionResult<BackblazeB2DeleteFileResult> result = CommonActions.ExecuteAction(deleteFileAction, "Delete file");
+            BackblazeB2ActionResult<BackblazeB2DeleteFileResult> result = CommonUtils.ExecuteAction(deleteFileAction, "Delete file");
             if (result.HasResult)
             {
                 Console.WriteLine(string.Format("File successfully deleted: {0} | {1}", result.Result.FileName, result.Result.FileID));
