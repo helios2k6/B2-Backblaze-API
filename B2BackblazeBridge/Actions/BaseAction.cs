@@ -116,7 +116,7 @@ namespace B2BackblazeBridge.Actions
             if (filePath.IndexOf(":") == 1)
             {
                 char driveLetter = Char.ToLowerInvariant(filePath[0]);
-                updatedString = updatedString.Substring(2);
+                updatedString = updatedString.Substring(3);
                 updatedString = updatedString.Insert(0, new string(new[] { driveLetter, '/' }));
             }
 
