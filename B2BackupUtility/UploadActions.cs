@@ -139,9 +139,9 @@ namespace B2BackupUtility
             }
 
             Console.WriteLine("Filtered files that are already on the server");
-            IDictionary<string, FileManifestEntry> originalFilePathToFileManifest = fileManifest.FileEntries.ToDictionary(t => t.OriginalFilePath, t => t);
+            IDictionary<string, FileManifestEntry> destinationPathsToFileManifest = fileManifest.FileEntries.ToDictionary(t => t.DestinationFilePath, t => t);
             // If there's nothing to compare, then there's no point in iterating
-            if (originalFilePathToFileManifest.Any() == false)
+            if (destinationPathsToFileManifest.Any() == false)
             {
                 return allLocalFiles;
             }
@@ -149,7 +149,8 @@ namespace B2BackupUtility
             ISet<string> filesToUpload = new HashSet<string>();
             foreach (string localFile in allLocalFiles)
             {
-                if (originalFilePathToFileManifest.TryGetValue(localFile, out FileManifestEntry remoteFileManifestEntry))
+                string calculatedDestinationFilePath = GetSafeFileName(localFile);
+                if (destinationPathsToFileManifest.TryGetValue(calculatedDestinationFilePath, out FileManifestEntry remoteFileManifestEntry))
                 {
                     // Need confirm if this is a duplicate or not
                     // 1. If the lengths and last modified dates are the same, then just assume the files are equals (do not upload)
