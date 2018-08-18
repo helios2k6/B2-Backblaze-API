@@ -38,18 +38,24 @@ namespace B2BackupUtility
         #region public methods
         public static void UploadFile(BackblazeB2AuthorizationSession authorizationSession, string bucketID, IEnumerable<string> args)
         {
-            string fileToUpload = CommonUtils.GetArgument(args, "--file");
+            string localFilePath = CommonUtils.GetArgument(args, "--file");
+            string destinationRemoteFilePath = CommonUtils.GetArgument(args, "--destination");
             int numberOfConnections = GetNumberOfConnections(args);
-            if (string.IsNullOrWhiteSpace(fileToUpload) || File.Exists(fileToUpload) == false)
+            if (string.IsNullOrWhiteSpace(localFilePath) || File.Exists(localFilePath) == false)
             {
-                Console.WriteLine(string.Format("Invalid arguments sent for --file ({0})", fileToUpload));
+                Console.WriteLine(string.Format("Invalid arguments sent for --file ({0})", localFilePath));
                 return;
+            }
+
+            if (string.IsNullOrWhiteSpace(destinationRemoteFilePath)) {
+                // Remote file path is optional
+                destinationRemoteFilePath = localFilePath;
             }
 
             FileManifest fileManifest = FileManifestActions.ReadManifestFileFromServerOrReturnNewOne(authorizationSession, bucketID);
 
             Console.WriteLine("Uploading file");
-            UploadFileImpl(authorizationSession, fileManifest, bucketID, fileToUpload, numberOfConnections);
+            UploadFileImpl(authorizationSession, fileManifest, bucketID, localFilePath, destinationRemoteFilePath, numberOfConnections);
         }
 
         public static void UploadFolder(BackblazeB2AuthorizationSession authorizationSession, string bucketID, IEnumerable<string> args)
@@ -103,6 +109,7 @@ namespace B2BackupUtility
                     fileManifest,
                     bucketID,
                     localFile,
+                    localFile, // TODO: Destination file path will be modifyable in the future
                     numberOfConnections
                 );
 
@@ -192,6 +199,7 @@ namespace B2BackupUtility
             FileManifest fileManifest,
             string bucketID,
             string localFilePath,
+            string remoteDestinationPath,
             int uploadConnections
         )
         {
@@ -202,13 +210,13 @@ namespace B2BackupUtility
                 ? ExecuteUploadAction(new UploadFileAction(
                     authorizationSession,
                     localFilePath,
-                    GetSafeFileName(localFilePath),
+                    GetSafeFileName(remoteDestinationPath),
                     bucketID
                 ))
                 : ExecuteUploadAction(new UploadFileUsingMultipleConnectionsAction(
                     authorizationSession,
                     localFilePath,
-                    GetSafeFileName(localFilePath),
+                    GetSafeFileName(remoteDestinationPath),
                     bucketID,
                     Constants.FileChunkSize,
                     uploadConnections,
