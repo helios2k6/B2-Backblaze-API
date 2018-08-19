@@ -44,7 +44,6 @@ namespace B2BackblazeBridge.Actions
         #region private fields
         private static readonly string FinishLargeFileURL = "/b2api/v1/b2_finish_large_file";
         private static readonly int MinimumFileChunkSize = 1048576; // 1 mebibyte
-        private static readonly int MaxMemoryToTakeUp = 134217728; // 128 mebibytes
 
         private readonly BackblazeB2AuthorizationSession _authorizationSession;
         private readonly string _bucketID;
@@ -97,7 +96,7 @@ namespace B2BackblazeBridge.Actions
             _remoteFilePath = remoteFilePath;
             _fileChunkSizesInBytes = fileChunkSizesInBytes;
             _numberOfConnections = numberOfConnections;
-            _jobStream = new BlockingCollection<ProducerUploadJob>(MaxMemoryToTakeUp / _fileChunkSizesInBytes);
+            _jobStream = new BlockingCollection<ProducerUploadJob>();
         }
 
         /// <summary>
@@ -151,7 +150,7 @@ namespace B2BackblazeBridge.Actions
             {
                 ConcurrentBag<BackblazeB2ActionResult<UploadFilePartResponse>> uploadResponses = new ConcurrentBag<BackblazeB2ActionResult<UploadFilePartResponse>>();
 
-                Task.Factory.StartNew(StartProducerLoop); // DO NOT WAIT ON THIS! It'll shutdown on its own and we don't want to wait on it
+                Task producerTask = Task.Factory.StartNew(StartProducerLoop);
                 Task[] consumerLoops = new Task[_numberOfConnections];
                 for (int connection = 0; connection < _numberOfConnections; connection++)
                 {
@@ -159,6 +158,7 @@ namespace B2BackblazeBridge.Actions
                 }
 
                 Task.WaitAll(consumerLoops);
+                producerTask.Wait();
 
                 // This will handle the scenario when there's an error
                 return FinishUploadingLargeFile(fileID, uploadResponses);
@@ -176,6 +176,12 @@ namespace B2BackblazeBridge.Actions
                     return CancelFileUpload(fileID);
                 }
 
+                throw ex;
+            }
+            catch (Exception ex)
+            {
+                // In the event of any other exception, cancel the upload and then rethrow
+                CancelFileUpload(fileID);
                 throw ex;
             }
         }

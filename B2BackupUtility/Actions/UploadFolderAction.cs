@@ -19,7 +19,6 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-using B2BackblazeBridge.Core;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -35,7 +34,7 @@ namespace B2BackupUtility.Actions
         #region private fields
         private static string FolderOption => "--folder";
         private static string OverrideOption => "--override";
-        private static string FlattenOption => "--flatten";
+        private static string FlattenOption => "--flatten (not supported yet)";
         #endregion
 
         #region public properties
@@ -67,12 +66,34 @@ namespace B2BackupUtility.Actions
                 throw new DirectoryNotFoundException($"Could not find directory {folder}");
             }
 
-            IEnumerable<string> localFilesToUpload = GetFilesToUpload(FileManifest, folder, overrideFiles);
-            foreach (string localFile in localFilesToUpload)
+            try
             {
-                CancellationActions.GlobalCancellationToken.ThrowIfCancellationRequested();
-                // TODO: Handle failed uploads in some graceful manner
-                UploadFile(localFile, localFile); // TODO: We need to allow destination folders to be specified
+                IEnumerable<string> localFilesToUpload = GetFilesToUpload(FileManifest, folder, overrideFiles);
+                IList<string> failedUploads = new List<string>();
+                foreach (string localFile in localFilesToUpload)
+                {
+                    CancellationActions.GlobalCancellationToken.ThrowIfCancellationRequested();
+
+                    // TODO: We need to allow destination folders to be specified
+                    UploadInfo uploadInfo = UploadFile(localFile, localFile);
+                    if (uploadInfo.B2UploadResult.HasErrors)
+                    {
+                        LogCritical($"Failed to upload {localFile}. {uploadInfo.B2UploadResult.ToString()}");
+                    }
+                }
+
+                if (failedUploads.Any())
+                {
+                    LogInfo("Failed to upload the following files:");
+                    foreach (string failedUpload in failedUploads)
+                    {
+                        LogInfo($"{failedUpload}");
+                    }
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                LogCritical("Upload cancelled!");
             }
         }
         #endregion

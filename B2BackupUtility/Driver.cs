@@ -21,6 +21,7 @@
 
 using B2BackblazeBridge.Actions;
 using B2BackblazeBridge.Core;
+using B2BackupUtility.Actions;
 using System;
 using System.Linq;
 using System.Text;
@@ -104,11 +105,11 @@ namespace B2BackupUtility
                     break;
 
                 case Action.UPLOAD:
-                    UploadActions.UploadFile(authorizationSession, bucketID, args);
+                    new UploadFileAction(args).ExecuteAction();
                     break;
 
                 case Action.UPLOAD_FOLDER:
-                    UploadActions.UploadFolder(authorizationSession, bucketID, args);
+                    new UploadFolderAction(args).ExecuteAction();
                     break;
 
                 default:

@@ -219,10 +219,12 @@ namespace B2BackblazeBridge.Actions
             }
             catch (Exception ex)
             {
-                throw new B2ContractBrokenException(
-                    "An exception occurred while attempting to talk to the B2 API",
-                    ex
-                );
+                return new BackblazeB2ActionResult<T>(new BackblazeB2ActionErrorDetails
+                {
+                    Status = -1,
+                    Code = "Unknown exception",
+                    Message = ex.Message,
+                });
             }
         }
 

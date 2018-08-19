@@ -25,6 +25,7 @@ using Functional.Maybe;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -46,7 +47,6 @@ namespace B2BackupUtility.Actions
         #region protected class
         protected sealed class UploadInfo
         {
-            public long UploadLength { get; set; }
             public long UploadTimeInTicks { get; set; }
             public BackblazeB2ActionResult<IBackblazeB2UploadResult> B2UploadResult { get; set; }
         }
@@ -109,11 +109,8 @@ namespace B2BackupUtility.Actions
                 CancellationActions.GlobalCancellationToken
             ));
 
-            if (uploadInfo.B2UploadResult.HasResult)
-            {
-                UpdateFileManifest(localFilePath, uploadInfo.B2UploadResult.Result.FileName, info);
-            }
-
+            UpdateFileManifest(uploadInfo, info);
+            PrintUploadResult(uploadInfo, info);
             return uploadInfo;
         }
 
@@ -183,26 +180,52 @@ namespace B2BackupUtility.Actions
         #endregion
 
         #region private methods
-        private void UpdateFileManifest(string localFilePath, string remoteDestinationFileName, FileInfo fileInfo)
+        private void PrintUploadResult(UploadInfo uploadInfo, FileInfo fileInfo)
         {
-            FileManifestEntry addedFileEntry = new FileManifestEntry
+            if (uploadInfo.B2UploadResult.HasResult)
             {
-                OriginalFilePath = localFilePath,
-                DestinationFilePath = remoteDestinationFileName,
-                SHA1 = SHA1FileHashStore.Instance.GetFileHash(localFilePath),
-                Length = fileInfo.Length,
-                LastModified = fileInfo.LastWriteTimeUtc.ToBinary(),
-            };
-            FileManifest.Version++;
-            FileManifest.FileEntries = FileManifest.FileEntries.Append(addedFileEntry).ToArray();
-            FileManifestActions.WriteManifestFileToServer(GetOrCreateAuthorizationSession(), BucketID, FileManifest);
+                IBackblazeB2UploadResult uploadResult = uploadInfo.B2UploadResult.Result;
+                double bytesPerSecond = uploadResult.ContentLength / ((double)uploadInfo.UploadTimeInTicks/ Stopwatch.Frequency);
+
+                StringBuilder builder = new StringBuilder();
+                builder.AppendFormat("File: {0}", uploadResult.FileName).AppendLine();
+                builder.AppendFormat("File ID: {0}", uploadResult.FileID).AppendLine();
+                builder.AppendFormat("Total Content Length: {0:n0} bytes", uploadResult.ContentLength).AppendLine();
+                builder.AppendFormat("Upload Time: {0} seconds", (double)uploadInfo.UploadTimeInTicks / Stopwatch.Frequency).AppendLine();
+                builder.AppendFormat("Upload Speed: {0:0,0.00} bytes / second", bytesPerSecond.ToString("0,0.00", CultureInfo.InvariantCulture));
+
+                LogInfo($"Uploaded File {uploadInfo.B2UploadResult.Result.FileName}");
+                LogVerbose(builder.ToString());
+            }
+            else
+            {
+                LogInfo($"Failed to upload: ${fileInfo.FullName}");
+            }
+        }
+
+        private void UpdateFileManifest(UploadInfo uploadInfo, FileInfo fileInfo)
+        {
+            if (uploadInfo.B2UploadResult.HasResult)
+            {
+                FileManifestEntry addedFileEntry = new FileManifestEntry
+                {
+                    OriginalFilePath = fileInfo.FullName,
+                    DestinationFilePath = uploadInfo.B2UploadResult.Result.FileName,
+                    SHA1 = SHA1FileHashStore.Instance.GetFileHash(fileInfo.FullName),
+                    Length = uploadInfo.B2UploadResult.Result.ContentLength,
+                    LastModified = fileInfo.LastWriteTimeUtc.ToBinary(),
+                };
+                FileManifest.Version++;
+                FileManifest.FileEntries = FileManifest.FileEntries.Append(addedFileEntry).ToArray();
+                FileManifestActions.WriteManifestFileToServer(GetOrCreateAuthorizationSession(), BucketID, FileManifest);
+            }
         }
 
         private static UploadInfo ExecuteUploadAction<T>(BaseAction<T> action) where T : IBackblazeB2UploadResult
         {
             Stopwatch watch = new Stopwatch();
             watch.Start();
-            BackblazeB2ActionResult<T> uploadResult = CommonUtils.ExecuteAction(action, "Upload File");
+            BackblazeB2ActionResult<T> uploadResult = action.Execute();
             watch.Stop();
 
             long uploadLength = 0;
@@ -223,7 +246,6 @@ namespace B2BackupUtility.Actions
             return new UploadInfo
             {
                 B2UploadResult = castedResult,
-                UploadLength = uploadLength,
                 UploadTimeInTicks = watch.ElapsedTicks,
             };
         }
