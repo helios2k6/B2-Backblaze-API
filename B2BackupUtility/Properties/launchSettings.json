@@ -1,7 +1,8 @@
 {
   "profiles": {
     "B2BackupUtility": {
-      "commandName": "Project"
+      "commandName": "Project",
+      "commandLineArgs": "--config \"D:\\DOCKING\\test_config_file.txt\" --delete-all-files"
     }
   }
 }

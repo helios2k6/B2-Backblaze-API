@@ -47,9 +47,7 @@ namespace B2BackupUtility
 
         private static string[] NecessaryOptions => new[]
         {
-            BaseCommand.AccountIDOption,
-            BaseCommand.ApplicationKeyOption,
-            BaseCommand.BucketIDOption,
+            BaseCommand.ConfigOption,
         };
 
         private static IDictionary<string, IEnumerable<string>> CommandSwitchesToOptionsMap => new Dictionary<string, IEnumerable<string>>
@@ -67,7 +65,7 @@ namespace B2BackupUtility
         public static void Main(string[] args)
         {
             PrintHeader();
-            if (args.Length < 4 || WantsHelp(args))
+            if (args.Length < 3 || WantsHelp(args))
             {
                 PrintHelp();
                 return;
@@ -134,12 +132,6 @@ namespace B2BackupUtility
 
         private static bool TryGetAction(string[] args, out Action action)
         {
-            if (args.Length < 4)
-            {
-                action = Action.UNKNOWN;
-                return false;
-            }
-
             foreach (string arg in args)
             {
                 if (CommandSwitchToActionMap.TryGetValue(arg, out action))

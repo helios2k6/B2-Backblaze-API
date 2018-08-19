@@ -34,7 +34,7 @@ namespace B2BackblazeBridge.Actions
     public sealed class AuthorizeAccountAction : BaseAction<BackblazeB2AuthorizationSession>
     {
         #region private fields
-        private readonly string _acccountID;
+        private readonly string _keyID;
         private readonly string _applicationKey;
 
         private static readonly string APIURL = "https://api.backblazeb2.com/b2api/v1/b2_authorize_account";
@@ -44,11 +44,11 @@ namespace B2BackblazeBridge.Actions
         /// <summary>
         /// Constructs a new AuthorizeAccountAction
         /// </summary>
-        /// <param name="accountID">The B2 account ID</param>
+        /// <param name="keyID">The B2 key ID</param>
         /// <param name="applicationKey">The B2 application key</param>
-        public AuthorizeAccountAction(string accountID, string applicationKey) : base(CancellationToken.None)
+        public AuthorizeAccountAction(string keyID, string applicationKey) : base(CancellationToken.None)
         {
-            _acccountID = accountID;
+            _keyID = keyID;
             _applicationKey = applicationKey;
         }
         #endregion
@@ -58,7 +58,7 @@ namespace B2BackblazeBridge.Actions
         {
             HttpWebRequest webRequest = GetHttpWebRequest(APIURL);
             string credentialsHeader = Convert.ToBase64String(
-                Encoding.UTF8.GetBytes(_acccountID + ":" + _applicationKey)
+                Encoding.UTF8.GetBytes(_keyID + ":" + _applicationKey)
             );
             webRequest.Headers.Add("Authorization", "Basic " + credentialsHeader);
             BackblazeB2ActionResult<BackblazeB2AuthorizationSession> response = SendWebRequestAndDeserialize(webRequest, null);

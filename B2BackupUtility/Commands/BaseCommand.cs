@@ -22,8 +22,10 @@
 using B2BackblazeBridge.Actions;
 using B2BackblazeBridge.Core;
 using B2BackupUtility.Logger;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 
 namespace B2BackupUtility.Commands
@@ -39,25 +41,20 @@ namespace B2BackupUtility.Commands
         private readonly IEnumerable<string> _rawArgs;
         private readonly Lazy<Logger.Logger> _logger;
         private readonly Lazy<FileManifest> _fileManifest;
+        private readonly Lazy<Config> _config;
 
         private BackblazeB2AuthorizationSession _authorizationSession;
+
+        private string ApplicationKey => _config.Value.ApplicationKey;
+
+        private string ApplicationKeyID => _config.Value.ApplicationKeyID;
         #endregion
 
         #region protected properties
         /// <summary>
-        /// Get the account ID
-        /// </summary>
-        protected string AccountID => GetArgumentOrThrow(AccountIDOption);
-
-        /// <summary>
-        /// Get the application key
-        /// </summary>
-        protected string ApplicationKey => GetArgumentOrThrow(ApplicationKeyOption);
-
-        /// <summary>
         /// Get the bucket ID
         /// </summary>
-        protected string BucketID => GetArgumentOrThrow(BucketIDOption);
+        protected string BucketID => _config.Value.BucketID;
 
         /// <summary>
         /// The file manifest on the B2 Server
@@ -67,19 +64,9 @@ namespace B2BackupUtility.Commands
 
         #region public properties
         /// <summary>
-        /// The option switch for the account ID
+        /// The option to specify a config file
         /// </summary>
-        public static string AccountIDOption => "--account-id";
-
-        /// <summary>
-        /// The option switch for the application key
-        /// </summary>
-        public static string ApplicationKeyOption => "--application-key";
-
-        /// <summary>
-        /// The option for the bucket ID
-        /// </summary>
-        public static string BucketIDOption => "--bucket-id";
+        public static string ConfigOption => "--config";
 
         /// <summary>
         /// The option to set the log level
@@ -102,6 +89,7 @@ namespace B2BackupUtility.Commands
             _fileManifest = new Lazy<FileManifest>(() =>
                 FileManifestActions.ReadManifestFileFromServerOrReturnNewOne(GetOrCreateAuthorizationSession(), BucketID)
             );
+            _config = new Lazy<Config>(DeserializeConfig);
         }
         #endregion
 
@@ -135,12 +123,12 @@ namespace B2BackupUtility.Commands
         {
             if (_authorizationSession == null || _authorizationSession.SessionExpirationDate - DateTime.Now < OneHour)
             {
-                AuthorizeAccountAction authorizeAccountAction = new AuthorizeAccountAction(AccountID, ApplicationKey);
+                AuthorizeAccountAction authorizeAccountAction = new AuthorizeAccountAction(ApplicationKeyID, ApplicationKey);
                 BackblazeB2ActionResult<BackblazeB2AuthorizationSession> authorizationSessionResult = authorizeAccountAction.Execute();
                 if (authorizationSessionResult.HasErrors)
                 {
                     string errorMessage = authorizationSessionResult.Errors.First().Message;
-                    throw new InvalidOperationException($"Could not authorize the account with Account ID: ${AccountID} and Application Key: ${ApplicationKey}. ${errorMessage}");
+                    throw new InvalidOperationException($"Could not authorize the account with Application Key ID: ${ApplicationKeyID} and Application Key: ${ApplicationKey}. ${errorMessage}");
                 }
                 _authorizationSession = authorizationSessionResult.Result;
             }
@@ -204,6 +192,17 @@ namespace B2BackupUtility.Commands
         #endregion
 
         #region private methods
+        private Config DeserializeConfig()
+        {
+            bool hasConfigFile = TryGetArgument(ConfigOption, out string configFilePath);
+            if (hasConfigFile == false)
+            {
+                throw new InvalidOperationException("You must provide a config file");
+            }
+
+            return JsonConvert.DeserializeObject<Config>(File.ReadAllText(configFilePath));
+        }
+
         private LogLevel GetLogLevel()
         {
             bool hasLogLevelOption = TryGetArgument(LogLevelOption, out string logLevel);

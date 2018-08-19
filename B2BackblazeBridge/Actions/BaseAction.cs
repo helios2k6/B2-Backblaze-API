@@ -20,7 +20,6 @@
  */
 
 using B2BackblazeBridge.Core;
-using B2BackblazeBridge.Exceptions;
 using Functional.Maybe;
 using Newtonsoft.Json;
 using System;
@@ -164,7 +163,8 @@ namespace B2BackblazeBridge.Actions
 
             if (attemptNumber == 2)
             {
-                switch (_random.Next(0, 4)) {
+                switch (_random.Next(0, 4))
+                {
                     case 0:
                         return TimeSpan.FromSeconds(10);
                     case 1:
