@@ -38,8 +38,9 @@ namespace B2BackupUtility.Actions
     {
         #region private fields
         private static int DefaultUploadConnections => 20;
-
         private static int MinimumFileLengthForMultipleConnections => 1048576;
+
+        private readonly Lazy<FileManifest> _fileManifest;
         #endregion
 
         #region protected class
@@ -68,21 +69,52 @@ namespace B2BackupUtility.Actions
         }
 
         protected string ConnectionsOption => "--connections";
+
+        protected FileManifest FileManifest => _fileManifest.Value;
         #endregion
 
         #region ctor
         public BaseUploadAction(IEnumerable<string> rawArgs) : base(rawArgs)
         {
+            _fileManifest = new Lazy<FileManifest>(
+                () => FileManifestActions.ReadManifestFileFromServerOrReturnNewOne(
+                    GetOrCreateAuthorizationSession(),
+                    BucketID
+                    )
+                );
         }
         #endregion
 
-        #region public methods
-        #endregion
-
         #region protected methods
-        protected FileManifest GetFileOrCreateFileManifest()
+        protected UploadInfo UploadFile(
+            string localFilePath,
+            string remoteDestinationPath
+        )
         {
+            FileInfo info = new FileInfo(localFilePath);
+            UploadInfo uploadInfo = info.Length < MinimumFileLengthForMultipleConnections || Connections == 1
+            ? ExecuteUploadAction(new UploadWithSingleConnectionAction(
+                GetOrCreateAuthorizationSession(),
+                localFilePath,
+                GetSafeFileName(remoteDestinationPath),
+                BucketID
+            ))
+            : ExecuteUploadAction(new UploadWithMultipleConnectionsAction(
+                GetOrCreateAuthorizationSession(),
+                localFilePath,
+                GetSafeFileName(remoteDestinationPath),
+                BucketID,
+                Constants.FileChunkSize,
+                Connections,
+                CancellationActions.GlobalCancellationToken
+            ));
 
+            if (uploadInfo.B2UploadResult.HasResult)
+            {
+                UpdateFileManifest(localFilePath, uploadInfo.B2UploadResult.Result.FileName, info);
+            }
+
+            return uploadInfo;
         }
 
         /// <summary>
@@ -151,52 +183,19 @@ namespace B2BackupUtility.Actions
         #endregion
 
         #region private methods
-        private UploadInfo UploadFileImpl(
-            FileManifest fileManifest,
-            string localFilePath,
-            string remoteDestinationPath
-        )
+        private void UpdateFileManifest(string localFilePath, string remoteDestinationFileName, FileInfo fileInfo)
         {
-            FileInfo info = new FileInfo(localFilePath);
-            UploadInfo uploadInfo = info.Length < MinimumFileLengthForMultipleConnections || Connections == 1
-            ? ExecuteUploadAction(new UploadWithSingleConnectionAction(
-                GetOrCreateAuthorizationSession(),
-                localFilePath,
-                GetSafeFileName(remoteDestinationPath),
-                BucketID
-            ))
-            : ExecuteUploadAction(new UploadWithMultipleConnectionsAction(
-                GetOrCreateAuthorizationSession(),
-                localFilePath,
-                GetSafeFileName(remoteDestinationPath),
-                BucketID,
-                Constants.FileChunkSize,
-                Connections,
-                CancellationActions.GlobalCancellationToken
-            ));
-
-            if (uploadInfo.B2UploadResult.HasResult)
-            {
-                UpdateFileManifest(fileManifest, localFilePath, info, uploadInfo);
-            }
-
-            return uploadInfo;
-        }
-
-        private void UpdateFileManifest(FileManifest fileManifest, string localFilePath, FileInfo info, UploadInfo uploadInfo)
-        {
-            // TODO: rethink how we manage the file manifest
             FileManifestEntry addedFileEntry = new FileManifestEntry
             {
                 OriginalFilePath = localFilePath,
-                DestinationFilePath = uploadInfo.B2UploadResult.Result.FileName,
+                DestinationFilePath = remoteDestinationFileName,
                 SHA1 = SHA1FileHashStore.Instance.GetFileHash(localFilePath),
-                Length = info.Length,
-                LastModified = info.LastWriteTimeUtc.ToBinary(),
+                Length = fileInfo.Length,
+                LastModified = fileInfo.LastWriteTimeUtc.ToBinary(),
             };
-            fileManifest.Version++;
-            fileManifest.FileEntries = fileManifest.FileEntries.Append(addedFileEntry).ToArray();
-            FileManifestActions.WriteManifestFileToServer(GetOrCreateAuthorizationSession(), BucketID, fileManifest);
+            FileManifest.Version++;
+            FileManifest.FileEntries = FileManifest.FileEntries.Append(addedFileEntry).ToArray();
+            FileManifestActions.WriteManifestFileToServer(GetOrCreateAuthorizationSession(), BucketID, FileManifest);
         }
 
         private static UploadInfo ExecuteUploadAction<T>(BaseAction<T> action) where T : IBackblazeB2UploadResult

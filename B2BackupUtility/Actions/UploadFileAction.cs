@@ -72,14 +72,9 @@ namespace B2BackupUtility.Actions
                 destinationRemoteFilePath = localFilePath;
             }
 
-            FileManifest fileManifest = FileManifestActions.ReadManifestFileFromServerOrReturnNewOne(authorizationSession, bucketID);
-
-            Console.WriteLine("Uploading file");
-            UploadFileImpl(authorizationSession, fileManifest, bucketID, localFilePath, destinationRemoteFilePath, numberOfConnections);
+            // TODO: Print out statistics on uploading files
+            UploadFile(localFilePath, destinationRemoteFilePath);
         }
-        #endregion
-
-        #region private methods
         #endregion
     }
 }

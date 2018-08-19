@@ -21,6 +21,7 @@
 
 using B2BackblazeBridge.Actions;
 using B2BackblazeBridge.Core;
+using B2BackupUtility.Logger;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -33,10 +34,12 @@ namespace B2BackupUtility.Actions
     public abstract class BaseAction
     {
         #region private fields
-        private readonly IEnumerable<string> _rawArgs;
-        private BackblazeB2AuthorizationSession _authorizationSession;
-
         private static TimeSpan OneHour => TimeSpan.FromMinutes(60);
+
+        private readonly IEnumerable<string> _rawArgs;
+        private readonly Lazy<Logger.Logger> _logger;
+
+        private BackblazeB2AuthorizationSession _authorizationSession;
         #endregion
 
         #region protected properties
@@ -73,6 +76,11 @@ namespace B2BackupUtility.Actions
         public string BucketIDOption => "--bucket-id";
 
         /// <summary>
+        /// The option to set the log level
+        /// </summary>
+        public string LogLevelOption => "--log-level";
+
+        /// <summary>
         /// The name of this action--this is displayed in the Help center
         /// </summary>
         public abstract string ActionName { get; }
@@ -99,10 +107,36 @@ namespace B2BackupUtility.Actions
         public BaseAction(IEnumerable<string> rawArgs)
         {
             _rawArgs = rawArgs;
+            _logger = new Lazy<Logger.Logger>(() => new Logger.Logger(GetLogLevel(), new[] { new ConsoleLogSink() }));
         }
         #endregion
 
         #region protected methods
+        protected void LogCritical(string message)
+        {
+            _logger.Value.Log(LogLevel.CRITICAL, message);
+        }
+
+        protected void LogWarn(string message)
+        {
+            _logger.Value.Log(LogLevel.WARNING, message);
+        }
+
+        protected void LogInfo(string message)
+        {
+            _logger.Value.Log(LogLevel.INFO, message);
+        }
+
+        protected void LogVerbose(string message)
+        {
+            _logger.Value.Log(LogLevel.VERBOSE, message);
+        }
+
+        protected void LogDebug(string message)
+        {
+            _logger.Value.Log(LogLevel.DEBUG, message);
+        }
+
         protected BackblazeB2AuthorizationSession GetOrCreateAuthorizationSession()
         {
             if (_authorizationSession == null || _authorizationSession.SessionExpirationDate - DateTime.Now < OneHour)
@@ -172,6 +206,34 @@ namespace B2BackupUtility.Actions
 
             value = null;
             return false;
+        }
+        #endregion
+
+        #region private methods
+        private LogLevel GetLogLevel()
+        {
+            bool hasLogLevelOption = TryGetArgument(LogLevelOption, out string logLevel);
+            if (hasLogLevelOption == false)
+            {
+                return LogLevel.INFO;
+            }
+
+            logLevel = logLevel.ToLowerInvariant();
+            switch (logLevel)
+            {
+                case "debug":
+                    return LogLevel.DEBUG;
+                case "verbose":
+                    return LogLevel.VERBOSE;
+                case "info":
+                    return LogLevel.INFO;
+                case "warn":
+                    return LogLevel.WARNING;
+                case "critical":
+                    return LogLevel.CRITICAL;
+            }
+
+            return LogLevel.INFO;
         }
         #endregion
     }
