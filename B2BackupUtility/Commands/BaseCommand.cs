@@ -143,7 +143,7 @@ namespace B2BackupUtility.Commands
         /// <returns>True if an argument exists. False otherwise</returns>
         protected bool DoesOptionExist(string option)
         {
-            return TryGetArgument(option, out string _);
+            return _rawArgs.Any(t => t.Equals(option, StringComparison.OrdinalIgnoreCase));
         }
 
         /// <summary>

@@ -236,20 +236,24 @@ namespace B2BackblazeBridge.Actions
             try
             {
                 long currentChunk = 0;
+                byte[] localBuffer = new byte[_fileChunkSizesInBytes];
                 while (true)
                 {
                     _cancellationToken.ThrowIfCancellationRequested();
 
-                    byte[] localBuffer = new byte[_fileChunkSizesInBytes];
                     int amountRead = _dataStream.Read(localBuffer, 0, _fileChunkSizesInBytes);
                     if (amountRead > 0)
                     {
+                        // Truncate buffer as necessary
+                        byte[] truncatedBuffer = new byte[amountRead];
+                        Buffer.BlockCopy(localBuffer, 0, truncatedBuffer, 0, amountRead);
+
                         _jobStream.Add(new ProducerUploadJob
                         {
-                            Buffer = localBuffer,
+                            Buffer = truncatedBuffer,
                             ContentLength = amountRead,
                             FilePartNumber = currentChunk + 1L, // File parts are 1-index based...I know, fucking stupid
-                            SHA1 = ComputeSHA1Hash(localBuffer),
+                            SHA1 = ComputeSHA1Hash(truncatedBuffer),
                         });
                         currentChunk++;
                     }

@@ -50,6 +50,11 @@ namespace B2BackupUtility
             BaseCommand.ConfigOption,
         };
 
+        private static string[] GlobalOptions => new[]
+        {
+            BaseCommand.LogLevelOption,
+        };
+
         private static IDictionary<string, IEnumerable<string>> CommandSwitchesToOptionsMap => new Dictionary<string, IEnumerable<string>>
         {
             { DeleteAllFilesCommand.CommandSwitch, new string[] { } },
@@ -151,7 +156,7 @@ namespace B2BackupUtility
 
         private static void PrintHeader()
         {
-            Console.WriteLine("B2 Backup Utility v4.0");
+            Console.WriteLine("B2 Backup Utility v4.2");
             Console.WriteLine();
         }
 
@@ -163,6 +168,13 @@ namespace B2BackupUtility
 
             builder.AppendLine("Necessary Options");
             foreach (string option in NecessaryOptions)
+            {
+                builder.AppendLine(option);
+            }
+            builder.AppendLine();
+
+            builder.AppendLine("Global Options");
+            foreach (string option in GlobalOptions)
             {
                 builder.AppendLine(option);
             }

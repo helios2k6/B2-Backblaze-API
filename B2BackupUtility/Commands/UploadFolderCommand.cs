@@ -34,7 +34,7 @@ namespace B2BackupUtility.Commands
         #region private fields
         private static string FolderOption => "--folder";
         private static string OverrideOption => "--override";
-        private static string FlattenOption => "--flatten (not supported yet)";
+        private static string FlattenOption => "--flatten";
         #endregion
 
         #region public properties
@@ -56,6 +56,7 @@ namespace B2BackupUtility.Commands
         {
             bool hasFolderOption = TryGetArgument(FolderOption, out string folder);
             bool overrideFiles = DoesOptionExist(OverrideOption);
+            bool flatten = DoesOptionExist(FlattenOption);
             if (hasFolderOption == false || string.IsNullOrWhiteSpace(folder))
             {
                 throw new InvalidOperationException("No folder was provided");
@@ -68,24 +69,24 @@ namespace B2BackupUtility.Commands
 
             try
             {
-                IEnumerable<string> localFilesToUpload = GetFilesToUpload(FileManifest, folder, overrideFiles);
-                IList<string> failedUploads = new List<string>();
-                foreach (string localFile in localFilesToUpload)
+                IEnumerable<LocalToRemoteFileMapping> localToRemoteFileMappings = GetFilesToUpload(folder, overrideFiles, flatten);
+                IList<LocalToRemoteFileMapping> failedUploads = new List<LocalToRemoteFileMapping>();
+                foreach (LocalToRemoteFileMapping mapping in localToRemoteFileMappings)
                 {
                     CancellationActions.GlobalCancellationToken.ThrowIfCancellationRequested();
 
                     // TODO: We need to allow destination folders to be specified
-                    UploadInfo uploadInfo = UploadFile(localFile, localFile);
+                    UploadInfo uploadInfo = UploadFile(mapping.LocalFilePath, mapping.RemoteDestinationPath);
                     if (uploadInfo.B2UploadResult.HasErrors)
                     {
-                        LogCritical($"Failed to upload {localFile}. {uploadInfo.B2UploadResult.ToString()}");
+                        failedUploads.Add(mapping);
                     }
                 }
 
                 if (failedUploads.Any())
                 {
                     LogInfo("Failed to upload the following files:");
-                    foreach (string failedUpload in failedUploads)
+                    foreach (LocalToRemoteFileMapping failedUpload in failedUploads)
                     {
                         LogInfo($"{failedUpload}");
                     }
@@ -99,46 +100,95 @@ namespace B2BackupUtility.Commands
         #endregion
 
         #region private methods
-        private static IEnumerable<string> GetFilesToUpload(
-            FileManifest fileManifest,
+        private IEnumerable<LocalToRemoteFileMapping> GetFilesToUpload(
             string folder,
+            bool overrideFiles,
+            bool flatten
+        )
+        {
+            return FilterAnyDuplicatesDueToFileManifest(FilterAnyDuplicatesDueToRemoteFilePath(
+                GetAllLocalToRemoteFileMappings(folder, flatten)),
+                FileManifest,
+                overrideFiles
+            );
+        }
+
+        private IEnumerable<LocalToRemoteFileMapping> GetAllLocalToRemoteFileMappings(string folder, bool flatten)
+        {
+            IList<string> allLocalFiles = new List<string>(Directory.EnumerateFiles(folder, "*", SearchOption.AllDirectories));
+            foreach (string localFile in allLocalFiles)
+            {
+                yield return new LocalToRemoteFileMapping
+                {
+                    LocalFilePath = localFile,
+                    RemoteDestinationPath = GetDestinationPath(localFile, flatten),
+                };
+            }
+        }
+
+        private IEnumerable<LocalToRemoteFileMapping> FilterAnyDuplicatesDueToRemoteFilePath(IEnumerable<LocalToRemoteFileMapping> mappings)
+        {
+            IDictionary<string, int> remoteDuplicateCounter = new Dictionary<string, int>();
+            foreach (LocalToRemoteFileMapping mapping in mappings)
+            {
+                if (remoteDuplicateCounter.TryGetValue(mapping.RemoteDestinationPath, out int counter) == false)
+                {
+                    counter = 0;
+                    remoteDuplicateCounter.Add(mapping.RemoteDestinationPath, 0);
+                }
+
+                remoteDuplicateCounter[mapping.RemoteDestinationPath] = counter + 1;
+            }
+
+            foreach (LocalToRemoteFileMapping mapping in mappings)
+            {
+                if (remoteDuplicateCounter[mapping.RemoteDestinationPath] < 2)
+                {
+                    yield return mapping;
+                }
+                else
+                {
+                    LogInfo($"Skipping {mapping.LocalFilePath}. This file would have been a duplicate on the server");
+                }
+            }
+        }
+
+        private IEnumerable<LocalToRemoteFileMapping> FilterAnyDuplicatesDueToFileManifest(
+            IEnumerable<LocalToRemoteFileMapping> mappings,
+            FileManifest manifest,
             bool overrideFiles
         )
         {
-            IEnumerable<string> allLocalFiles = Directory.EnumerateFiles(folder, "*", SearchOption.AllDirectories);
             if (overrideFiles)
             {
-                return allLocalFiles;
+                foreach (LocalToRemoteFileMapping mapping in mappings)
+                {
+                    yield return mapping;
+                }
+
+                yield break;
             }
 
-            IDictionary<string, FileManifestEntry> destinationPathsToFileManifest = fileManifest.FileEntries.ToDictionary(t => t.DestinationFilePath, t => t);
-            // If there's nothing to compare, then there's no point in iterating
-            if (destinationPathsToFileManifest.Any() == false)
+            IDictionary<string, FileManifestEntry> destinationToManifestEntry = manifest.FileEntries.ToDictionary(k => k.DestinationFilePath, v => v);
+            foreach (LocalToRemoteFileMapping mapping in mappings)
             {
-                return allLocalFiles;
-            }
-
-            ISet<string> filesToUpload = new HashSet<string>();
-            foreach (string localFile in allLocalFiles)
-            {
-                string calculatedDestinationFilePath = GetSafeFileName(localFile);
-                if (destinationPathsToFileManifest.TryGetValue(calculatedDestinationFilePath, out FileManifestEntry remoteFileManifestEntry))
+                if (destinationToManifestEntry.TryGetValue(mapping.RemoteDestinationPath, out FileManifestEntry remoteFileManifestEntry))
                 {
                     // Need confirm if this is a duplicate or not
                     // 1. If the lengths and last modified dates are the same, then just assume the files are equals (do not upload)
                     // 2. If the lengths are different then the files are not the same (upload)
                     // 3. If the lengths are the same but the last modified dates are different, then we need to perform a SHA-1 check to see
                     //    if the contents are actually different (upload if SHA-1's are different)
-                    FileInfo localFileInfo = new FileInfo(localFile);
+                    FileInfo localFileInfo = new FileInfo(mapping.LocalFilePath);
                     if (localFileInfo.Length == remoteFileManifestEntry.Length)
                     {
                         // Scenario 3
                         if (localFileInfo.LastWriteTimeUtc.Equals(DateTime.FromBinary(remoteFileManifestEntry.LastModified)) == false)
                         {
-                            string sha1OfLocalFile = SHA1FileHashStore.Instance.GetFileHash(localFile);
+                            string sha1OfLocalFile = SHA1FileHashStore.Instance.GetFileHash(mapping.LocalFilePath);
                             if (string.Equals(sha1OfLocalFile, remoteFileManifestEntry.SHA1, StringComparison.OrdinalIgnoreCase) == false)
                             {
-                                filesToUpload.Add(localFile);
+                                yield return mapping;
                             }
                         }
                         // Scenario 1 is implied 
@@ -146,17 +196,20 @@ namespace B2BackupUtility.Commands
                     else
                     {
                         // Scenario 2
-                        filesToUpload.Add(localFile);
+                        yield return mapping;
                     }
                 }
                 else
                 {
                     // We have never uploaded this file to the server
-                    filesToUpload.Add(localFile);
+                    yield return mapping;
                 }
             }
+        }
 
-            return filesToUpload;
+        private static string GetDestinationPath(string localFilePath, bool flatten)
+        {
+            return GetSafeFileName(flatten ? Path.GetFileName(localFilePath) : localFilePath);
         }
         #endregion
     }
