@@ -1,4 +1,4 @@
-/* 
+﻿/* 
  * Copyright (c) 2015 Andrew Johnson
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy of 
@@ -21,30 +21,14 @@
 
 namespace B2BackblazeBridge.Processing
 {
-    /// <summary>
-    /// Represents an upload part job
-    /// </summary>
-    internal sealed class UploadPartJob
+    internal sealed class ProducerUploadJob
     {
-        /// <summary>
-        /// The length of this chunk's content
-        /// </summary>
+        public byte[] Buffer { get; set; }
+
         public long ContentLength { get; set; }
 
-        /// <summary>
-        /// The position of the first byte that must be read
-        /// </summary>
-        public long FileCursorPosition { get; set; }
-
-        /// <summary>
-        /// The file part number
-        /// </summary>
         public long FilePartNumber { get; set; }
 
-        /// <summary>
-        /// The SHA1 hash of this chunk
-        /// </summary>
-        /// <returns></returns>
         public string SHA1 { get; set; }
     }
 }

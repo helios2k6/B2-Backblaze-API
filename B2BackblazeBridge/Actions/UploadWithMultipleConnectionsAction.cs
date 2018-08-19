@@ -25,11 +25,11 @@ using B2BackblazeBridge.Processing;
 using Functional.Maybe;
 using Newtonsoft.Json;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net;
-using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -39,18 +39,22 @@ namespace B2BackblazeBridge.Actions
     /// <summary>
     /// Represents uploading a single file using multiple connections in parallel
     /// </summary>
-    public sealed class UploadWithMultipleConnectionsAction : BaseAction<BackblazeB2UploadMultipartFileResult>
+    public sealed class UploadWithMultipleConnectionsAction : BaseAction<BackblazeB2UploadMultipartFileResult>, IDisposable
     {
         #region private fields
         private static readonly string FinishLargeFileURL = "/b2api/v1/b2_finish_large_file";
-        private static readonly int MinimumFileChunkSize = 1024 * 1024; // 1 mebibyte
+        private static readonly int MinimumFileChunkSize = 1048576; // 1 mebibyte
+        private static readonly int MaxMemoryToTakeUp = 134217728; // 128 mebibytes
 
         private readonly BackblazeB2AuthorizationSession _authorizationSession;
         private readonly string _bucketID;
-        private readonly string _localFilePath;
         private readonly string _remoteFilePath;
         private readonly int _numberOfConnections;
         private readonly int _fileChunkSizesInBytes;
+        private readonly Stream _dataStream;
+        private readonly BlockingCollection<ProducerUploadJob> _jobStream;
+
+        private bool disposedValue = false;
         #endregion
 
         #region ctor
@@ -58,7 +62,7 @@ namespace B2BackblazeBridge.Actions
         /// Constructs a new UploadFileUsingMultipleConnectionsActions
         /// </summary>
         /// <param name="authorizationSession">The authorization session</param>
-        /// <param name="localFilePath">The (local) path to the file you want to upload</param>
+        /// <param name="dataStream">The stream to read from when uploading</param>
         /// <param name="remoteFilePath">The remote path you want to upload to</param>
         /// <param name="bucketID">The B2 bucket you want to upload to</param>
         /// <param name="fileChunkSizesInBytes">The size (in bytes) of the file chunks you want to use when uploading</param>
@@ -66,7 +70,7 @@ namespace B2BackblazeBridge.Actions
         /// <param name="cancellationToken">The cancellation token to pass in when this upload needs to be cancelled</param>
         public UploadWithMultipleConnectionsAction(
             BackblazeB2AuthorizationSession authorizationSession,
-            string localFilePath,
+            Stream dataStream,
             string remoteFilePath,
             string bucketID,
             int fileChunkSizesInBytes,
@@ -74,13 +78,6 @@ namespace B2BackblazeBridge.Actions
             CancellationToken cancellationToken
         ) : base(cancellationToken)
         {
-            ValidateRawPath(remoteFilePath);
-
-            if (File.Exists(localFilePath) == false)
-            {
-                throw new ArgumentException(string.Format("{0} does not exist", localFilePath));
-            }
-
             if (fileChunkSizesInBytes < MinimumFileChunkSize)
             {
                 throw new ArgumentException("The file chunk sizes must be larger than 1 mebibyte");
@@ -91,19 +88,23 @@ namespace B2BackblazeBridge.Actions
                 throw new ArgumentException("You must specify a positive, non-zero number of connections", "numberOfConnections");
             }
 
+            ValidateRawPath(remoteFilePath);
+            ValidateStreamLength(dataStream);
+
             _authorizationSession = authorizationSession ?? throw new ArgumentNullException("The authorization session object must not be mull");
             _bucketID = bucketID;
-            _localFilePath = localFilePath;
+            _dataStream = dataStream;
             _remoteFilePath = remoteFilePath;
             _fileChunkSizesInBytes = fileChunkSizesInBytes;
             _numberOfConnections = numberOfConnections;
+            _jobStream = new BlockingCollection<ProducerUploadJob>(MaxMemoryToTakeUp / _fileChunkSizesInBytes);
         }
 
         /// <summary>
         /// Constructs a new UploadFileUsingMultipleConnectionsActions
         /// </summary>
         /// <param name="authorizationSession">The authorization session</param>
-        /// <param name="filePath">The (local) path to the file you want to upload</param>
+        /// <param name="localFilePath">The (local) path to the file you want to upload</param>
         /// <param name="fileDestination">The remote path you want to upload to</param>
         /// <param name="bucketID">The B2 bucket you want to upload to</param>
         /// <param name="fileChunkSizesInBytes">The size (in bytes) of the file chunks you want to use when uploading</param>
@@ -111,19 +112,20 @@ namespace B2BackblazeBridge.Actions
         /// <param name="cancellationToken">The cancellation token to pass in when this upload needs to be cancelled</param>
         public UploadWithMultipleConnectionsAction(
             BackblazeB2AuthorizationSession authorizationSession,
-            string filePath,
+            string localFilePath,
             string fileDestination,
             string bucketID,
             int fileChunkSizesInBytes,
-            int numberOfConnections
+            int numberOfConnections,
+            CancellationToken cancellationToken
         ) : this(
             authorizationSession,
-            filePath,
+            new FileStream(localFilePath, FileMode.Open, FileAccess.Read, FileShare.Read),
             fileDestination,
             bucketID,
             fileChunkSizesInBytes,
             numberOfConnections,
-            CancellationToken.None
+            cancellationToken
         )
         {
         }
@@ -147,7 +149,19 @@ namespace B2BackblazeBridge.Actions
             string fileID = fileIDResponse.MaybeResult.Value.FileID;
             try
             {
-                return FinishUploadingLargeFile(fileID, ProcessAllJobs(GenerateUploadParts(), GetUploadPartURLs(fileID)));
+                ConcurrentBag<BackblazeB2ActionResult<UploadFilePartResponse>> uploadResponses = new ConcurrentBag<BackblazeB2ActionResult<UploadFilePartResponse>>();
+
+                Task.Factory.StartNew(StartProducerLoop); // DO NOT WAIT ON THIS! It'll shutdown on its own and we don't want to wait on it
+                Task[] consumerLoops = new Task[_numberOfConnections];
+                for (int connection = 0; connection < _numberOfConnections; connection++)
+                {
+                    consumerLoops[connection] = Task.Factory.StartNew(() => StartConsumeLoop(fileID, uploadResponses));
+                }
+
+                Task.WaitAll(consumerLoops);
+
+                // This will handle the scenario when there's an error
+                return FinishUploadingLargeFile(fileID, uploadResponses);
             }
             catch (TaskCanceledException)
             {
@@ -165,9 +179,117 @@ namespace B2BackblazeBridge.Actions
                 throw ex;
             }
         }
+
+        public void Dispose()
+        {
+            if (!disposedValue)
+            {
+                _dataStream.Dispose();
+                _jobStream.Dispose();
+                disposedValue = true;
+            }
+        }
         #endregion
 
         #region private methods
+        private static void ValidateStreamLength(Stream dataStream)
+        {
+            if (dataStream == null)
+            {
+                throw new ArgumentNullException();
+            }
+
+            if (dataStream.CanRead == false)
+            {
+                throw new ArgumentException("Input stream must be readable");
+            }
+
+            if (dataStream.CanSeek == false)
+            {
+                throw new ArgumentException("Input stream must be able to seek");
+            }
+
+            try
+            {
+                byte[] localBuffer = new byte[MinimumFileChunkSize];
+                int bytesRead = dataStream.Read(localBuffer, 0, MinimumFileChunkSize);
+
+                if (bytesRead < MinimumFileChunkSize)
+                {
+                    throw new ArgumentException("Data stream isn't long enough for multiple connections");
+                }
+            }
+            finally
+            {
+                dataStream.Position = 0;
+            }
+        }
+
+        private void StartProducerLoop()
+        {
+            long currentChunk = 0;
+            while (true)
+            {
+                try
+                {
+                    _cancellationToken.ThrowIfCancellationRequested();
+
+                    byte[] localBuffer = new byte[_fileChunkSizesInBytes];
+                    long cursorPosition = currentChunk * _fileChunkSizesInBytes;
+                    int amountRead = _dataStream.Read(localBuffer, (int)cursorPosition, _fileChunkSizesInBytes);
+                    if (amountRead > 0)
+                    {
+                        _jobStream.Add(new ProducerUploadJob
+                        {
+                            Buffer = localBuffer,
+                            ContentLength = amountRead,
+                            FilePartNumber = currentChunk + 1L, // File parts are 1-index based...I know, fucking stupid
+                            SHA1 = ComputeSHA1Hash(localBuffer),
+                        });
+                    }
+                    else
+                    {
+                        return;
+                    }
+                }
+                finally
+                {
+                    // We finished reading everything or we can't read anything because something went wrong
+                    _jobStream.CompleteAdding();
+                }
+            }
+        }
+
+        private void StartConsumeLoop(string fileID, ConcurrentBag<BackblazeB2ActionResult<UploadFilePartResponse>> responses)
+        {
+            BackblazeB2ActionResult<GetUploadPartURLResponse> uploadPartURLResponse = new GetUploadPartURLAction(
+                _authorizationSession,
+                _bucketID,
+                fileID
+            ).Execute();
+
+            if (uploadPartURLResponse.HasErrors)
+            {
+                // Could not create the URL endpoint. Don't bother sending back the error since we can't really do anything about it
+                return;
+            }
+
+            foreach (ProducerUploadJob job in _jobStream.GetConsumingEnumerable(_cancellationToken))
+            {
+                _cancellationToken.ThrowIfCancellationRequested();
+
+                responses.Add(new UploadFilePartAction(
+                    _authorizationSession,
+                    _cancellationToken,
+                    _bucketID,
+                    job.FilePartNumber,
+                    uploadPartURLResponse.Result,
+                    job.Buffer,
+                    job.SHA1
+                ).Execute());
+            }
+        }
+
         private BackblazeB2ActionResult<BackblazeB2UploadMultipartFileResult> CancelFileUpload(string fileID)
         {
             CancelLargeFileUploadAction cancelAction = new CancelLargeFileUploadAction(_authorizationSession, fileID);
@@ -189,176 +311,6 @@ namespace B2BackblazeBridge.Actions
                     Message = "The user cancalled the upload",
                 }
             );
-        }
-
-        private IEnumerable<BackblazeB2ActionResult<UploadFilePartResponse>> ProcessAllJobs(
-            IEnumerable<UploadPartJob> jobs,
-            IEnumerable<BackblazeB2ActionResult<GetUploadPartURLResponse>> urlResponses
-        )
-        {
-            // If any of these have errors, then we need to return it. Only return the first one
-            if (urlResponses.Any(t => t.HasErrors))
-            {
-                return from response in urlResponses
-                       from error in response.Errors
-                       select new BackblazeB2ActionResult<UploadFilePartResponse>(Maybe<UploadFilePartResponse>.Nothing, error);
-            }
-
-            IEnumerable<GetUploadPartURLResponse> urls = urlResponses.Select(t => t.MaybeResult.Value);
-            Task<IEnumerable<BackblazeB2ActionResult<UploadFilePartResponse>>>[] workerArray = ConstructAndStartWorkers(jobs, urls);
-            Task.WaitAll(workerArray);
-            return
-                from worker in workerArray
-                from response in worker.Result
-                select response;
-        }
-
-        private Task<IEnumerable<BackblazeB2ActionResult<UploadFilePartResponse>>>[] ConstructAndStartWorkers(IEnumerable<UploadPartJob> jobs, IEnumerable<GetUploadPartURLResponse> urls)
-        {
-            List<UploadPartJob> jobsList = new List<UploadPartJob>(jobs);
-            List<GetUploadPartURLResponse> workerList = new List<GetUploadPartURLResponse>(urls);
-
-            int jobCount = jobsList.Count();
-            int workerCount = workerList.Count();
-            Task<IEnumerable<BackblazeB2ActionResult<UploadFilePartResponse>>>[] workerArray;
-            if (jobCount < workerCount)
-            {
-                workerArray = new Task<IEnumerable<BackblazeB2ActionResult<UploadFilePartResponse>>>[jobCount];
-                for (int i = 0; i < jobCount; i++)
-                {
-                    workerArray[i] = ProcessJobsForURLEndpoint(workerList[i], new List<UploadPartJob>() { jobsList[i] });
-                }
-            }
-            else
-            {
-                int jobsPerWorker = (int)Math.Ceiling((double)jobCount / workerCount);
-                int remainingJobs = Math.Max(jobCount - (jobsPerWorker * workerCount), 0);
-                workerArray = new Task<IEnumerable<BackblazeB2ActionResult<UploadFilePartResponse>>>[workerCount];
-                for (int i = 0; i < workerCount - 1; i++)
-                {
-                    workerArray[i] = ProcessJobsForURLEndpoint(workerList[i], jobsList.Skip(i * jobsPerWorker).Take(jobsPerWorker).ToList());
-                }
-
-                // Add the remaining jobs to the last worker
-                workerArray[workerCount - 1] = ProcessJobsForURLEndpoint(workerList[workerCount - 1], jobsList.Skip(jobsPerWorker * (workerCount - 1)).ToList());
-            }
-
-            return workerArray;
-        }
-
-        private Task<IEnumerable<BackblazeB2ActionResult<UploadFilePartResponse>>> ProcessJobsForURLEndpoint(GetUploadPartURLResponse urlEndpoint, IList<UploadPartJob> jobs)
-        {
-            return Task.Factory.StartNew<IEnumerable<BackblazeB2ActionResult<UploadFilePartResponse>>>(() =>
-            {
-                IList<BackblazeB2ActionResult<UploadFilePartResponse>> responses = new List<BackblazeB2ActionResult<UploadFilePartResponse>>();
-                foreach (UploadPartJob job in jobs)
-                {
-                    _cancellationToken.ThrowIfCancellationRequested();
-
-                    // Read bytes first
-                    using (FileStream stream = new FileStream(_localFilePath, FileMode.Open, FileAccess.Read, FileShare.Read))
-                    {
-                        stream.Seek(job.FileCursorPosition, SeekOrigin.Begin);
-                        byte[] fileBytes = new byte[job.ContentLength];
-                        int bytesRead = stream.Read(fileBytes, 0, (int)job.ContentLength);
-                        if (bytesRead != job.ContentLength)
-                        {
-                            throw new InvalidOperationException("The number of bytes read does not match expected content length");
-                        }
-
-                        // Then upload the bytes
-                        BackblazeB2ActionResult<UploadFilePartResponse> uploadResponse = 
-                            new UploadFilePartAction(
-                                _authorizationSession,
-                                _cancellationToken,
-                                _bucketID,
-                                job.FilePartNumber,
-                                urlEndpoint,
-                                fileBytes,
-                                job.SHA1
-                            ).Execute();
-
-                        responses.Add(uploadResponse);
-                    }
-                }
-                return responses;
-            });
-        }
-
-        private IEnumerable<UploadPartJob> GenerateUploadParts()
-        {
-            IList<UploadPartJob> jobs = new List<UploadPartJob>();
-            FileInfo fileInfo = new FileInfo(_localFilePath);
-            long numberOfChunks = (fileInfo.Length / _fileChunkSizesInBytes); // We can't have more than 4 billion chunks per file. 
-            for (long currentChunk = 0; currentChunk < numberOfChunks; currentChunk++)
-            {
-                long cursorPosition = currentChunk * _fileChunkSizesInBytes;
-                jobs.Add(new UploadPartJob
-                {
-                    ContentLength = _fileChunkSizesInBytes,
-                    FileCursorPosition = cursorPosition,
-                    FilePartNumber = currentChunk + 1L, // File parts are 1-index based...I know, fucking stupid
-                    SHA1 = ComputeSHA1HashOfChunk(cursorPosition, _fileChunkSizesInBytes),
-                });
-            }
-
-            // There wasn't perfect division, which means we have to account for the last chunk
-            long remainderChunk = fileInfo.Length % _fileChunkSizesInBytes;
-            if (remainderChunk != 0)
-            {
-                long cursorPosition = numberOfChunks * _fileChunkSizesInBytes;
-                jobs.Add(new UploadPartJob
-                {
-                    ContentLength = remainderChunk,
-                    FileCursorPosition = numberOfChunks * _fileChunkSizesInBytes,
-                    FilePartNumber = numberOfChunks + 1L, // File parts are 1-index based...I know, fucking stupid
-                    SHA1 = ComputeSHA1HashOfChunk(cursorPosition, remainderChunk),
-                });
-            }
-
-            return jobs;
-        }
-
-        private string ComputeSHA1HashOfChunk(long fileCursorPosition, long length)
-        {
-            using (FileStream fileStream = new FileStream(_localFilePath, FileMode.Open, FileAccess.Read, FileShare.Read))
-            using (SHA1 shaHash = SHA1.Create())
-            {
-                fileStream.Seek(fileCursorPosition, SeekOrigin.Begin);
-                byte[] buffer = new byte[length];
-                int bytesRead = fileStream.Read(buffer, 0, (int)length);
-                if (bytesRead != length)
-                {
-                    throw new InvalidOperationException("The number of bytes read did not equal the expected number of bytes while computing the SHA1 hash");
-                }
-
-                return ComputeSHA1Hash(buffer);
-            }
-        }
-
-        private IEnumerable<BackblazeB2ActionResult<GetUploadPartURLResponse>> GetUploadPartURLs(string fileID)
-        {
-            Task<BackblazeB2ActionResult<GetUploadPartURLResponse>>[] uploadPartURLWorkers =
-                new Task<BackblazeB2ActionResult<GetUploadPartURLResponse>>[_numberOfConnections];
-            for (int i = 0; i < _numberOfConnections; i++)
-            {
-                uploadPartURLWorkers[i] = Task.Factory.StartNew(() => new GetUploadPartURLAction(
-                    _authorizationSession,
-                    _bucketID,
-                    fileID
-                ).Execute());
-            }
-
-            Task.WaitAll(uploadPartURLWorkers);
-
-            List<BackblazeB2ActionResult<GetUploadPartURLResponse>> uploadPartURLs =
-                new List<BackblazeB2ActionResult<GetUploadPartURLResponse>>();
-            for (int i = 0; i < _numberOfConnections; i++)
-            {
-                uploadPartURLs.Add(uploadPartURLWorkers[i].Result);
-            }
-
-            return uploadPartURLs;
         }
 
         private BackblazeB2ActionResult<BackblazeB2UploadMultipartFileResult> FinishUploadingLargeFile(
