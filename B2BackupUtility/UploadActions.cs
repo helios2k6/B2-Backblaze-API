@@ -207,13 +207,13 @@ namespace B2BackupUtility
             {
                 FileInfo info = new FileInfo(localFilePath);
                 BackblazeB2ActionResult<IBackblazeB2UploadResult> uploadResult = info.Length < 1024 * 1024 || uploadConnections == 1
-                ? ExecuteUploadAction(new UploadFileAction(
+                ? ExecuteUploadAction(new UploadWithSingleConnectionAction(
                     authorizationSession,
                     localFilePath,
                     GetSafeFileName(remoteDestinationPath),
                     bucketID
                 ))
-                : ExecuteUploadAction(new UploadFileUsingMultipleConnectionsAction(
+                : ExecuteUploadAction(new UploadWithMultipleConnectionsAction(
                     authorizationSession,
                     localFilePath,
                     GetSafeFileName(remoteDestinationPath),

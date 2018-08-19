@@ -103,7 +103,7 @@ namespace B2BackupUtility
             FileManifest manifest
         )
         {
-            UploadFileAction uploadAction = new UploadFileAction(
+            UploadWithSingleConnectionAction uploadAction = new UploadWithSingleConnectionAction(
                 authorizationSession,
                 bucketID,
                 GetCompressedSerializedBytes(manifest),

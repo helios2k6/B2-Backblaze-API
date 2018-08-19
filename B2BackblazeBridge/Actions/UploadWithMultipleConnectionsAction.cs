@@ -39,7 +39,7 @@ namespace B2BackblazeBridge.Actions
     /// <summary>
     /// Represents uploading a single file using multiple connections in parallel
     /// </summary>
-    public sealed class UploadFileUsingMultipleConnectionsAction : BaseAction<BackblazeB2UploadMultipartFileResult>
+    public sealed class UploadWithMultipleConnectionsAction : BaseAction<BackblazeB2UploadMultipartFileResult>
     {
         #region private fields
         private static readonly string FinishLargeFileURL = "/b2api/v1/b2_finish_large_file";
@@ -64,7 +64,7 @@ namespace B2BackblazeBridge.Actions
         /// <param name="fileChunkSizesInBytes">The size (in bytes) of the file chunks you want to use when uploading</param>
         /// <param name="numberOfConnections">The number of connections to use when uploading</param>
         /// <param name="cancellationToken">The cancellation token to pass in when this upload needs to be cancelled</param>
-        public UploadFileUsingMultipleConnectionsAction(
+        public UploadWithMultipleConnectionsAction(
             BackblazeB2AuthorizationSession authorizationSession,
             string localFilePath,
             string remoteFilePath,
@@ -109,7 +109,7 @@ namespace B2BackblazeBridge.Actions
         /// <param name="fileChunkSizesInBytes">The size (in bytes) of the file chunks you want to use when uploading</param>
         /// <param name="numberOfConnections">The number of connections to use when uploading</param>
         /// <param name="cancellationToken">The cancellation token to pass in when this upload needs to be cancelled</param>
-        public UploadFileUsingMultipleConnectionsAction(
+        public UploadWithMultipleConnectionsAction(
             BackblazeB2AuthorizationSession authorizationSession,
             string filePath,
             string fileDestination,

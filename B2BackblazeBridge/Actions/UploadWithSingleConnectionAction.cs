@@ -33,7 +33,7 @@ namespace B2BackblazeBridge.Actions
     /// <summary>
     /// Represents uploading a single file to B2 using only a single connection
     /// </summary>
-    public sealed class UploadFileAction : BaseAction<BackblazeB2UploadFileResult>
+    public sealed class UploadWithSingleConnectionAction : BaseAction<BackblazeB2UploadFileResult>
     {
         #region private fields
         private readonly BackblazeB2AuthorizationSession _authorizationSession;
@@ -44,13 +44,13 @@ namespace B2BackblazeBridge.Actions
 
         #region ctor
         /// <summary>
-        /// Construct an UploadFileAction using the provided bytes
+        /// Construct an UploadWithSingleConnectionAction using the provided bytes
         /// </summary>
         /// <param name="authorizationSession">The authorization session</param>
         /// <param name="bytesToUpload">The bytes to upload</param>
         /// <param name="fileDestination">The remote file path to upload to</param>
         /// <param name="bucketID">The Bucket ID to upload to</param>
-        public UploadFileAction(
+        public UploadWithSingleConnectionAction(
             BackblazeB2AuthorizationSession authorizationSession,
             string bucketID,
             byte[] bytesToUpload,
@@ -66,13 +66,13 @@ namespace B2BackblazeBridge.Actions
         }
 
         /// <summary>
-        /// Construct an UploadFileAction
+        /// Construct an UploadWithSingleConnectionAction
         /// </summary>
         /// <param name="authorizationSession">The authorization session</param>
         /// <param name="filePath">The path to the file to upload</param>
         /// <param name="fileDestination">The remote file path to upload to</param>
         /// <param name="bucketID">The Bucket ID to upload to</param>
-        public UploadFileAction(
+        public UploadWithSingleConnectionAction(
             BackblazeB2AuthorizationSession authorizationSession,
             string filePath,
             string fileDestination,

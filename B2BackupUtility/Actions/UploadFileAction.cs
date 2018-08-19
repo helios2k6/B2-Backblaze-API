@@ -19,7 +19,10 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+
+using System;
 using System.Collections.Generic;
+using System.IO;
 
 namespace B2BackupUtility.Actions
 {
@@ -28,9 +31,55 @@ namespace B2BackupUtility.Actions
     /// </summary>
     public sealed class UploadFileAction : BaseUploadAction
     {
+        #region private fields
+        private static string FileOption => "--file";
+
+        private static string DestinationOption => "--destination";
+        #endregion
+
+        #region public properties
+        public override string ActionName => "Upload File";
+
+        public override string ActionSwitch => "--upload-file";
+
+        public override IEnumerable<string> ActionOptions => new List<string> { FileOption, DestinationOption, ConnectionsOption };
+        #endregion
+
+        #region ctor
+        public UploadFileAction(IEnumerable<string> rawArgs) : base(rawArgs)
+        {
+        }
+        #endregion
+
+        #region public methods
         public override void ExecuteAction()
         {
-            throw new System.NotImplementedException();
+            bool hasFileOption = TryGetArgument(FileOption, out string localFilePath);
+            if (hasFileOption == false)
+            {
+                throw new InvalidOperationException("You must have a file to upload");
+            }
+
+            if (string.IsNullOrWhiteSpace(localFilePath) || File.Exists(localFilePath) == false)
+            {
+                throw new FileNotFoundException($"Cannot find file path: {localFilePath}");
+            }
+
+            bool hasDestinationOption = TryGetArgument(DestinationOption, out string destinationRemoteFilePath);
+            if (hasDestinationOption == false || string.IsNullOrWhiteSpace(destinationRemoteFilePath))
+            {
+                // Remote file path is optional
+                destinationRemoteFilePath = localFilePath;
+            }
+
+            FileManifest fileManifest = FileManifestActions.ReadManifestFileFromServerOrReturnNewOne(authorizationSession, bucketID);
+
+            Console.WriteLine("Uploading file");
+            UploadFileImpl(authorizationSession, fileManifest, bucketID, localFilePath, destinationRemoteFilePath, numberOfConnections);
         }
+        #endregion
+
+        #region private methods
+        #endregion
     }
 }
