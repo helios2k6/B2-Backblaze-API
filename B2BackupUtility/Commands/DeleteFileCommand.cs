@@ -19,60 +19,50 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+using System;
 using System.Collections.Generic;
 
-namespace B2BackupUtility.Logger
+namespace B2BackupUtility.Commands
 {
-    /// <summary>
-    /// A generic logging class
-    /// </summary>
-    public sealed class Logger
+    public sealed class DeleteFileCommand : BaseDeleteCommand
     {
         #region private fields
-        private readonly LogLevel _logLevel;
+        private static string FileNameOption => "--file-name";
 
-        private readonly IEnumerable<ILogSink> _logSinks;
+        private static string FileIDOption => "--file-id";
+        #endregion
+
+        #region public properties
+        public static string ActionName => "Delete File";
+
+        public static string CommandSwitch => "--delete-file";
+
+        public static IEnumerable<string> CommandOptions => new[] { FileNameOption, FileIDOption };
         #endregion
 
         #region ctor
-        public Logger(LogLevel logLevel, IEnumerable<ILogSink> logSinks)
+        public DeleteFileCommand(IEnumerable<string> rawArgs) : base(rawArgs)
         {
-            _logLevel = logLevel;
-            _logSinks = logSinks;
         }
         #endregion
 
         #region public methods
-        public void Log(LogLevel level, string message)
+        public override void ExecuteAction()
         {
-            if (level >= _logLevel)
-            {
-                foreach (ILogSink sink in _logSinks)
-                {
-                    sink.LogRawMessage($"{GetLevelPrefix(level)}: {message}");
-                }
-            }
-        }
-        #endregion
+            bool hasFileIDOption = TryGetArgument(FileIDOption, out string fileID);
+            bool hasFileNameOption = TryGetArgument(FileNameOption, out string fileName);
 
-        #region private methods
-        private string GetLevelPrefix(LogLevel level)
-        {
-            switch (level)
+            if (hasFileIDOption == false)
             {
-                case LogLevel.CRITICAL:
-                    return "[CRITICAL]";
-                case LogLevel.DEBUG:
-                    return "[DEBUG]";
-                case LogLevel.INFO:
-                    return "[INFO]";
-                case LogLevel.VERBOSE:
-                    return "[VERBOSE]";
-                case LogLevel.WARNING:
-                    return "[WARNING]";
+                throw new InvalidOperationException("You must provide a file ID to delete");
             }
 
-            return "[UNKNOWN]";
+            if (hasFileNameOption == false)
+            {
+                throw new InvalidOperationException("You must provide a file name to delete");
+            }
+
+            DeleteFile(fileID, fileName);
         }
         #endregion
     }

@@ -19,60 +19,48 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+using B2BackblazeBridge.Actions;
+using B2BackblazeBridge.Core;
+using System;
 using System.Collections.Generic;
 
-namespace B2BackupUtility.Logger
+namespace B2BackupUtility.Commands
 {
-    /// <summary>
-    /// A generic logging class
-    /// </summary>
-    public sealed class Logger
+    public sealed class DeleteAllFilesCommand : BaseDeleteCommand
     {
-        #region private fields
-        private readonly LogLevel _logLevel;
+        #region public properties
+        public static string ActionName => "Delete All Files";
 
-        private readonly IEnumerable<ILogSink> _logSinks;
+        public static string CommandSwitch => "--delete-all-files";
         #endregion
 
         #region ctor
-        public Logger(LogLevel logLevel, IEnumerable<ILogSink> logSinks)
+        public DeleteAllFilesCommand(IEnumerable<string> rawArgs) : base(rawArgs)
         {
-            _logLevel = logLevel;
-            _logSinks = logSinks;
         }
         #endregion
 
         #region public methods
-        public void Log(LogLevel level, string message)
+        public override void ExecuteAction()
         {
-            if (level >= _logLevel)
+            try
             {
-                foreach (ILogSink sink in _logSinks)
+                ListFilesAction allFileVersionsAction = ListFilesAction.CreateListFileActionForFileVersions(
+                    GetOrCreateAuthorizationSession(),
+                    BucketID,
+                    true
+                );
+                BackblazeB2ActionResult<BackblazeB2ListFilesResult> allFileVersionsActionResult = allFileVersionsAction.Execute();
+                foreach (BackblazeB2ListFilesResult.FileResult fileResult in allFileVersionsActionResult.Result.Files)
                 {
-                    sink.LogRawMessage($"{GetLevelPrefix(level)}: {message}");
+                    CancellationActions.GlobalCancellationToken.ThrowIfCancellationRequested();
+                    DeleteFile(fileResult.FileID, fileResult.FileName);
                 }
             }
-        }
-        #endregion
-
-        #region private methods
-        private string GetLevelPrefix(LogLevel level)
-        {
-            switch (level)
+            catch (OperationCanceledException)
             {
-                case LogLevel.CRITICAL:
-                    return "[CRITICAL]";
-                case LogLevel.DEBUG:
-                    return "[DEBUG]";
-                case LogLevel.INFO:
-                    return "[INFO]";
-                case LogLevel.VERBOSE:
-                    return "[VERBOSE]";
-                case LogLevel.WARNING:
-                    return "[WARNING]";
+                LogCritical("Deletion cancelled!");
             }
-
-            return "[UNKNOWN]";
         }
         #endregion
     }

@@ -233,16 +233,15 @@ namespace B2BackblazeBridge.Actions
 
         private void StartProducerLoop()
         {
-            long currentChunk = 0;
-            while (true)
+            try
             {
-                try
+                long currentChunk = 0;
+                while (true)
                 {
                     _cancellationToken.ThrowIfCancellationRequested();
 
                     byte[] localBuffer = new byte[_fileChunkSizesInBytes];
-                    long cursorPosition = currentChunk * _fileChunkSizesInBytes;
-                    int amountRead = _dataStream.Read(localBuffer, (int)cursorPosition, _fileChunkSizesInBytes);
+                    int amountRead = _dataStream.Read(localBuffer, 0, _fileChunkSizesInBytes);
                     if (amountRead > 0)
                     {
                         _jobStream.Add(new ProducerUploadJob
@@ -252,17 +251,18 @@ namespace B2BackblazeBridge.Actions
                             FilePartNumber = currentChunk + 1L, // File parts are 1-index based...I know, fucking stupid
                             SHA1 = ComputeSHA1Hash(localBuffer),
                         });
+                        currentChunk++;
                     }
                     else
                     {
                         return;
                     }
                 }
-                finally
-                {
-                    // We finished reading everything or we can't read anything because something went wrong
-                    _jobStream.CompleteAdding();
-                }
+            }
+            finally
+            {
+                // We finished reading everything or we can't read anything because something went wrong
+                _jobStream.CompleteAdding();
             }
         }
 

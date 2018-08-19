@@ -21,24 +21,40 @@
 
 using B2BackblazeBridge.Actions;
 using B2BackblazeBridge.Core;
-using System;
+using System.Collections.Generic;
 
-namespace B2BackupUtility
+namespace B2BackupUtility.Commands
 {
-    public static class ListFilesActions
+    public sealed class ListFilesCommand : BaseCommand
     {
-        public static void ListFiles(BackblazeB2AuthorizationSession authorizationSession, string bucketID)
+        #region public properties
+        public static string ActionName => "List Files";
+
+        public static string CommandSwitch => "--list-files";
+        #endregion
+
+        #region ctor
+        public ListFilesCommand(IEnumerable<string> rawArgs) : base(rawArgs)
         {
-            Console.WriteLine("Fetching file list");
-            ListFilesAction action = ListFilesAction.CreateListFileActionForFileNames(authorizationSession, bucketID, true);
-            BackblazeB2ActionResult<BackblazeB2ListFilesResult> actionResult = CommonUtils.ExecuteAction(action, "List files");
+        }
+        #endregion
+
+        #region public methods
+        public override void ExecuteAction()
+        {
+            BackblazeB2ActionResult<BackblazeB2ListFilesResult> actionResult = ListFilesAction.CreateListFileActionForFileNames(
+                GetOrCreateAuthorizationSession(),
+                BucketID,
+                true
+            ).Execute();
             if (actionResult.HasResult)
             {
                 foreach (BackblazeB2ListFilesResult.FileResult file in actionResult.Result.Files)
                 {
-                    Console.WriteLine(string.Format("{0} - {1}", file.FileName, file.FileID));
+                    LogInfo(file.ToString());
                 }
             }
         }
+        #endregion
     }
 }

@@ -27,39 +27,58 @@ using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 
-namespace B2BackupUtility
+namespace B2BackupUtility.Commands
 {
-    public static class DownloadFileActions
+    public sealed class DownloadFileCommand : BaseCommand
     {
-        public static void DownloadFile(BackblazeB2AuthorizationSession authorizationSession, string bucketID, IEnumerable<string> args)
+        #region private fields
+        private static string FileNameOption => "--file-option";
+
+        private static string FileIDOption => "--file-id";
+
+        private static string DestinationOption => "--destination";
+        #endregion
+
+        #region public properties
+        public static string ActionName => "Download File";
+
+        public static string CommandSwitch => "--download-file";
+
+        public static IEnumerable<string> CommandOptions => new[] { FileNameOption, FileIDOption, DestinationOption };
+        #endregion
+
+        #region ctor
+        public DownloadFileCommand(IEnumerable<string> rawArgs) : base(rawArgs)
         {
-            string fileName = CommonUtils.GetArgument(args, "--file-name");
-            string fileID = CommonUtils.GetArgument(args, "--file-id");
+        }
+        #endregion
+
+        #region public methods
+        public override void ExecuteAction()
+        {
+            TryGetArgument(FileNameOption, out string fileName);
+            TryGetArgument(FileIDOption, out string fileID);
             if (string.IsNullOrWhiteSpace(fileName) && string.IsNullOrWhiteSpace(fileID))
             {
-                Console.WriteLine("No file name or file ID could be found");
-                return;
+                throw new InvalidOperationException("A file name or file ID must be provided");
             }
 
-            string destination = CommonUtils.GetArgument(args, "--destination");
+            bool hasDestinationOption = TryGetArgument(DestinationOption, out string destination);
             if (string.IsNullOrWhiteSpace(destination))
             {
-                Console.WriteLine("No file destination provided");
-                return;
+                throw new InvalidOperationException("A local destination must be provided");
             }
 
             if (File.Exists(destination))
             {
-                Console.WriteLine("Cannot override file that exists");
-                return;
+                throw new InvalidOperationException($"The file {destination} already exists. We cannot override existing files");
             }
 
-            Console.WriteLine("Downloading file");
-            using (DownloadFileAction downloadAction = GetDownloadAction(authorizationSession, bucketID, fileName, fileID, destination))
+            using (DownloadFileAction downloadAction = GetDownloadAction(fileName, fileID, destination))
             {
                 Stopwatch watch = new Stopwatch();
                 watch.Start();
-                BackblazeB2ActionResult<BackblazeB2DownloadFileResult> result = CommonUtils.ExecuteAction(downloadAction, "Download file");
+                BackblazeB2ActionResult<BackblazeB2DownloadFileResult> result = downloadAction.Execute();
                 watch.Stop();
                 if (result.HasResult)
                 {
@@ -71,18 +90,19 @@ namespace B2BackupUtility
                 }
             }
         }
+        #endregion
 
-        private static DownloadFileAction GetDownloadAction(
-            BackblazeB2AuthorizationSession authorizationSession,
-            string bucketID,
+        #region private methods
+        private DownloadFileAction GetDownloadAction(
             string fileName,
             string fileID,
             string destination
-        )
+         )
         {
-            return string.IsNullOrWhiteSpace(fileName) 
-                ? new DownloadFileAction(authorizationSession, destination, fileID)
-                : new DownloadFileAction(authorizationSession, destination, bucketID, fileName);
+            return string.IsNullOrWhiteSpace(fileName)
+                ? new DownloadFileAction(GetOrCreateAuthorizationSession(), destination, fileID)
+                : new DownloadFileAction(GetOrCreateAuthorizationSession(), destination, BucketID, fileName);
         }
+        #endregion
     }
 }

@@ -24,12 +24,12 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 
-namespace B2BackupUtility.Actions
+namespace B2BackupUtility.Commands
 {
     /// <summary>
     /// Represents an action to upload a folder
     /// </summary>
-    public sealed class UploadFolderAction : BaseUploadAction
+    public sealed class UploadFolderCommand : BaseUploadCommand
     {
         #region private fields
         private static string FolderOption => "--folder";
@@ -38,15 +38,15 @@ namespace B2BackupUtility.Actions
         #endregion
 
         #region public properties
-        public override string ActionName => "Upload Folder";
+        public static string ActionName => "Upload Folder";
 
-        public override string ActionSwitch => "--upload-folder";
+        public static string CommandSwitch => "--upload-folder";
 
-        public override IEnumerable<string> ActionOptions => new List<string> { FolderOption, OverrideOption, FlattenOption, ConnectionsOption };
+        public static IEnumerable<string> CommandOptions => new[] { FolderOption, OverrideOption, FlattenOption, ConnectionsOption };
         #endregion
 
         #region ctor
-        public UploadFolderAction(IEnumerable<string> rawArgs) : base(rawArgs)
+        public UploadFolderCommand(IEnumerable<string> rawArgs) : base(rawArgs)
         {
         }
         #endregion

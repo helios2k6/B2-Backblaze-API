@@ -19,10 +19,9 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-using B2BackblazeBridge.Actions;
-using B2BackblazeBridge.Core;
-using B2BackupUtility.Actions;
+using B2BackupUtility.Commands;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 
@@ -33,10 +32,42 @@ namespace B2BackupUtility
     /// </summary>
     public static class Driver
     {
+        private static string HelpSwitch => "--help";
+
+        private static IDictionary<string, Action> CommandSwitchToActionMap => new Dictionary<string, Action>
+        {
+            { DeleteAllFilesCommand.CommandSwitch, Action.DELETE_ALL_FILES },
+            { DeleteFileCommand.CommandSwitch, Action.DELETE },
+            { DownloadFileCommand.CommandSwitch, Action.DOWNLOAD },
+            { GetFileInfoCommand.CommandSwitch, Action.GET_FILE_INFO },
+            { ListFilesCommand.CommandSwitch, Action.LIST },
+            { UploadFileCommand.CommandSwitch, Action.UPLOAD },
+            { UploadFolderCommand.CommandSwitch, Action.UPLOAD_FOLDER }
+        };
+
+        private static string[] NecessaryOptions => new[]
+        {
+            BaseCommand.AccountIDOption,
+            BaseCommand.ApplicationKeyOption,
+            BaseCommand.BucketIDOption,
+        };
+
+        private static IDictionary<string, IEnumerable<string>> CommandSwitchesToOptionsMap => new Dictionary<string, IEnumerable<string>>
+        {
+            { DeleteAllFilesCommand.CommandSwitch, new string[] { } },
+            { DeleteFileCommand.CommandSwitch, DeleteFileCommand.CommandOptions },
+            { DownloadFileCommand.CommandSwitch, DownloadFileCommand.CommandOptions },
+            { GetFileInfoCommand.CommandSwitch, GetFileInfoCommand.CommandOptions },
+            { ListFilesCommand.CommandSwitch, new string[] { } },
+            { UploadFileCommand.CommandSwitch, UploadFileCommand.CommandOptions },
+            { UploadFolderCommand.CommandSwitch, UploadFolderCommand.CommandOptions },
+            { HelpSwitch, new string[] { } },
+        };
+
         public static void Main(string[] args)
         {
             PrintHeader();
-            if (args.Length < 4 || CommonUtils.DoesOptionExist(args, "--help"))
+            if (args.Length < 4 || WantsHelp(args))
             {
                 PrintHelp();
                 return;
@@ -51,65 +82,34 @@ namespace B2BackupUtility
 
             HookUpCancellationHandler(action);
 
-            string accountID = CommonUtils.GetArgument(args, "--account-id");
-            string applicationKey = CommonUtils.GetArgument(args, "--application-key");
-            string bucketID = CommonUtils.GetArgument(args, "--bucket-id");
-
-            if (string.IsNullOrWhiteSpace(accountID) || string.IsNullOrWhiteSpace(applicationKey) || string.IsNullOrWhiteSpace(bucketID))
-            {
-                Console.WriteLine("Account ID, application key, or bucket ID are empty or null.");
-                PrintHelp();
-                return;
-            }
-
-            Console.WriteLine("Authorizing account");
-            AuthorizeAccountAction authorizeAccountAction = new AuthorizeAccountAction(accountID, applicationKey);
-            BackblazeB2ActionResult<BackblazeB2AuthorizationSession> authorizationSessionResult = authorizeAccountAction.Execute();
-            if (authorizationSessionResult.HasErrors)
-            {
-                Console.WriteLine(
-                    string.Format(
-                        "Could not authorize account with account ID {0} and application key {1}. Error: {2}",
-                        accountID,
-                        applicationKey,
-                        authorizationSessionResult.Errors.First().Message
-                    )
-                );
-
-                return;
-            }
-
-            Console.WriteLine("Account authorized");
-            Console.WriteLine();
-            BackblazeB2AuthorizationSession authorizationSession = authorizationSessionResult.Result;
             switch (action)
             {
                 case Action.DELETE:
-                    DeleteFileActions.DeleteFile(authorizationSession, args);
+                    new DeleteFileCommand(args).ExecuteAction();
                     break;
 
                 case Action.DELETE_ALL_FILES:
-                    DeleteFileActions.DeleteAllFiles(authorizationSession, bucketID);
+                    new DeleteAllFilesCommand(args).ExecuteAction();
                     break;
 
                 case Action.DOWNLOAD:
-                    DownloadFileActions.DownloadFile(authorizationSession, bucketID, args);
+                    new DownloadFileCommand(args).ExecuteAction();
                     break;
 
                 case Action.GET_FILE_INFO:
-                    GetFileInfoActions.ExecuteGetFileInfo(authorizationSession, args);
+                    new GetFileInfoCommand(args).ExecuteAction();
                     break;
 
                 case Action.LIST:
-                    ListFilesActions.ListFiles(authorizationSession, bucketID);
+                    new ListFilesCommand(args).ExecuteAction();
                     break;
 
                 case Action.UPLOAD:
-                    new UploadFileAction(args).ExecuteAction();
+                    new UploadFileCommand(args).ExecuteAction();
                     break;
 
                 case Action.UPLOAD_FOLDER:
-                    new UploadFolderAction(args).ExecuteAction();
+                    new UploadFolderCommand(args).ExecuteAction();
                     break;
 
                 default:
@@ -142,29 +142,9 @@ namespace B2BackupUtility
 
             foreach (string arg in args)
             {
-                switch (arg)
+                if (CommandSwitchToActionMap.TryGetValue(arg, out action))
                 {
-                    case "--upload-file":
-                        action = Action.UPLOAD;
-                        return true;
-                    case "--list-files":
-                        action = Action.LIST;
-                        return true;
-                    case "--download-file":
-                        action = Action.DOWNLOAD;
-                        return true;
-                    case "--delete-file":
-                        action = Action.DELETE;
-                        return true;
-                    case "--upload-folder":
-                        action = Action.UPLOAD_FOLDER;
-                        return true;
-                    case "--get-file-info":
-                        action = Action.GET_FILE_INFO;
-                        return true;
-                    case "--delete-all-files":
-                        action = Action.DELETE_ALL_FILES;
-                        return true;
+                    return true;
                 }
             }
 
@@ -172,9 +152,14 @@ namespace B2BackupUtility
             return false;
         }
 
+        private static bool WantsHelp(IEnumerable<string> args)
+        {
+            return args.Any(e => e.Equals(HelpSwitch, StringComparison.OrdinalIgnoreCase));
+        }
+
         private static void PrintHeader()
         {
-            Console.WriteLine("B2 Backup Utility v3.8");
+            Console.WriteLine("B2 Backup Utility v4.0");
             Console.WriteLine();
         }
 
@@ -184,87 +169,23 @@ namespace B2BackupUtility
             builder.AppendLine("Usage: <this program> <necessary switches> <action> [options]")
                 .AppendLine();
 
-            builder.AppendLine("Necessary Switches")
-                .AppendLine("--account-id")
-                .AppendLine("\t\tThe account ID associated with the B2 Backblaze Account")
-                .AppendLine()
-                .AppendLine("--application-key")
-                .AppendLine("\t\tThe secret application key that's authorized to call the B2 Backblaze API")
-                .AppendLine()
-                .AppendLine("--bucket-id")
-                .AppendLine("\t\tThe bucket ID to modify or read from")
-                .AppendLine();
+            builder.AppendLine("Necessary Options");
+            foreach (string option in NecessaryOptions)
+            {
+                builder.AppendLine(option);
+            }
+            builder.AppendLine();
 
-            builder.AppendLine("Actions")
-                .AppendLine()
-                .AppendLine("--upload-file")
-                .AppendLine("\t\tUpload a file. Will automatically update versions of files")
-                .AppendLine()
-                .AppendLine("--upload-folder")
-                .AppendLine("\t\tUploads a folder full of files. Will automatically recurse the folder")
-                .AppendLine()
-                .AppendLine("--list-files")
-                .AppendLine("\t\tList all of the available files on the server. Note, this action will be charged as a Class C charge")
-                .AppendLine()
-                .AppendLine("--download-file")
-                .AppendLine("\t\tDownloads a file from the B2 Backblaze server. Note, this action will be charged as a Class B charge")
-                .AppendLine()
-                .AppendLine("--delete-file")
-                .AppendLine("\t\tDeletes a file on the B2 Backblaze server.")
-                .AppendLine()
-                .AppendLine("--delete-all-files")
-                .AppendLine("\t\tDeletes all files in the specified Bucket on the B2 Backblaze server.")
-                .AppendLine()
-                .AppendLine("--get-file-info")
-                .AppendLine("\t\tGets the info about a file")
-                .AppendLine()
-                .AppendLine("--help")
-                .AppendLine("\t\tDisplay this message")
-                .AppendLine();
-
-            builder.AppendLine("Action Details")
-                .AppendLine()
-                .AppendLine("Upload File Options")
-                .AppendLine("--file")
-                .AppendLine("\t\tThe path to the file to upload")
-                .AppendLine()
-                .AppendLine("--destination")
-                .AppendLine("\t\tThe path on the B2 server that you want to upload to")
-                .AppendLine()
-                .AppendLine("--connections")
-                .AppendLine("\t\tThe number of connections to use when uploading the file. Default = 20")
-                .AppendLine()
-                .AppendLine("Upload Folder Options")
-                .AppendLine("--folder")
-                .AppendLine("\t\tThe folder to upload.")
-                .AppendLine()
-                .AppendLine("--force-override-files")
-                .AppendLine("\t\tUpload files to the server regardless if their SHA-1 hashes match")
-                .AppendLine()
-                .AppendLine("--connections")
-                .AppendLine("\t\tThe number of connections to use when uploading the file. Default = 20")
-                .AppendLine()
-                .AppendLine("Download File Options")
-                .AppendLine("--file-name")
-                .AppendLine("\t\tDownload a file by file name")
-                .AppendLine()
-                .AppendLine("--file-id")
-                .AppendLine("\t\tDownload a file by file ID")
-                .AppendLine()
-                .AppendLine("--destination")
-                .AppendLine("\t\tThe destination you want to download the file")
-                .AppendLine()
-                .AppendLine("Delete File Options")
-                .AppendLine("--file-name")
-                .AppendLine("\t\tDelete a file by file name")
-                .AppendLine()
-                .AppendLine("--file-id")
-                .AppendLine("\t\tDelete a file by file ID")
-                .AppendLine()
-                .AppendLine("Get File Info Options")
-                .AppendLine("--file-id")
-                .AppendLine("\t\tThe file ID to get the info about")
-                .AppendLine();
+            builder.AppendLine("Commands");
+            foreach (KeyValuePair<string, IEnumerable<string>> commandToOptions in CommandSwitchesToOptionsMap)
+            {
+                builder.AppendLine(commandToOptions.Key);
+                foreach (string option in commandToOptions.Value)
+                {
+                    builder.AppendLine($"\t{option}");
+                }
+                builder.AppendLine();
+            }
 
             Console.Write(builder.ToString());
         }

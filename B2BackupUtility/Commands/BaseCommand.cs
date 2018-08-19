@@ -26,18 +26,19 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace B2BackupUtility.Actions
+namespace B2BackupUtility.Commands
 {
     /// <summary>
     /// The base class that represents all actions
     /// </summary>
-    public abstract class BaseAction
+    public abstract class BaseCommand
     {
         #region private fields
         private static TimeSpan OneHour => TimeSpan.FromMinutes(60);
 
         private readonly IEnumerable<string> _rawArgs;
         private readonly Lazy<Logger.Logger> _logger;
+        private readonly Lazy<FileManifest> _fileManifest;
 
         private BackblazeB2AuthorizationSession _authorizationSession;
         #endregion
@@ -51,49 +52,39 @@ namespace B2BackupUtility.Actions
         /// <summary>
         /// Get the application key
         /// </summary>
-        protected string ApplicationKey => GetArgumentOrThrow(ApplicationKey);
+        protected string ApplicationKey => GetArgumentOrThrow(ApplicationKeyOption);
 
         /// <summary>
         /// Get the bucket ID
         /// </summary>
         protected string BucketID => GetArgumentOrThrow(BucketIDOption);
+
+        /// <summary>
+        /// The file manifest on the B2 Server
+        /// </summary>
+        protected FileManifest FileManifest => _fileManifest.Value;
         #endregion
 
         #region public properties
         /// <summary>
         /// The option switch for the account ID
         /// </summary>
-        public string AccountIDOption => "--account-id";
+        public static string AccountIDOption => "--account-id";
 
         /// <summary>
         /// The option switch for the application key
         /// </summary>
-        public string ApplicationKeyOption => "--application-key";
+        public static string ApplicationKeyOption => "--application-key";
 
         /// <summary>
         /// The option for the bucket ID
         /// </summary>
-        public string BucketIDOption => "--bucket-id";
+        public static string BucketIDOption => "--bucket-id";
 
         /// <summary>
         /// The option to set the log level
         /// </summary>
-        public string LogLevelOption => "--log-level";
-
-        /// <summary>
-        /// The name of this action--this is displayed in the Help center
-        /// </summary>
-        public abstract string ActionName { get; }
-
-        /// <summary>
-        /// The command-line switch that's used to select this action
-        /// </summary>
-        public abstract string ActionSwitch { get; }
-
-        /// <summary>
-        /// The different command-line help-options this class offers
-        /// </summary>
-        public abstract IEnumerable<string> ActionOptions { get; }
+        public static string LogLevelOption => "--log-level";
         #endregion
 
         #region public methods
@@ -104,10 +95,13 @@ namespace B2BackupUtility.Actions
         #endregion
 
         #region ctor
-        public BaseAction(IEnumerable<string> rawArgs)
+        public BaseCommand(IEnumerable<string> rawArgs)
         {
             _rawArgs = rawArgs;
             _logger = new Lazy<Logger.Logger>(() => new Logger.Logger(GetLogLevel(), new[] { new ConsoleLogSink() }));
+            _fileManifest = new Lazy<FileManifest>(() =>
+                FileManifestActions.ReadManifestFileFromServerOrReturnNewOne(GetOrCreateAuthorizationSession(), BucketID)
+            );
         }
         #endregion
 

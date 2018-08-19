@@ -30,18 +30,16 @@ using System.IO;
 using System.Linq;
 using System.Text;
 
-namespace B2BackupUtility.Actions
+namespace B2BackupUtility.Commands
 {
     /// <summary>
     /// The base class for all upload actions
     /// </summary>
-    public abstract class BaseUploadAction : BaseAction
+    public abstract class BaseUploadCommand : BaseCommand
     {
         #region private fields
         private static int DefaultUploadConnections => 20;
         private static int MinimumFileLengthForMultipleConnections => 1048576;
-
-        private readonly Lazy<FileManifest> _fileManifest;
         #endregion
 
         #region protected class
@@ -68,20 +66,12 @@ namespace B2BackupUtility.Actions
             }
         }
 
-        protected string ConnectionsOption => "--connections";
-
-        protected FileManifest FileManifest => _fileManifest.Value;
+        protected static string ConnectionsOption => "--connections";
         #endregion
 
         #region ctor
-        public BaseUploadAction(IEnumerable<string> rawArgs) : base(rawArgs)
+        public BaseUploadCommand(IEnumerable<string> rawArgs) : base(rawArgs)
         {
-            _fileManifest = new Lazy<FileManifest>(
-                () => FileManifestActions.ReadManifestFileFromServerOrReturnNewOne(
-                    GetOrCreateAuthorizationSession(),
-                    BucketID
-                    )
-                );
         }
         #endregion
 
@@ -150,7 +140,13 @@ namespace B2BackupUtility.Actions
             if (filePath.IndexOf(":") == 1)
             {
                 char driveLetter = char.ToLowerInvariant(filePath[0]);
-                updatedString = updatedString.Substring(3);
+
+                // Sometimes, windows will return two backslashes
+                int subStringCutOff = filePath[3] == '\\'
+                    ? 4
+                    : 3;
+
+                updatedString = updatedString.Substring(subStringCutOff);
                 updatedString = updatedString.Insert(0, new string(new[] { driveLetter, '/' }));
             }
 
@@ -158,21 +154,6 @@ namespace B2BackupUtility.Actions
             if (updatedString[0] == '/')
             {
                 updatedString = updatedString.Substring(1);
-            }
-
-            if (updatedString[updatedString.Length - 1] == '/' || updatedString.IndexOf("//") != -1)
-            {
-                throw new InvalidOperationException("The file path cannot start or end with a forward slash and cannot have double forward slashes anywhere");
-            }
-
-            string[] segments = updatedString.Split('/');
-            foreach (string segment in segments)
-            {
-                byte[] rawBytes = Encoding.UTF8.GetBytes(segment);
-                if (rawBytes.Length > 250)
-                {
-                    throw new InvalidOperationException("No segment of the file path may be greater than 250 bytes when encoded with UTF-8");
-                }
             }
 
             return updatedString;

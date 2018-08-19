@@ -24,12 +24,12 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 
-namespace B2BackupUtility.Actions
+namespace B2BackupUtility.Commands
 {
     /// <summary>
     /// Represents an action to upload a file
     /// </summary>
-    public sealed class UploadFileAction : BaseUploadAction
+    public sealed class UploadFileCommand : BaseUploadCommand
     {
         #region private fields
         private static string FileOption => "--file";
@@ -38,15 +38,15 @@ namespace B2BackupUtility.Actions
         #endregion
 
         #region public properties
-        public override string ActionName => "Upload File";
+        public static string ActionName => "Upload File";
 
-        public override string ActionSwitch => "--upload-file";
+        public static string CommandSwitch => "--upload-file";
 
-        public override IEnumerable<string> ActionOptions => new List<string> { FileOption, DestinationOption, ConnectionsOption };
+        public static IEnumerable<string> CommandOptions => new[] { FileOption, DestinationOption, ConnectionsOption };
         #endregion
 
         #region ctor
-        public UploadFileAction(IEnumerable<string> rawArgs) : base(rawArgs)
+        public UploadFileCommand(IEnumerable<string> rawArgs) : base(rawArgs)
         {
         }
         #endregion
@@ -72,7 +72,6 @@ namespace B2BackupUtility.Actions
                 destinationRemoteFilePath = localFilePath;
             }
 
-            // TODO: Print out statistics on uploading files
             UploadFile(localFilePath, destinationRemoteFilePath);
         }
         #endregion
