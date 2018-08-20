@@ -33,5 +33,8 @@ namespace B2BackblazeBridge.Processing
 
         [JsonProperty(PropertyName = "startFileName")]
         public string StartFileName { get; set; }
+
+        [JsonProperty(PropertyName = "maxFileCount")]
+        public int MaxFileCount { get; set; }
     }
 }

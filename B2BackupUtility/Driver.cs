@@ -57,7 +57,7 @@ namespace B2BackupUtility
 
         private static IDictionary<string, IEnumerable<string>> CommandSwitchesToOptionsMap => new Dictionary<string, IEnumerable<string>>
         {
-            { DeleteAllFilesCommand.CommandSwitch, new string[] { } },
+            { DeleteAllFilesCommand.CommandSwitch, DeleteAllFilesCommand.CommandOptions },
             { DeleteFileCommand.CommandSwitch, DeleteFileCommand.CommandOptions },
             { DownloadFileCommand.CommandSwitch, DownloadFileCommand.CommandOptions },
             { GetFileInfoCommand.CommandSwitch, GetFileInfoCommand.CommandOptions },

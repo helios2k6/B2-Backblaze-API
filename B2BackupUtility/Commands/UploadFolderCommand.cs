@@ -74,8 +74,7 @@ namespace B2BackupUtility.Commands
                 foreach (LocalToRemoteFileMapping mapping in localToRemoteFileMappings)
                 {
                     CancellationActions.GlobalCancellationToken.ThrowIfCancellationRequested();
-
-                    // TODO: We need to allow destination folders to be specified
+                    LogDebug($"Uploading {mapping.LocalFilePath}");
                     UploadInfo uploadInfo = UploadFile(mapping.LocalFilePath, mapping.RemoteDestinationPath);
                     if (uploadInfo.B2UploadResult.HasErrors)
                     {
@@ -95,6 +94,10 @@ namespace B2BackupUtility.Commands
             catch (OperationCanceledException)
             {
                 LogCritical("Upload cancelled!");
+            }
+            catch (Exception ex)
+            {
+                LogCritical($"A critical exception occured during upload {ex.Message}");
             }
         }
         #endregion

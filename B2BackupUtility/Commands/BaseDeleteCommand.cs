@@ -37,7 +37,7 @@ namespace B2BackupUtility.Commands
         #endregion
 
         #region protected methods
-        protected void DeleteFile(string fileID, string fileName)
+        protected void DeleteFile(string fileID, string fileName, bool shouldUpdateManifest)
         {
             BackblazeB2ActionResult<BackblazeB2DeleteFileResult> deleteFileActionResult = new DeleteFileAction(
                 GetOrCreateAuthorizationSession(),
@@ -45,7 +45,10 @@ namespace B2BackupUtility.Commands
                 fileName
             ).Execute();
 
-            UpdateFileManifest(deleteFileActionResult);
+            if (shouldUpdateManifest)
+            {
+                UpdateFileManifest(deleteFileActionResult);
+            }
             LogDeletion(deleteFileActionResult, fileName);
         }
         #endregion

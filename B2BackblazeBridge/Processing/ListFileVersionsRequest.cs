@@ -1,4 +1,4 @@
-/* 
+﻿/* 
  * Copyright (c) 2015 Andrew Johnson
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy of 
@@ -19,33 +19,25 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+using Newtonsoft.Json;
 using System;
-using System.Threading;
 
-namespace B2BackupUtility
+namespace B2BackblazeBridge.Processing
 {
-    public static class CancellationActions
+    [Serializable]
+    [JsonObject(MemberSerialization.OptIn)]
+    internal sealed class ListFileVersionsRequest
     {
-        private static readonly CancellationTokenSource CancellationTokenSource = new CancellationTokenSource();
-        private static int CancellationRequestCounter = 0;
+        [JsonProperty(PropertyName = "bucketId")]
+        public string BucketID { get; set; }
 
-        public static void HandleCancel(object sender, ConsoleCancelEventArgs e)
-        {
-            Console.WriteLine("[CRITICAL] Cancellation detected");
-            int incrementedValue = Interlocked.Increment(ref CancellationRequestCounter);
-            if (incrementedValue == 1)
-            {
-                Console.WriteLine("[CRITICAL] Attempting to cancel gracefully");
-                // Prevent the console from shutting down the first time
-                e.Cancel = true;
-            }
-            
-            CancellationTokenSource.Cancel();
-        }
+        [JsonProperty(PropertyName = "startFileName")]
+        public string StartFileName { get; set; }
 
-        public static CancellationToken GlobalCancellationToken
-        {
-            get { return CancellationTokenSource.Token; }
-        }
+        [JsonProperty(PropertyName = "startFileId")]
+        public string StartFileID { get; set; }
+
+        [JsonProperty(PropertyName = "maxFileCount")]
+        public int MaxFileCount { get; set; }
     }
 }

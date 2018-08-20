@@ -62,7 +62,7 @@ namespace B2BackupUtility.Commands
                 throw new InvalidOperationException("You must provide a file name to delete");
             }
 
-            DeleteFile(fileID, fileName);
+            DeleteFile(fileID, fileName, true);
         }
         #endregion
     }

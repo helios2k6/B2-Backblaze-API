@@ -2,7 +2,7 @@
   "profiles": {
     "B2BackupUtility": {
       "commandName": "Project",
-      "commandLineArgs": "--config \"D:\\DOCKING\\test_config_file.txt\" --upload-folder --folder \"D:\\DOCKING\\up\" --flatten --log-level debug"
+      "commandLineArgs": "--config \"D:\\DOCKING\\test_config_file.txt\" --log-level debug --delete-all-files --delete-file-manifest"
     }
   }
 }

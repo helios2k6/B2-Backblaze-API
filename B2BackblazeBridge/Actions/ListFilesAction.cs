@@ -83,27 +83,14 @@ namespace B2BackblazeBridge.Actions
 
         public override BackblazeB2ActionResult<BackblazeB2ListFilesResult> Execute()
         {
-            switch (_method)
-            {
-                case ListFileMethod.FILE_VERSIONS:
-                    return GetFileList(ListFileVersionsAPIURL);
-                case ListFileMethod.FILE_NAMES:
-                    return GetFileList(ListFileNamesAPIURL);
-            }
-
-            throw new InvalidOperationException("Invalid List File Method was pass in");
-        }
-        #endregion
-
-        #region private methods
-        private BackblazeB2ActionResult<BackblazeB2ListFilesResult> GetFileList(string url)
-        {
+            string url = _method == ListFileMethod.FILE_NAMES ? ListFileNamesAPIURL : ListFileVersionsAPIURL;
             string startFileName = null;
+            string startFileID = null;
             BackblazeB2ActionResult<BackblazeB2ListFilesResult> currentResult = null;
             IEnumerable<BackblazeB2ListFilesResult.FileResult> fileResults = Enumerable.Empty<BackblazeB2ListFilesResult.FileResult>();
             do
             {
-                currentResult = ExecuteWebRequestImpl(url, startFileName);
+                currentResult = ExecuteWebRequestImpl(url, startFileName, startFileID, _method);
                 if (currentResult.HasErrors)
                 {
                     // If there was an error, just return immediately
@@ -111,6 +98,7 @@ namespace B2BackblazeBridge.Actions
                 }
 
                 startFileName = currentResult.Result.NextFileName;
+                startFileID = currentResult.Result.NextFileID;
                 fileResults = fileResults.Concat(currentResult.Result.Files);
             } while (_shouldFetchAllFiles && startFileName != null);
 
@@ -121,16 +109,12 @@ namespace B2BackblazeBridge.Actions
                 NextFileName = currentResult.Result.NextFileName,
             });
         }
+        #endregion
 
-        private BackblazeB2ActionResult<BackblazeB2ListFilesResult> ExecuteWebRequestImpl(string url, string startFileName)
+        #region private methods
+        private BackblazeB2ActionResult<BackblazeB2ListFilesResult> ExecuteWebRequestImpl(string url, string startFileName, string startFileID, ListFileMethod method)
         {
-            ListFileNamesRequest request = new ListFileNamesRequest
-            {
-                BucketID = _bucketID,
-                StartFileName = startFileName,
-            };
-            string body = JsonConvert.SerializeObject(request);
-            byte[] payload = Encoding.UTF8.GetBytes(body);
+            byte[] payload = GetPayload(startFileName, startFileID, method);
 
             HttpWebRequest webRequest = GetHttpWebRequest(_authorizationSession.APIURL + url);
             webRequest.Method = "POST";
@@ -138,6 +122,34 @@ namespace B2BackblazeBridge.Actions
             webRequest.ContentLength = payload.Length;
 
             return SendWebRequestAndDeserialize(webRequest, payload);
+        }
+
+        private byte[] GetPayload(string startFileName, string startFileID, ListFileMethod method)
+        {
+            byte[] payload;
+            if (method == ListFileMethod.FILE_NAMES)
+            {
+                ListFileNamesRequest request = new ListFileNamesRequest
+                {
+                    BucketID = _bucketID,
+                    MaxFileCount = 10000,
+                    StartFileName = startFileName,
+                };
+                payload = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(request));
+            }
+            else
+            {
+                ListFileVersionsRequest request = new ListFileVersionsRequest
+                {
+                    BucketID = _bucketID,
+                    MaxFileCount = 10000,
+                    StartFileID = startFileID,
+                    StartFileName = startFileName,
+                };
+                payload = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(request));
+            }
+
+            return payload;
         }
         #endregion
     }

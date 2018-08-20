@@ -28,10 +28,16 @@ namespace B2BackupUtility.Commands
 {
     public sealed class DeleteAllFilesCommand : BaseDeleteCommand
     {
+        #region private properties
+        private static string DeleteManifestOption => "--delete-file-manifest";
+        #endregion
+
         #region public properties
         public static string ActionName => "Delete All Files";
 
         public static string CommandSwitch => "--delete-all-files";
+
+        public static IEnumerable<string> CommandOptions => new[] { DeleteManifestOption };
         #endregion
 
         #region ctor
@@ -45,6 +51,7 @@ namespace B2BackupUtility.Commands
         {
             try
             {
+                bool shouldDeleteManifest = DoesOptionExist(DeleteManifestOption);
                 ListFilesAction allFileVersionsAction = ListFilesAction.CreateListFileActionForFileVersions(
                     GetOrCreateAuthorizationSession(),
                     BucketID,
@@ -54,7 +61,7 @@ namespace B2BackupUtility.Commands
                 foreach (BackblazeB2ListFilesResult.FileResult fileResult in allFileVersionsActionResult.Result.Files)
                 {
                     CancellationActions.GlobalCancellationToken.ThrowIfCancellationRequested();
-                    DeleteFile(fileResult.FileID, fileResult.FileName);
+                    DeleteFile(fileResult.FileID, fileResult.FileName, shouldDeleteManifest == false);
                 }
             }
             catch (OperationCanceledException)

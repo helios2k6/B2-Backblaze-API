@@ -44,6 +44,7 @@ namespace B2BackblazeBridge.Actions
         #region private fields
         private static readonly string FinishLargeFileURL = "/b2api/v1/b2_finish_large_file";
         private static readonly int MinimumFileChunkSize = 1048576; // 1 mebibyte
+        private static readonly int MaxMemoryAllowed = 268435456; // 258 mebibytes
 
         private readonly BackblazeB2AuthorizationSession _authorizationSession;
         private readonly string _bucketID;
@@ -96,7 +97,7 @@ namespace B2BackblazeBridge.Actions
             _remoteFilePath = remoteFilePath;
             _fileChunkSizesInBytes = fileChunkSizesInBytes;
             _numberOfConnections = numberOfConnections;
-            _jobStream = new BlockingCollection<ProducerUploadJob>();
+            _jobStream = new BlockingCollection<ProducerUploadJob>(MaxMemoryAllowed / _fileChunkSizesInBytes);
         }
 
         /// <summary>
@@ -163,7 +164,7 @@ namespace B2BackblazeBridge.Actions
                 // This will handle the scenario when there's an error
                 return FinishUploadingLargeFile(fileID, uploadResponses);
             }
-            catch (TaskCanceledException)
+            catch (OperationCanceledException)
             {
                 // Attempt to do a cancellation
                 return CancelFileUpload(fileID);
@@ -171,7 +172,7 @@ namespace B2BackblazeBridge.Actions
             catch (AggregateException ex)
             {
                 // Only attempt a cancellation if we had a task cancelled exception
-                if (ex.InnerExceptions.Any(e => e is TaskCanceledException))
+                if (ex.InnerExceptions.Any(e => e is OperationCanceledException))
                 {
                     return CancelFileUpload(fileID);
                 }
@@ -248,13 +249,31 @@ namespace B2BackblazeBridge.Actions
                         byte[] truncatedBuffer = new byte[amountRead];
                         Buffer.BlockCopy(localBuffer, 0, truncatedBuffer, 0, amountRead);
 
-                        _jobStream.Add(new ProducerUploadJob
+                        // Inner-try spin loop
+                        while (true)
                         {
-                            Buffer = truncatedBuffer,
-                            ContentLength = amountRead,
-                            FilePartNumber = currentChunk + 1L, // File parts are 1-index based...I know, fucking stupid
-                            SHA1 = ComputeSHA1Hash(truncatedBuffer),
-                        });
+                            // Check the cancellation token again. We don't want to spin forever
+                            _cancellationToken.ThrowIfCancellationRequested();
+
+                            bool didAdd = _jobStream.TryAdd(new ProducerUploadJob
+                            {
+                                Buffer = truncatedBuffer,
+                                ContentLength = amountRead,
+                                FilePartNumber = currentChunk + 1L, // File parts are 1-index based...I know, fucking stupid
+                                SHA1 = ComputeSHA1Hash(truncatedBuffer),
+                            }, TimeSpan.FromSeconds(4));
+
+                            if (didAdd)
+                            {
+                                break;
+                            }
+                            else
+                            {
+                                // Otherwise, sleep for some amount of time
+                                Thread.Sleep(TimeSpan.FromSeconds(5));
+                            }
+                        }
+
                         currentChunk++;
                     }
                     else
