@@ -34,15 +34,15 @@ namespace B2BackupUtility
     {
         private static string HelpSwitch => "--help";
 
-        private static IDictionary<string, Action> CommandSwitchToActionMap => new Dictionary<string, Action>
+        private static IDictionary<string, Command> CommandSwitchToActionMap => new Dictionary<string, Command>
         {
-            { DeleteAllFilesCommand.CommandSwitch, Action.DELETE_ALL_FILES },
-            { DeleteFileCommand.CommandSwitch, Action.DELETE },
-            { DownloadFileCommand.CommandSwitch, Action.DOWNLOAD },
-            { GetFileInfoCommand.CommandSwitch, Action.GET_FILE_INFO },
-            { ListFilesCommand.CommandSwitch, Action.LIST },
-            { UploadFileCommand.CommandSwitch, Action.UPLOAD },
-            { UploadFolderCommand.CommandSwitch, Action.UPLOAD_FOLDER }
+            { DeleteAllFilesCommand.CommandSwitch, Command.DELETE_ALL_FILES },
+            { DeleteFileCommand.CommandSwitch, Command.DELETE },
+            { DownloadFileCommand.CommandSwitch, Command.DOWNLOAD },
+            { GetFileInfoCommand.CommandSwitch, Command.GET_FILE_INFO },
+            { ListFilesCommand.CommandSwitch, Command.LIST },
+            { UploadFileCommand.CommandSwitch, Command.UPLOAD },
+            { UploadFolderCommand.CommandSwitch, Command.UPLOAD_FOLDER }
         };
 
         private static string[] NecessaryOptions => new[]
@@ -76,42 +76,42 @@ namespace B2BackupUtility
                 return;
             }
 
-            Action action = Action.UNKNOWN;
-            if (TryGetAction(args, out action) == false)
+            Command command = Command.UNKNOWN;
+            if (TryGetCommand(args, out command) == false)
             {
                 PrintHelp();
                 return;
             }
 
-            HookUpCancellationHandler(action);
+            HookUpCancellationHandler(command);
 
-            switch (action)
+            switch (command)
             {
-                case Action.DELETE:
+                case Command.DELETE:
                     new DeleteFileCommand(args).ExecuteAction();
                     break;
 
-                case Action.DELETE_ALL_FILES:
+                case Command.DELETE_ALL_FILES:
                     new DeleteAllFilesCommand(args).ExecuteAction();
                     break;
 
-                case Action.DOWNLOAD:
+                case Command.DOWNLOAD:
                     new DownloadFileCommand(args).ExecuteAction();
                     break;
 
-                case Action.GET_FILE_INFO:
+                case Command.GET_FILE_INFO:
                     new GetFileInfoCommand(args).ExecuteAction();
                     break;
 
-                case Action.LIST:
+                case Command.LIST:
                     new ListFilesCommand(args).ExecuteAction();
                     break;
 
-                case Action.UPLOAD:
+                case Command.UPLOAD:
                     new UploadFileCommand(args).ExecuteAction();
                     break;
 
-                case Action.UPLOAD_FOLDER:
+                case Command.UPLOAD_FOLDER:
                     new UploadFolderCommand(args).ExecuteAction();
                     break;
 
@@ -121,21 +121,21 @@ namespace B2BackupUtility
             }
         }
 
-        private static void HookUpCancellationHandler(Action action)
+        private static void HookUpCancellationHandler(Command action)
         {
             switch (action)
             {
                 // Cancellation is only significant for these actions
-                case Action.DOWNLOAD:
-                case Action.UPLOAD:
-                case Action.UPLOAD_FOLDER:
-                case Action.DELETE_ALL_FILES:
+                case Command.DOWNLOAD:
+                case Command.UPLOAD:
+                case Command.UPLOAD_FOLDER:
+                case Command.DELETE_ALL_FILES:
                     Console.CancelKeyPress += CancellationActions.HandleCancel;
                     break;
             }
         }
 
-        private static bool TryGetAction(string[] args, out Action action)
+        private static bool TryGetCommand(string[] args, out Command action)
         {
             foreach (string arg in args)
             {
@@ -145,7 +145,7 @@ namespace B2BackupUtility
                 }
             }
 
-            action = Action.UNKNOWN;
+            action = Command.UNKNOWN;
             return false;
         }
 

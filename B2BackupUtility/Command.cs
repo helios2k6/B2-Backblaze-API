@@ -22,16 +22,16 @@
 namespace B2BackupUtility
 {
     /// <summary>
-    /// List of different program actions
+    /// List of different program commands
     /// </summary>
-    public enum Action
+    public enum Command
     {
         /// <summary>
-        /// Download file action
+        /// Download file command
         /// </summary>
         DOWNLOAD,
         /// <summary>
-        /// Delete file action
+        /// Delete file command
         /// </summary>
         DELETE,
         /// <summary>
@@ -39,15 +39,15 @@ namespace B2BackupUtility
         /// </summary>
         DELETE_ALL_FILES,
         /// <summary>
-        /// Get the file info action
+        /// Get the file info command
         /// </summary>
         GET_FILE_INFO,
         /// <summary>
-        /// List file action
+        /// List file command
         /// </summary>
         LIST,
         /// <summary>
-        /// Upload file action
+        /// Upload file command
         /// </summary>
         UPLOAD,
         /// <summary>
@@ -55,7 +55,7 @@ namespace B2BackupUtility
         /// </summary>
         UPLOAD_FOLDER,
         /// <summary>
-        /// Unknown action
+        /// Unknown command
         /// </summary>
         UNKNOWN,
     }
