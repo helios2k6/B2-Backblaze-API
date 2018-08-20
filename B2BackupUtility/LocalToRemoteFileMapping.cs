@@ -21,10 +21,20 @@
 
 namespace B2BackupUtility
 {
+    /// <summary>
+    /// A simple tuple for managing a mapping between local file paths and remote file
+    /// paths
+    /// </summary>
     internal sealed class LocalToRemoteFileMapping
     {
+        /// <summary>
+        /// The local file path
+        /// </summary>
         public string LocalFilePath { get; set; }
 
+        /// <summary>
+        /// The remote file path
+        /// </summary>
         public string RemoteDestinationPath { get; set; }
     }
 }

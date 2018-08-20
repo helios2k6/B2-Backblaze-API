@@ -40,6 +40,7 @@ namespace B2BackupUtility.Commands
         #region private fields
         private static int DefaultUploadConnections => 20;
         private static int MinimumFileLengthForMultipleConnections => 1048576;
+        private static int DefaultChunkSize => 5242880; // 5 mebibytes
         #endregion
 
         #region protected class
@@ -94,7 +95,7 @@ namespace B2BackupUtility.Commands
                 localFilePath,
                 GetSafeFileName(remoteDestinationPath),
                 BucketID,
-                Constants.FileChunkSize,
+                DefaultChunkSize,
                 Connections,
                 CancellationActions.GlobalCancellationToken
             ));
