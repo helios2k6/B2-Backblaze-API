@@ -21,6 +21,7 @@
 
 using B2BackblazeBridge.Actions;
 using B2BackblazeBridge.Core;
+using B2BackupUtility.Logger;
 using Newtonsoft.Json;
 using System;
 using System.IO;
@@ -113,7 +114,7 @@ namespace B2BackupUtility
             BackblazeB2ActionResult<BackblazeB2UploadFileResult> uploadResultOption = uploadAction.Execute();
             if (uploadResultOption.HasErrors)
             {
-                Console.WriteLine(string.Format("There was an error uploading the File Manifest to the server: {0}", uploadResultOption.ToString()));
+                Loggers.Logger.Log(LogLevel.CRITICAL, $"There was an error uploading the File Manifest. {uploadResultOption}");
             }
         }
 

@@ -39,14 +39,11 @@ namespace B2BackupUtility.Commands
         private static TimeSpan OneHour => TimeSpan.FromMinutes(60);
 
         private readonly IEnumerable<string> _rawArgs;
-        private readonly Lazy<Logger.Logger> _logger;
         private readonly Lazy<FileManifest> _fileManifest;
         private readonly Lazy<Config> _config;
 
         private BackblazeB2AuthorizationSession _authorizationSession;
-
         private string ApplicationKey => _config.Value.ApplicationKey;
-
         private string ApplicationKeyID => _config.Value.ApplicationKeyID;
         #endregion
 
@@ -67,11 +64,6 @@ namespace B2BackupUtility.Commands
         /// The option to specify a config file
         /// </summary>
         public static string ConfigOption => "--config";
-
-        /// <summary>
-        /// The option to set the log level
-        /// </summary>
-        public static string LogLevelOption => "--log-level";
         #endregion
 
         #region public methods
@@ -85,7 +77,6 @@ namespace B2BackupUtility.Commands
         public BaseCommand(IEnumerable<string> rawArgs)
         {
             _rawArgs = rawArgs;
-            _logger = new Lazy<Logger.Logger>(() => new Logger.Logger(GetLogLevel(), new[] { new ConsoleLogSink() }));
             _fileManifest = new Lazy<FileManifest>(() =>
                 FileManifestActions.ReadManifestFileFromServerOrReturnNewOne(GetOrCreateAuthorizationSession(), BucketID)
             );
@@ -96,27 +87,27 @@ namespace B2BackupUtility.Commands
         #region protected methods
         protected void LogCritical(string message)
         {
-            _logger.Value.Log(LogLevel.CRITICAL, message);
+            Loggers.Logger.Log(LogLevel.CRITICAL, message);
         }
 
         protected void LogWarn(string message)
         {
-            _logger.Value.Log(LogLevel.WARNING, message);
+            Loggers.Logger.Log(LogLevel.WARNING, message);
         }
 
         protected void LogInfo(string message)
         {
-            _logger.Value.Log(LogLevel.INFO, message);
+            Loggers.Logger.Log(LogLevel.INFO, message);
         }
 
         protected void LogVerbose(string message)
         {
-            _logger.Value.Log(LogLevel.VERBOSE, message);
+            Loggers.Logger.Log(LogLevel.VERBOSE, message);
         }
 
         protected void LogDebug(string message)
         {
-            _logger.Value.Log(LogLevel.DEBUG, message);
+            Loggers.Logger.Log(LogLevel.DEBUG, message);
         }
 
         protected BackblazeB2AuthorizationSession GetOrCreateAuthorizationSession()
@@ -201,32 +192,6 @@ namespace B2BackupUtility.Commands
             }
 
             return JsonConvert.DeserializeObject<Config>(File.ReadAllText(configFilePath));
-        }
-
-        private LogLevel GetLogLevel()
-        {
-            bool hasLogLevelOption = TryGetArgument(LogLevelOption, out string logLevel);
-            if (hasLogLevelOption == false)
-            {
-                return LogLevel.INFO;
-            }
-
-            logLevel = logLevel.ToLowerInvariant();
-            switch (logLevel)
-            {
-                case "debug":
-                    return LogLevel.DEBUG;
-                case "verbose":
-                    return LogLevel.VERBOSE;
-                case "info":
-                    return LogLevel.INFO;
-                case "warn":
-                    return LogLevel.WARNING;
-                case "critical":
-                    return LogLevel.CRITICAL;
-            }
-
-            return LogLevel.INFO;
         }
         #endregion
     }

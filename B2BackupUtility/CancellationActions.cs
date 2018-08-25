@@ -19,6 +19,7 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+using B2BackupUtility.Logger;
 using System;
 using System.Threading;
 
@@ -31,13 +32,17 @@ namespace B2BackupUtility
 
         public static void HandleCancel(object sender, ConsoleCancelEventArgs e)
         {
-            Console.WriteLine("[CRITICAL] Cancellation detected");
+            Loggers.Logger.Log(LogLevel.CRITICAL, "Cancellation requested");
             int incrementedValue = Interlocked.Increment(ref CancellationRequestCounter);
             if (incrementedValue == 1)
             {
-                Console.WriteLine("[CRITICAL] Attempting to cancel gracefully");
+                Loggers.Logger.Log(LogLevel.CRITICAL, "Attempting to cancel gracefully");
                 // Prevent the console from shutting down the first time
                 e.Cancel = true;
+            }
+            else
+            {
+                Loggers.Logger.Log(LogLevel.CRITICAL, "Shutting down immediately!");
             }
             
             CancellationTokenSource.Cancel();

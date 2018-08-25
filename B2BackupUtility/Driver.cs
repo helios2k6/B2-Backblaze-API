@@ -20,6 +20,7 @@
  */
 
 using B2BackupUtility.Commands;
+using B2BackupUtility.Logger;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -50,9 +51,10 @@ namespace B2BackupUtility
             BaseCommand.ConfigOption,
         };
 
-        private static string[] GlobalOptions => new[]
+        private static string[] LoggerOptions => new[]
         {
-            BaseCommand.LogLevelOption,
+            Loggers.VerboseLogOption,
+            Loggers.DebugLogOption,
         };
 
         private static IDictionary<string, IEnumerable<string>> CommandSwitchesToOptionsMap => new Dictionary<string, IEnumerable<string>>
@@ -84,6 +86,7 @@ namespace B2BackupUtility
             }
 
             HookUpCancellationHandler(command);
+            Loggers.InitializeLogger(args);
 
             switch (command)
             {
@@ -156,7 +159,7 @@ namespace B2BackupUtility
 
         private static void PrintHeader()
         {
-            Console.WriteLine("B2 Backup Utility v4.2");
+            Console.WriteLine("B2 Backup Utility v4.3");
             Console.WriteLine();
         }
 
@@ -173,8 +176,8 @@ namespace B2BackupUtility
             }
             builder.AppendLine();
 
-            builder.AppendLine("Global Options");
-            foreach (string option in GlobalOptions)
+            builder.AppendLine("Logger Options");
+            foreach (string option in LoggerOptions)
             {
                 builder.AppendLine(option);
             }

@@ -30,7 +30,6 @@ namespace B2BackupUtility.Logger
     {
         #region private fields
         private readonly LogLevel _logLevel;
-
         private readonly IEnumerable<ILogSink> _logSinks;
         #endregion
 
