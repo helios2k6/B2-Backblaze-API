@@ -19,12 +19,12 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-namespace B2BackupUtility
+namespace B2BackupUtility.Commands
 {
     /// <summary>
     /// List of different program commands
     /// </summary>
-    public enum Command
+    public enum CommandType
     {
         /// <summary>
         /// Download file command

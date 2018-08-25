@@ -35,15 +35,15 @@ namespace B2BackupUtility
     {
         private static string HelpSwitch => "--help";
 
-        private static IDictionary<string, Command> CommandSwitchToActionMap => new Dictionary<string, Command>
+        private static IDictionary<string, CommandType> CommandSwitchToActionMap => new Dictionary<string, CommandType>
         {
-            { DeleteAllFilesCommand.CommandSwitch, Command.DELETE_ALL_FILES },
-            { DeleteFileCommand.CommandSwitch, Command.DELETE },
-            { DownloadFileCommand.CommandSwitch, Command.DOWNLOAD },
-            { GetFileInfoCommand.CommandSwitch, Command.GET_FILE_INFO },
-            { ListFilesCommand.CommandSwitch, Command.LIST },
-            { UploadFileCommand.CommandSwitch, Command.UPLOAD },
-            { UploadFolderCommand.CommandSwitch, Command.UPLOAD_FOLDER }
+            { DeleteAllFilesCommand.CommandSwitch, CommandType.DELETE_ALL_FILES },
+            { DeleteFileCommand.CommandSwitch, CommandType.DELETE },
+            { DownloadFileCommand.CommandSwitch, CommandType.DOWNLOAD },
+            { GetFileInfoCommand.CommandSwitch, CommandType.GET_FILE_INFO },
+            { ListFilesCommand.CommandSwitch, CommandType.LIST },
+            { UploadFileCommand.CommandSwitch, CommandType.UPLOAD },
+            { UploadFolderCommand.CommandSwitch, CommandType.UPLOAD_FOLDER }
         };
 
         private static string[] NecessaryOptions => new[]
@@ -78,7 +78,7 @@ namespace B2BackupUtility
                 return;
             }
 
-            Command command = Command.UNKNOWN;
+            CommandType command = CommandType.UNKNOWN;
             if (TryGetCommand(args, out command) == false)
             {
                 PrintHelp();
@@ -90,31 +90,31 @@ namespace B2BackupUtility
 
             switch (command)
             {
-                case Command.DELETE:
+                case CommandType.DELETE:
                     new DeleteFileCommand(args).ExecuteAction();
                     break;
 
-                case Command.DELETE_ALL_FILES:
+                case CommandType.DELETE_ALL_FILES:
                     new DeleteAllFilesCommand(args).ExecuteAction();
                     break;
 
-                case Command.DOWNLOAD:
+                case CommandType.DOWNLOAD:
                     new DownloadFileCommand(args).ExecuteAction();
                     break;
 
-                case Command.GET_FILE_INFO:
+                case CommandType.GET_FILE_INFO:
                     new GetFileInfoCommand(args).ExecuteAction();
                     break;
 
-                case Command.LIST:
+                case CommandType.LIST:
                     new ListFilesCommand(args).ExecuteAction();
                     break;
 
-                case Command.UPLOAD:
+                case CommandType.UPLOAD:
                     new UploadFileCommand(args).ExecuteAction();
                     break;
 
-                case Command.UPLOAD_FOLDER:
+                case CommandType.UPLOAD_FOLDER:
                     new UploadFolderCommand(args).ExecuteAction();
                     break;
 
@@ -124,21 +124,21 @@ namespace B2BackupUtility
             }
         }
 
-        private static void HookUpCancellationHandler(Command action)
+        private static void HookUpCancellationHandler(CommandType action)
         {
             switch (action)
             {
                 // Cancellation is only significant for these actions
-                case Command.DOWNLOAD:
-                case Command.UPLOAD:
-                case Command.UPLOAD_FOLDER:
-                case Command.DELETE_ALL_FILES:
+                case CommandType.DOWNLOAD:
+                case CommandType.UPLOAD:
+                case CommandType.UPLOAD_FOLDER:
+                case CommandType.DELETE_ALL_FILES:
                     Console.CancelKeyPress += CancellationActions.HandleCancel;
                     break;
             }
         }
 
-        private static bool TryGetCommand(string[] args, out Command action)
+        private static bool TryGetCommand(string[] args, out CommandType action)
         {
             foreach (string arg in args)
             {
@@ -148,7 +148,7 @@ namespace B2BackupUtility
                 }
             }
 
-            action = Command.UNKNOWN;
+            action = CommandType.UNKNOWN;
             return false;
         }
 
