@@ -181,7 +181,7 @@ namespace B2BackupUtility.Commands
             }
             else
             {
-                LogInfo($"Failed to upload: ${fileInfo.FullName}");
+                LogInfo($"Failed to upload: {fileInfo.FullName}");
             }
         }
 
