@@ -32,7 +32,7 @@ namespace B2BackupUtility.Commands
     public sealed class DownloadFileCommand : BaseCommand
     {
         #region private fields
-        private static string FileNameOption => "--file-option";
+        private static string FileNameOption => "--file-name";
 
         private static string FileIDOption => "--file-id";
 
