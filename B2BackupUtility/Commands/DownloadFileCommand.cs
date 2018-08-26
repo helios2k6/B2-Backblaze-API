@@ -84,9 +84,10 @@ namespace B2BackupUtility.Commands
                 {
                     double bytesPerSecond = result.Result.ContentLength / ((double)watch.ElapsedTicks / Stopwatch.Frequency);
 
-                    Console.WriteLine(string.Format("File successfully downloaded: {0} to {1}", result.Result.FileName, destination));
-                    Console.WriteLine(string.Format("Download Time: {0} seconds", (double)watch.ElapsedTicks / Stopwatch.Frequency));
-                    Console.WriteLine(string.Format("Download Speed: {0:0,0.00} bytes / second", bytesPerSecond.ToString("0,0.00", CultureInfo.InvariantCulture)));
+                    LogInfo($"File successfully downloaded: {result.Result.FileName} to {destination}");
+                    LogInfo($"Download Time: {(double)watch.ElapsedTicks / Stopwatch.Frequency} seconds");
+                    //LogInfo($"Download Speed: {bytesPerSecond.ToString("0,0.00", CultureInfo.InvariantCulture):0:0,0.00} bytes / second");
+                    LogInfo($"Download Speed: {bytesPerSecond.ToString("0,0", CultureInfo.InvariantCulture)} bytes / second");
                 }
             }
         }

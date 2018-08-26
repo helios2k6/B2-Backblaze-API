@@ -34,6 +34,7 @@ namespace B2BackupUtility
     public static class Driver
     {
         private static string HelpSwitch => "--help";
+        private static string HeaderText => "B2 Backup Utility v4.4";
 
         private static IDictionary<string, CommandType> CommandSwitchToActionMap => new Dictionary<string, CommandType>
         {
@@ -159,7 +160,7 @@ namespace B2BackupUtility
 
         private static void PrintHeader()
         {
-            Console.WriteLine("B2 Backup Utility v4.3");
+            Console.WriteLine(HeaderText);
             Console.WriteLine();
         }
 
