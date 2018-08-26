@@ -94,7 +94,7 @@ namespace B2BackblazeBridge.Core
             #region public methods
             public override string ToString()
             {
-                return $"{FileName} | {FileID} | {ContentLength} | {ContentSha1} | {UploadTimeStamp}";
+                return $"{FileName} - [File ID: {FileID}][Bytes: {ContentLength}][SHA-1: {ContentSha1 ?? "NULL"}][Uploaded: {UploadTimeStamp}]";
             }
 
             public bool Equals(FileResult other)
