@@ -86,7 +86,6 @@ namespace B2BackupUtility.Commands
 
                     LogInfo($"File successfully downloaded: {result.Result.FileName} to {destination}");
                     LogInfo($"Download Time: {(double)watch.ElapsedTicks / Stopwatch.Frequency} seconds");
-                    //LogInfo($"Download Speed: {bytesPerSecond.ToString("0,0.00", CultureInfo.InvariantCulture):0:0,0.00} bytes / second");
                     LogInfo($"Download Speed: {bytesPerSecond.ToString("0,0", CultureInfo.InvariantCulture)} bytes / second");
                 }
             }
