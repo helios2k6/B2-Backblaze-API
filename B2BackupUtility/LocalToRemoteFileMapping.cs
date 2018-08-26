@@ -27,6 +27,7 @@ namespace B2BackupUtility
     /// </summary>
     internal sealed class LocalToRemoteFileMapping
     {
+        #region public properties
         /// <summary>
         /// The local file path
         /// </summary>
@@ -36,5 +37,13 @@ namespace B2BackupUtility
         /// The remote file path
         /// </summary>
         public string RemoteDestinationPath { get; set; }
+        #endregion
+
+        #region public methods
+        public override string ToString()
+        {
+            return $"{LocalFilePath} -> {RemoteDestinationPath}";
+        }
+        #endregion
     }
 }
