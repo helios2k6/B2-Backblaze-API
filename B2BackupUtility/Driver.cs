@@ -20,7 +20,7 @@
  */
 
 using B2BackupUtility.Commands;
-using B2BackupUtility.Logger;
+using B2BackupUtility.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;

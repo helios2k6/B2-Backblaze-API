@@ -19,6 +19,8 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+using B2BackupUtility.Logging;
+
 namespace B2BackupUtility
 {
     /// <summary>
@@ -26,6 +28,13 @@ namespace B2BackupUtility
     /// </summary>
     public sealed class ExecutorPipe
     {
+        #region private fields
+        private readonly bool _isEncrypted;
+        private readonly FileManifest _fileManifest;
+        private readonly Logger _logger;
+        #endregion
 
+        #region ctor
+        #endregion
     }
 }

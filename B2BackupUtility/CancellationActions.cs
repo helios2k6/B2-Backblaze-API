@@ -19,7 +19,7 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-using B2BackupUtility.Logger;
+using B2BackupUtility.Logging;
 using System;
 using System.Threading;
 

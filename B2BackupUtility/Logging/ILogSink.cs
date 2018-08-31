@@ -19,7 +19,7 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-namespace B2BackupUtility.Logger
+namespace B2BackupUtility.Logging
 {
     public interface ILogSink
     {

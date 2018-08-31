@@ -21,7 +21,7 @@
 
 using B2BackblazeBridge.Actions;
 using B2BackblazeBridge.Core;
-using B2BackupUtility.Logger;
+using B2BackupUtility.Logging;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;

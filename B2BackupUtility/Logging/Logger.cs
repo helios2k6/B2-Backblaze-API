@@ -21,7 +21,7 @@
 
 using System.Collections.Generic;
 
-namespace B2BackupUtility.Logger
+namespace B2BackupUtility.Logging
 {
     /// <summary>
     /// A generic logging class

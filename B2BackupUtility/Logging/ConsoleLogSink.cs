@@ -19,17 +19,17 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-namespace B2BackupUtility.Logger
+using System;
+
+namespace B2BackupUtility.Logging
 {
-    /// <summary>
-    /// Log levels
-    /// </summary>
-    public enum LogLevel : int
+    public sealed class ConsoleLogSink : ILogSink
     {
-        DEBUG = 0,
-        VERBOSE = 1,
-        INFO = 2,
-        WARNING = 3,
-        CRITICAL = 4,
+        #region public methods
+        public void LogRawMessage(string message)
+        {
+            Console.Error.WriteLine(message);
+        }
+        #endregion
     }
 }
