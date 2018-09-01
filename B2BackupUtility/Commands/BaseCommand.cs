@@ -57,6 +57,21 @@ namespace B2BackupUtility.Commands
         /// The file manifest on the B2 Server
         /// </summary>
         protected FileManifest FileManifest => _fileManifest.Value;
+
+        /// <summary>
+        /// Checks to see if this command is using an encryption key
+        /// </summary>
+        protected bool IsEncrypted => EncryptionKey != null;
+
+        /// <summary>
+        /// The encryption key that is being used with this command. Can be null
+        /// </summary>
+        protected string EncryptionKey => _config.Value.EncryptionKey;
+
+        /// <summary>
+        /// The initialization vector that's used for AES encryption. Can be null
+        /// </summary>
+        protected string InitializationVector => _config.Value.InitializationVector;
         #endregion
 
         #region public properties

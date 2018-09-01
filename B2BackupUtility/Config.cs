@@ -48,5 +48,17 @@ namespace B2BackupUtility
         /// </summary>
         [JsonProperty(PropertyName = "BucketID")]
         public string BucketID { get; set; }
+
+        /// <summary>
+        /// The AES private key
+        /// </summary>
+        [JsonProperty(PropertyName = "EncryptionKey")]
+        public string EncryptionKey { get; set; }
+
+        /// <summary>
+        /// The initialization vector to use for the AES algorithm
+        /// </summary>
+        [JsonProperty(PropertyName = "InitializationVector")]
+        public string InitializationVector { get; set; }
     }
 }
