@@ -28,7 +28,7 @@ namespace B2BackupUtility.Commands
     public sealed class ListFilesCommand : BaseCommand
     {
         #region public properties
-        public static string ActionName => "List Files";
+        public static string CommandName => "List Files";
 
         public static string CommandSwitch => "--list-files";
         #endregion

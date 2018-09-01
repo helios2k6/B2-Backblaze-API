@@ -40,7 +40,7 @@ namespace B2BackupUtility.Commands
         #endregion
 
         #region public properties
-        public static string ActionName => "Download File";
+        public static string CommandName => "Download File";
 
         public static string CommandSwitch => "--download-file";
 

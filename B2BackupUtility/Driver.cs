@@ -34,13 +34,14 @@ namespace B2BackupUtility
     public static class Driver
     {
         private static string HelpSwitch => "--help";
-        private static string HeaderText => "B2 Backup Utility v4.4";
+        private static string HeaderText => "B2 Backup Utility v5.0";
 
         private static IDictionary<string, CommandType> CommandSwitchToActionMap => new Dictionary<string, CommandType>
         {
             { DeleteAllFilesCommand.CommandSwitch, CommandType.DELETE_ALL_FILES },
             { DeleteFileCommand.CommandSwitch, CommandType.DELETE },
             { DownloadFileCommand.CommandSwitch, CommandType.DOWNLOAD },
+            { GenerateKeyAndIVCommand.CommandSwitch, CommandType.GENERATE_ENCRYPTION_KEY },
             { GetFileInfoCommand.CommandSwitch, CommandType.GET_FILE_INFO },
             { ListFilesCommand.CommandSwitch, CommandType.LIST },
             { UploadFileCommand.CommandSwitch, CommandType.UPLOAD },
@@ -63,11 +64,12 @@ namespace B2BackupUtility
             { DeleteAllFilesCommand.CommandSwitch, DeleteAllFilesCommand.CommandOptions },
             { DeleteFileCommand.CommandSwitch, DeleteFileCommand.CommandOptions },
             { DownloadFileCommand.CommandSwitch, DownloadFileCommand.CommandOptions },
+            { GenerateKeyAndIVCommand.CommandSwitch, Enumerable.Empty<string>() },
             { GetFileInfoCommand.CommandSwitch, GetFileInfoCommand.CommandOptions },
-            { ListFilesCommand.CommandSwitch, new string[] { } },
+            { ListFilesCommand.CommandSwitch, Enumerable.Empty<string>() },
             { UploadFileCommand.CommandSwitch, UploadFileCommand.CommandOptions },
             { UploadFolderCommand.CommandSwitch, UploadFolderCommand.CommandOptions },
-            { HelpSwitch, new string[] { } },
+            { HelpSwitch, Enumerable.Empty<string>() },
         };
 
         public static void Main(string[] args)
@@ -101,6 +103,10 @@ namespace B2BackupUtility
 
                 case CommandType.DOWNLOAD:
                     new DownloadFileCommand(args).ExecuteAction();
+                    break;
+
+                case CommandType.GENERATE_ENCRYPTION_KEY:
+                    new GenerateKeyAndIVCommand(args).ExecuteAction();
                     break;
 
                 case CommandType.GET_FILE_INFO:

@@ -21,27 +21,21 @@
 
 using System;
 using System.Collections.Generic;
+using System.Security.Cryptography;
 
 namespace B2BackupUtility.Commands
 {
-    public sealed class DeleteFileCommand : BaseDeleteCommand
+    public sealed class GenerateKeyAndIVCommand : BaseCommand
     {
-        #region private fields
-        private static string FileNameOption => "--file-name";
-
-        private static string FileIDOption => "--file-id";
-        #endregion
-
         #region public properties
-        public static string CommandName => "Delete File";
+        public static string CommandName => "Generate Encryption Key and Initialization Vector";
 
-        public static string CommandSwitch => "--delete-file";
+        public static string CommandSwitch => "--generate-encryption-key";
 
-        public static IEnumerable<string> CommandOptions => new[] { FileNameOption, FileIDOption };
         #endregion
 
         #region ctor
-        public DeleteFileCommand(IEnumerable<string> rawArgs) : base(rawArgs)
+        public GenerateKeyAndIVCommand(IEnumerable<string> rawArgs) : base(rawArgs)
         {
         }
         #endregion
@@ -49,20 +43,17 @@ namespace B2BackupUtility.Commands
         #region public methods
         public override void ExecuteAction()
         {
-            bool hasFileIDOption = TryGetArgument(FileIDOption, out string fileID);
-            bool hasFileNameOption = TryGetArgument(FileNameOption, out string fileName);
-
-            if (hasFileIDOption == false)
+            using (Aes aes = Aes.Create())
             {
-                throw new InvalidOperationException("You must provide a file ID to delete");
-            }
+                byte[] key = aes.Key;
+                byte[] iv = aes.IV;
 
-            if (hasFileNameOption == false)
-            {
-                throw new InvalidOperationException("You must provide a file name to delete");
-            }
+                string keyAsString = Convert.ToBase64String(key);
+                string ivAsString = Convert.ToBase64String(iv);
 
-            DeleteFile(fileID, fileName, true);
+                LogInfo($"Encryption Key: {keyAsString}");
+                LogInfo($"Initialization Vector: {ivAsString}");
+            }
         }
         #endregion
     }

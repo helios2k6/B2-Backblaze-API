@@ -38,7 +38,7 @@ namespace B2BackupUtility.Commands
         #endregion
 
         #region public properties
-        public static string ActionName => "Upload File";
+        public static string CommandName => "Upload File";
 
         public static string CommandSwitch => "--upload-file";
 

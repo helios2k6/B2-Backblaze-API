@@ -33,7 +33,7 @@ namespace B2BackupUtility.Commands
         #endregion
 
         #region public properties
-        public static string ActionName => "Delete All Files";
+        public static string CommandName => "Delete All Files";
 
         public static string CommandSwitch => "--delete-all-files";
 

@@ -39,6 +39,11 @@ namespace B2BackupUtility.Commands
         /// </summary>
         DELETE_ALL_FILES,
         /// <summary>
+        /// Generate the encryption key and 
+        /// initialization vector
+        /// </summary>
+        GENERATE_ENCRYPTION_KEY,
+        /// <summary>
         /// Get the file info command
         /// </summary>
         GET_FILE_INFO,

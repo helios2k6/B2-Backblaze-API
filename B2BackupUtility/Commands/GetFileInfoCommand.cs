@@ -34,7 +34,7 @@ namespace B2BackupUtility.Commands
         #endregion
 
         #region public properties
-        public static string ActionName => "Get File Info";
+        public static string CommandName => "Get File Info";
 
         public static string CommandSwitch => "--get-file-info";
 
