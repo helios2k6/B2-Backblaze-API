@@ -22,51 +22,41 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Runtime.Serialization;
 
 namespace B2BackupUtility.Archive
 {
     /// <summary>
-    /// Represents an Archive File comprised of smaller archive chunks
+    /// Represents an Archive File comprised of smaller archive chunks. This is meant
+    /// to be the business object that combines all of the Archive Chunks together and
+    /// is not meant to be serialized. 
     /// </summary>
-    [Serializable]
-    public sealed class ArchiveFile : IEquatable<ArchiveFile>, ISerializable
+    public sealed class ArchiveFile : IEquatable<ArchiveFile>
     {
         #region private fields
-        private static string FileNamePropertyName => "File Name";
+        private readonly ArchiveChunk[] _chunks;
 
-        private static string ChunksPropertyName => "Chunks";
-        #endregion
-
-        #region public properties
-        /// <summary>
-        /// The name of the file contained within this archive
-        /// </summary>
-        public string FileName { get; set; }
-
-        /// <summary>
-        /// The archive chunks that comprise this archive file
-        /// </summary>
-        public ArchiveChunk[] Chunks { get; set; }
+        private string FileName => _chunks[0].FileName;
         #endregion
 
         #region ctor
-        /// <summary>
-        /// Default constructor
-        /// </summary>
-        public ArchiveFile()
+        public ArchiveFile(ArchiveFileManifest manifest, ArchiveChunk[] chunks)
         {
-        }
+            if (chunks == null)
+            {
+                throw new ArgumentNullException("Chunks");
+            }
 
-        /// <summary>
-        /// Deserialization 
-        /// </summary>
-        /// <param name="info"></param>
-        /// <param name="context"></param>
-        public ArchiveFile(SerializationInfo info, StreamingContext context)
-        {
-            FileName = info.GetString(FileNamePropertyName);
-            Chunks = (ArchiveChunk[])info.GetValue(ChunksPropertyName, typeof(ArchiveChunk[]));
+            if (chunks.Length != manifest.NumChunks)
+            {
+                throw new ArgumentException("The number of chunks does not match the expected amount");
+            }
+
+            if (chunks.Any(c => string.Equals(c.FileName, manifest.FileName) == false))
+            {
+                throw new ArgumentException("Chunk file names do not match the expected name");
+            }
+
+            _chunks = chunks;
         }
         #endregion
 
@@ -77,7 +67,7 @@ namespace B2BackupUtility.Archive
         /// <returns>An enumerable of bytes that represent the complete archive file</returns>
         public IEnumerable<byte> GetAllBytes()
         {
-            return from chunk in Chunks
+            return from chunk in _chunks
                    orderby chunk.ChunkNumber
                    from b in chunk.Payload
                    select b;
@@ -85,7 +75,7 @@ namespace B2BackupUtility.Archive
 
         public override string ToString()
         {
-            return $"Archive File: {FileName} with {Chunks?.Length ?? 0} Chunks";
+            return $"Archive File: {FileName} with {_chunks.Length} Chunks";
         }
 
         public override bool Equals(object obj)
@@ -95,8 +85,8 @@ namespace B2BackupUtility.Archive
 
         public override int GetHashCode()
         {
-            return FileName?.GetHashCode() ?? 0 ^
-                Chunks?.Aggregate(0, (acc, e) => e.GetHashCode() ^ acc) ?? 0;
+            return FileName.GetHashCode()^
+                _chunks.Aggregate(0, (acc, e) => e.GetHashCode() ^ acc);
         }
 
         public bool Equals(ArchiveFile other)
@@ -107,13 +97,7 @@ namespace B2BackupUtility.Archive
             }
 
             return string.Equals(FileName, other.FileName, StringComparison.InvariantCulture) &&
-                EnumerableUtils.ScrambledEquals(Chunks, other.Chunks);
-        }
-
-        public void GetObjectData(SerializationInfo info, StreamingContext context)
-        {
-            info.AddValue(FileNamePropertyName, FileName);
-            info.AddValue(ChunksPropertyName, Chunks, typeof(ArchiveChunk[]));
+                EnumerableUtils.ScrambledEquals(_chunks, other._chunks);
         }
         #endregion
 

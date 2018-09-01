@@ -89,7 +89,6 @@ namespace B2BackblazeBridge.Actions
             }
 
             ValidateRawPath(remoteFilePath);
-            ValidateStreamLength(dataStream);
 
             _authorizationSession = authorizationSession ?? throw new ArgumentNullException("The authorization session object must not be mull");
             _bucketID = bucketID;
@@ -199,39 +198,6 @@ namespace B2BackblazeBridge.Actions
         #endregion
 
         #region private methods
-        private static void ValidateStreamLength(Stream dataStream)
-        {
-            if (dataStream == null)
-            {
-                throw new ArgumentNullException();
-            }
-
-            if (dataStream.CanRead == false)
-            {
-                throw new ArgumentException("Input stream must be readable");
-            }
-
-            if (dataStream.CanSeek == false)
-            {
-                throw new ArgumentException("Input stream must be able to seek");
-            }
-
-            try
-            {
-                byte[] localBuffer = new byte[MinimumFileChunkSize];
-                int bytesRead = dataStream.Read(localBuffer, 0, MinimumFileChunkSize);
-
-                if (bytesRead < MinimumFileChunkSize)
-                {
-                    throw new ArgumentException("Data stream isn't long enough for multiple connections");
-                }
-            }
-            finally
-            {
-                dataStream.Position = 0;
-            }
-        }
-
         private void StartProducerLoop()
         {
             try
