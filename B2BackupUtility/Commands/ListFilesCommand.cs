@@ -19,8 +19,7 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-using B2BackblazeBridge.Actions;
-using B2BackblazeBridge.Core;
+using System;
 using System.Collections.Generic;
 
 namespace B2BackupUtility.Commands
@@ -42,18 +41,7 @@ namespace B2BackupUtility.Commands
         #region public methods
         public override void ExecuteAction()
         {
-            BackblazeB2ActionResult<BackblazeB2ListFilesResult> actionResult = ListFilesAction.CreateListFileActionForFileNames(
-                GetOrCreateAuthorizationSession(),
-                BucketID,
-                true
-            ).Execute();
-            if (actionResult.HasResult)
-            {
-                foreach (BackblazeB2ListFilesResult.FileResult file in actionResult.Result.Files)
-                {
-                    LogInfo(file.ToString());
-                }
-            }
+            throw new NotImplementedException();
         }
         #endregion
     }

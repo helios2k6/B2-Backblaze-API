@@ -20,11 +20,8 @@
  */
 
 
-using B2BackblazeBridge.Actions;
-using B2BackblazeBridge.Core;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 
 namespace B2BackupUtility.Commands
 {
@@ -39,41 +36,19 @@ namespace B2BackupUtility.Commands
         #region protected methods
         protected void DeleteFile(string fileID, string fileName, bool shouldUpdateManifest)
         {
-            BackblazeB2ActionResult<BackblazeB2DeleteFileResult> deleteFileActionResult = new DeleteFileAction(
-                GetOrCreateAuthorizationSession(),
-                fileID,
-                fileName
-            ).Execute();
-
-            if (shouldUpdateManifest)
-            {
-                UpdateFileManifest(deleteFileActionResult);
-            }
-            LogDeletion(deleteFileActionResult, fileName);
+            throw new NotImplementedException();
         }
         #endregion
 
         #region private methods
-        private void UpdateFileManifest(BackblazeB2ActionResult<BackblazeB2DeleteFileResult> result)
+        private void UpdateFileManifest()
         {
-            if (result.HasResult)
-            {
-                string fileName = result.Result.FileName;
-                FileDatabaseManifest.Files = FileDatabaseManifest.Files.Where(e => e.FileName.Equals(fileName, StringComparison.Ordinal) == false).ToArray();
-                UploadFileDatabaseManifest();
-            }
+            throw new NotImplementedException();
         }
 
-        private void LogDeletion(BackblazeB2ActionResult<BackblazeB2DeleteFileResult> result, string fileName)
+        private void LogDeletion()
         {
-            if (result.HasResult)
-            {
-                LogInfo($"Deleted file: {fileName}");
-            }
-            else
-            {
-                LogInfo($"Failed to delete file: {fileName}. {result.Errors.First().Message}");
-            }
+            throw new NotImplementedException();
         }
         #endregion
     }
