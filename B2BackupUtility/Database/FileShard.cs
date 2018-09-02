@@ -19,55 +19,50 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+
+using Newtonsoft.Json;
 using System;
 using System.Linq;
 using System.Runtime.Serialization;
 
-namespace B2BackupUtility.Archive
+namespace B2BackupUtility.Database
 {
     /// <summary>
-    /// Represents a single archive chunk that can be combined with other archive chunks
-    /// to generate the original Archive
+    /// Represents a part of a file that fits into a database record
     /// </summary>
     [Serializable]
-    public sealed class ArchiveChunk : IEquatable<ArchiveChunk>, ISerializable
+    [JsonObject(MemberSerialization.OptIn)]
+    public sealed class FileShard : IEquatable<FileShard>, ISerializable
     {
-        #region private fields
-        private static string ChunkNumberPropertyName => "Chunk Number";
-
-        private static string FileNamePropertyName => "File Name";
-
-        private static string LengthPropertyName => "Length";
-
-        private static string SHA1PropertyName => "SHA1";
-
-        private static string PayloadPropertyName => "Payload";
-        #endregion
-
         #region public properties
         /// <summary>
         /// The piece number of this archive
         /// </summary>
-        public long ChunkNumber { get; set; }
+        [JsonProperty(PropertyName = "PieceNumber")]
+        public long PieceNumber { get; set; }
 
         /// <summary>
-        /// The file name of the original file
+        /// The ID of this file chunk
         /// </summary>
-        public string FileName { get; set; }
+        [JsonProperty(PropertyName = "ID")]
+        public string ID { get; set; }
 
         /// <summary>
         /// The length of this chunk
         /// </summary>
+        [JsonProperty(PropertyName = "Length")]
         public long Length { get; set; }
 
         /// <summary>
         /// The SHA1 of this chunk
         /// </summary>
+        [JsonProperty(PropertyName = "SHA1")]
         public string SHA1 { get; set; }
 
         /// <summary>
         /// The actual payload of this chunk
         /// </summary>
+        [JsonProperty(PropertyName = "Payload")]
         public byte[] Payload { get; set; }
         #endregion
 
@@ -75,7 +70,7 @@ namespace B2BackupUtility.Archive
         /// <summary>
         /// Default constructor
         /// </summary>
-        public ArchiveChunk()
+        public FileShard()
         {
         }
 
@@ -84,40 +79,40 @@ namespace B2BackupUtility.Archive
         /// </summary>
         /// <param name="info">The serialization information</param>
         /// <param name="context">The context under which this is deserialized</param>
-        public ArchiveChunk(SerializationInfo info, StreamingContext context)
+        public FileShard(SerializationInfo info, StreamingContext context)
         {
-            ChunkNumber = info.GetInt64(ChunkNumberPropertyName);
-            FileName = info.GetString(FileNamePropertyName);
-            Length = info.GetInt64(LengthPropertyName);
-            SHA1 = info.GetString(SHA1PropertyName);
-            Payload = (byte[])info.GetValue(PayloadPropertyName, typeof(byte[]));
+            PieceNumber = info.GetInt64("PieceNumber");
+            ID = info.GetString("ID");
+            Length = info.GetInt64("Length");
+            SHA1 = info.GetString("SHA1");
+            Payload = (byte[])info.GetValue("Payload", typeof(byte[]));
         }
         #endregion
 
         #region public methods
         public override bool Equals(object obj)
         {
-            return Equals(obj as ArchiveChunk);
+            return Equals(obj as FileShard);
         }
 
         public override int GetHashCode()
         {
-            return ChunkNumber.GetHashCode() ^
-                FileName?.GetHashCode() ?? 0 ^
+            return PieceNumber.GetHashCode() ^
+                ID?.GetHashCode() ?? 0 ^
                 Length.GetHashCode() ^
                 SHA1?.GetHashCode() ?? 0 ^
                 Payload?.Aggregate(0, (acc, e) => e.GetHashCode() ^ acc) ?? 0;
         }
 
-        public bool Equals(ArchiveChunk other)
+        public bool Equals(FileShard other)
         {
             if (EqualsPreamble(other) == false)
             {
                 return false;
             }
 
-            return ChunkNumber == other.ChunkNumber &&
-                string.Equals(FileName, other.FileName, StringComparison.InvariantCulture) &&
+            return PieceNumber == other.PieceNumber &&
+                string.Equals(ID, other.ID, StringComparison.InvariantCulture) &&
                 Length == other.Length &&
                 string.Equals(SHA1, other.SHA1, StringComparison.InvariantCultureIgnoreCase) &&
                 Enumerable.SequenceEqual(Payload, other.Payload);
@@ -125,16 +120,16 @@ namespace B2BackupUtility.Archive
 
         public override string ToString()
         {
-            return $"Archive Chunk: {ChunkNumber} - {FileName} - {SHA1}";
+            return $"Archive Chunk: {PieceNumber} - {ID} - {SHA1}";
         }
 
         public void GetObjectData(SerializationInfo info, StreamingContext context)
         {
-            info.AddValue(ChunkNumberPropertyName, ChunkNumber);
-            info.AddValue(FileNamePropertyName, FileName);
-            info.AddValue(LengthPropertyName, Length);
-            info.AddValue(SHA1PropertyName, SHA1);
-            info.AddValue(PayloadPropertyName, Payload, typeof(byte[]));
+            info.AddValue("PieceNumber", PieceNumber);
+            info.AddValue("ID", ID);
+            info.AddValue("Length", Length);
+            info.AddValue("SHA1", SHA1);
+            info.AddValue("Payload", Payload, typeof(byte[]));
         }
         #endregion
 

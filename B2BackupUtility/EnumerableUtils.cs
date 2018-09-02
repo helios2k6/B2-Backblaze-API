@@ -96,5 +96,22 @@ namespace B2BackupUtility
         {
             return thisList.ScrambledEquals(otherList, EqualityComparer<T>.Default);
         }
+
+        /// <summary>
+        /// Gets the hashcode of this IEnumerable by cycling through and XOR'ing all of the element's GetHashCode()
+        /// result
+        /// </summary>
+        /// <typeparam name="T">The type of this element</typeparam>
+        /// <param name="thisList">This reference</param>
+        /// <returns>This object's hashcode</returns>
+        public static int GetHashCodeEnumerable<T>(this IEnumerable<T> thisList)
+        {
+            if (thisList == null)
+            {
+                throw new NullReferenceException("Attempted to deference a null object");
+            }
+
+            return thisList.Aggregate(0, (acc, e) => e?.GetHashCode() ?? 0 ^ acc);
+        }
     }
 }

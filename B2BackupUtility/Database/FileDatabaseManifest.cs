@@ -19,56 +19,43 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+using Newtonsoft.Json;
 using System;
+using System.Linq;
 using System.Runtime.Serialization;
 
-namespace B2BackupUtility.Archive
+namespace B2BackupUtility.Database
 {
     /// <summary>
-    /// Represents a manifest of all of the Archive File Chunks that comprise a single
-    /// Archive File. This is meant to be serialized alongside of the Archive Chunks and 
-    /// then used to reconstruct the original Archive File. 
+    /// Represents a database that is distributed over several different 
+    /// database shards
     /// </summary>
     [Serializable]
-    public sealed class ArchiveFileManifest : IEquatable<ArchiveFileManifest>, ISerializable
+    [JsonObject(MemberSerialization.OptIn)]
+    public sealed class FileDatabaseManifest
     {
-        #region private fields
-        #endregion
-
         #region public properties
         /// <summary>
-        /// The file names of the Archive File chunks themselves (not the 
-        /// name of the original file contained within the Archive)
+        /// The different files that are in this database
         /// </summary>
-        public string[] ArchiveChunkFileNames { get; set; }
-
-        /// <summary>
-        /// The name of the original file inside of the archive
-        /// </summary>
-        public string FileName { get; set; }
-
-        /// <summary>
-        /// The number of chunks that comprise this Archive File
-        /// </summary>
-        public long NumChunks { get; set; }
-        #endregion
-
-        #region ctor
+        [JsonProperty(PropertyName = "Files")]
+        public File[] Files { get; set; }
         #endregion
 
         #region public methods
-        public bool Equals(ArchiveFileManifest other)
+        /// <summary>
+        /// Adds a file to the file manifest
+        /// </summary>
+        /// <param name="file">The file to add</param>
+        public void AddFile(File file)
         {
-            throw new NotImplementedException();
-        }
+            if (file == null)
+            {
+                throw new ArgumentNullException("file");
+            }
 
-        public void GetObjectData(SerializationInfo info, StreamingContext context)
-        {
-            throw new NotImplementedException();
+            Files = Files.Append(file).ToArray();
         }
-        #endregion
-
-        #region private methods
         #endregion
     }
 }

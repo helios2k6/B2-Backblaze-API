@@ -88,7 +88,8 @@ namespace B2BackupUtility.Commands
                 GetOrCreateAuthorizationSession(),
                 localFilePath,
                 GetSafeFileName(remoteDestinationPath),
-                BucketID
+                BucketID,
+                CancellationActions.GlobalCancellationToken
             ))
             : ExecuteUploadAction(new UploadWithMultipleConnectionsAction(
                 GetOrCreateAuthorizationSession(),

@@ -47,31 +47,39 @@ namespace B2BackupUtility
         #endregion
 
         #region public methods
+        /// <summary>
+        /// Gets the SHA1 using the path to a local file
+        /// </summary>
+        /// <param name="localFilePath">The path to the local file</param>
+        /// <returns>A string representing the SHA1</returns>
         public string GetFileHash(string localFilePath)
         {
-            string fileSHA1;
-            if (_localFileToSHA1HashMap.TryGetValue(localFilePath, out fileSHA1) == false)
+            if (File.Exists(localFilePath) == false)
             {
-                fileSHA1 = ComputeSHA1Hash(localFilePath);
+                throw new InvalidOperationException("File does not exist. Cannot compute SHA-1");
+            }
+
+            if (_localFileToSHA1HashMap.TryGetValue(localFilePath, out string fileSHA1) == false)
+            {
+                fileSHA1 = ComputeSHA1Hash(new FileStream(localFilePath, FileMode.Open, FileAccess.Read, FileShare.Read));
                 _localFileToSHA1HashMap.Add(localFilePath, fileSHA1);
             }
 
             return fileSHA1;
         }
-        #endregion
 
-        #region private methods
-        private string ComputeSHA1Hash(string filePath)
+        /// <summary>
+        /// Computes the SHA1 of bytes in a stream
+        /// </summary>
+        /// <param name="byteStream">The stream to read from</param>
+        /// <remarks>This function will dispose of the stream</remarks>
+        /// <returns>A string representing the SHA1</returns>
+        public string ComputeSHA1Hash(Stream byteStream)
         {
-            if (File.Exists(filePath) == false)
-            {
-                throw new InvalidOperationException("File does not exist. Cannot compute SHA-1");
-            }
-
-            using (FileStream stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read))
+            using (byteStream)
             using (SHA1 shaHash = SHA1.Create())
             {
-                byte[] hashData = shaHash.ComputeHash(stream);
+                byte[] hashData = shaHash.ComputeHash(byteStream);
                 StringBuilder sb = new StringBuilder();
                 foreach (byte b in hashData)
                 {
@@ -80,6 +88,16 @@ namespace B2BackupUtility
 
                 return sb.ToString();
             }
+        }
+
+        /// <summary>
+        /// Computes the SHA1 of raw bytes
+        /// </summary>
+        /// <param name="rawBytes">The raw bytes to read from</param>
+        /// <returns>A string representing the SHA1</returns>
+        public string ComputeSHA1Hash(byte[] rawBytes)
+        {
+            return ComputeSHA1Hash(new MemoryStream(rawBytes));
         }
         #endregion
     }

@@ -25,6 +25,7 @@ using B2BackblazeBridge.Processing;
 using Functional.Maybe;
 using System;
 using System.IO;
+using System.Linq;
 using System.Net;
 using System.Threading;
 
@@ -36,6 +37,8 @@ namespace B2BackblazeBridge.Actions
     public sealed class UploadWithSingleConnectionAction : BaseAction<BackblazeB2UploadFileResult>
     {
         #region private fields
+        private static int MaxUploadAttempts => 10;
+
         private readonly BackblazeB2AuthorizationSession _authorizationSession;
         private readonly string _bucketID;
         private readonly byte[] _bytesToUpload;
@@ -50,12 +53,14 @@ namespace B2BackblazeBridge.Actions
         /// <param name="bytesToUpload">The bytes to upload</param>
         /// <param name="fileDestination">The remote file path to upload to</param>
         /// <param name="bucketID">The Bucket ID to upload to</param>
+        /// <param name="cancellationToken">The cancellation token</param>
         public UploadWithSingleConnectionAction(
             BackblazeB2AuthorizationSession authorizationSession,
             string bucketID,
             byte[] bytesToUpload,
-            string fileDestination
-        ) : base(CancellationToken.None)
+            string fileDestination,
+            CancellationToken cancellationToken
+        ) : base(cancellationToken)
         {
             ValidateRawPath(fileDestination);
 
@@ -72,12 +77,14 @@ namespace B2BackblazeBridge.Actions
         /// <param name="filePath">The path to the file to upload</param>
         /// <param name="fileDestination">The remote file path to upload to</param>
         /// <param name="bucketID">The Bucket ID to upload to</param>
+        /// <param name="cancellationToken">The cancellation token</param>
         public UploadWithSingleConnectionAction(
             BackblazeB2AuthorizationSession authorizationSession,
             string filePath,
             string fileDestination,
-            string bucketID
-        ) : this(authorizationSession, bucketID, File.ReadAllBytes(filePath), fileDestination)
+            string bucketID,
+            CancellationToken cancellationToken
+        ) : this(authorizationSession, bucketID, File.ReadAllBytes(filePath), fileDestination, cancellationToken)
         {
         }
         #endregion
@@ -97,17 +104,47 @@ namespace B2BackblazeBridge.Actions
             if (getUploadFileUrlResult.HasResult)
             {
                 GetUploadFileURLResponse unwrappedResult = getUploadFileUrlResult.MaybeResult.Value;
-
                 string sha1Hash = ComputeSHA1Hash(_bytesToUpload);
-                HttpWebRequest webRequest = (HttpWebRequest)WebRequest.Create(unwrappedResult.UploadURL);
-                webRequest.Method = "POST";
-                webRequest.Headers.Add("Authorization", unwrappedResult.AuthorizationToken);
-                webRequest.Headers.Add("X-Bz-File-Name", Uri.EscapeDataString(_fileDestination));
-                webRequest.Headers.Add("X-Bz-Content-Sha1", sha1Hash);
-                webRequest.ContentType = "b2/x-auto";
-                webRequest.ContentLength = _bytesToUpload.Length;
 
-                return SendWebRequestAndDeserialize(webRequest, _bytesToUpload);
+                // Loop because we want to retry to upload the file part should it fail for
+                // recoverable reasons. We will break out of this loop should the upload succeed
+                // or throw an exception should we determine we can't upload to the server
+                int attemptNumber = 0;
+                while (true)
+                {
+                    // Throw an exception is we are being interrupted
+                    _cancellationToken.ThrowIfCancellationRequested();
+
+                    // Sleep the current thread so that we can give the server some time to recover
+                    if (attemptNumber > 0)
+                    {
+                        TimeSpan backoffSleepTime = CalculateExponentialBackoffSleepTime(attemptNumber);
+                        Thread.Sleep(backoffSleepTime);
+                    }
+
+                    HttpWebRequest webRequest = (HttpWebRequest)WebRequest.Create(unwrappedResult.UploadURL);
+                    webRequest.Method = "POST";
+                    webRequest.Headers.Add("Authorization", unwrappedResult.AuthorizationToken);
+                    webRequest.Headers.Add("X-Bz-File-Name", Uri.EscapeDataString(_fileDestination));
+                    webRequest.Headers.Add("X-Bz-Content-Sha1", sha1Hash);
+                    webRequest.ContentType = "b2/x-auto";
+                    webRequest.ContentLength = _bytesToUpload.Length;
+
+                    BackblazeB2ActionResult<BackblazeB2UploadFileResult> response = SendWebRequestAndDeserialize(webRequest, _bytesToUpload);
+                    if (response.HasResult)
+                    {
+                        return response;
+                    }
+                    else if (response.Errors.Any(e => e.Status >= 500 && e.Status < 600) && attemptNumber < MaxUploadAttempts)
+                    {
+                        // Internal error. We need to do exponential backoff
+                        attemptNumber++;
+                    }
+                    else
+                    {
+                        return response;
+                    }
+                }
             }
             else
             {

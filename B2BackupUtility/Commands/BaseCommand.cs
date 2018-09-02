@@ -21,12 +21,16 @@
 
 using B2BackblazeBridge.Actions;
 using B2BackblazeBridge.Core;
+using B2BackupUtility.Database;
 using B2BackupUtility.Logging;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace B2BackupUtility.Commands
 {
@@ -37,12 +41,14 @@ namespace B2BackupUtility.Commands
     {
         #region private fields
         private static TimeSpan OneHour => TimeSpan.FromMinutes(60);
+        private static int DefaultBufferSize => 104857600;
 
         private readonly IEnumerable<string> _rawArgs;
-        private readonly Lazy<FileManifest> _fileManifest;
+        private readonly Lazy<FileDatabaseManifest> _fileManifest;
         private readonly Lazy<Config> _config;
 
         private BackblazeB2AuthorizationSession _authorizationSession;
+        private FileDatabaseManifest _fileDatabaseManifest;
         private string ApplicationKey => _config.Value.ApplicationKey;
         private string ApplicationKeyID => _config.Value.ApplicationKeyID;
         #endregion
@@ -52,11 +58,6 @@ namespace B2BackupUtility.Commands
         /// Get the bucket ID
         /// </summary>
         protected string BucketID => _config.Value.BucketID;
-
-        /// <summary>
-        /// The file manifest on the B2 Server
-        /// </summary>
-        protected FileManifest FileManifest => _fileManifest.Value;
 
         /// <summary>
         /// Checks to see if this command is using an encryption key
@@ -92,9 +93,6 @@ namespace B2BackupUtility.Commands
         public BaseCommand(IEnumerable<string> rawArgs)
         {
             _rawArgs = rawArgs;
-            _fileManifest = new Lazy<FileManifest>(() =>
-                FileManifestActions.ReadManifestFileFromServerOrReturnNewOne(GetOrCreateAuthorizationSession(), BucketID)
-            );
             _config = new Lazy<Config>(DeserializeConfig);
         }
         #endregion
@@ -140,6 +138,15 @@ namespace B2BackupUtility.Commands
             }
 
             return _authorizationSession;
+        }
+
+        protected FileDatabaseManifest GetOrCreateFileDatabaseManifest()
+        {
+            // Check to see if this has to be initialized
+            if (_fileDatabaseManifest == null)
+            {
+
+            }
         }
 
         /// <summary>
@@ -206,7 +213,97 @@ namespace B2BackupUtility.Commands
                 throw new InvalidOperationException("You must provide a config file");
             }
 
-            return JsonConvert.DeserializeObject<Config>(File.ReadAllText(configFilePath));
+            return JsonConvert.DeserializeObject<Config>(System.IO.File.ReadAllText(configFilePath));
+        }
+
+        private static byte[] SerializeManifest(FileDatabaseManifest fileDatabaseManifest, Config config)
+        {
+            using (MemoryStream serializedManifestStream = new MemoryStream(Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(fileDatabaseManifest))))
+            using (MemoryStream compressedMemoryStream = new MemoryStream())
+            {
+                // It's very important that we dispose of the GZipStream before reading from the memory stream
+                using (GZipStream compressionStream = new GZipStream(compressedMemoryStream, CompressionMode.Compress, true))
+                {
+                    serializedManifestStream.CopyTo(compressionStream);
+                }
+
+                return EncryptBytes(compressedMemoryStream.ToArray(), config);
+            }
+        }
+
+        private static byte[] EncryptBytes(byte[] bytes, Config config)
+        {
+            using (Aes aesAlg = Aes.Create())
+            {
+                aesAlg.Key = Convert.FromBase64String(config.EncryptionKey);
+                aesAlg.IV = Convert.FromBase64String(config.InitializationVector);
+
+                ICryptoTransform encryptor = aesAlg.CreateEncryptor(aesAlg.Key, aesAlg.IV);
+
+                using (MemoryStream msEncrypt = new MemoryStream())
+                using (CryptoStream csEncrypt = new CryptoStream(msEncrypt, encryptor, CryptoStreamMode.Write))
+                {
+                    // It's important we dispose of the BinaryWriter before attempting to read from the 
+                    // memory stream with the encrypted bytes
+                    using (BinaryWriter swEncrypt = new BinaryWriter(csEncrypt))
+                    {
+                        //Write all data to the stream.
+                        swEncrypt.Write(bytes);
+                    }
+                    return msEncrypt.ToArray();
+                }
+            }
+        }
+
+        private static FileDatabaseManifest DeserializeManifest(byte[] encryptedBytes, Config config)
+        {
+            using (MemoryStream deserializedMemoryStream = new MemoryStream())
+            {
+                using (MemoryStream compressedBytesStream = new MemoryStream(DecryptBytes(encryptedBytes, config)))
+                using (GZipStream decompressionStream = new GZipStream(compressedBytesStream, CompressionMode.Decompress))
+                {
+                    decompressionStream.CopyTo(deserializedMemoryStream);
+                }
+
+                return JsonConvert.DeserializeObject<FileDatabaseManifest>(
+                    Encoding.UTF8.GetString(deserializedMemoryStream.ToArray())
+                );
+            }
+        }
+
+        private static byte[] DecryptBytes(byte[] bytes, Config config)
+        {
+            using (Aes aesAlg = Aes.Create())
+            {
+                aesAlg.Key = Convert.FromBase64String(config.EncryptionKey);
+                aesAlg.IV = Convert.FromBase64String(config.InitializationVector);
+
+                ICryptoTransform decryptor = aesAlg.CreateDecryptor(aesAlg.Key, aesAlg.IV);
+
+                // Create the streams used for decryption.
+                using (MemoryStream msDecrypt = new MemoryStream(bytes))
+                using (CryptoStream csDecrypt = new CryptoStream(msDecrypt, decryptor, CryptoStreamMode.Read))
+                using (BinaryReader srDecrypt = new BinaryReader(csDecrypt))
+                {
+                    byte[] buffer = new byte[DefaultBufferSize];
+                    List<byte> returnValues = new List<byte>();
+                    while (true)
+                    {
+                        int bytesRead = srDecrypt.Read(buffer, 0, DefaultBufferSize);
+                        if (bytesRead < 1)
+                        {
+                            break;
+                        }
+
+                        for (int i = 0; i < bytesRead; i++)
+                        {
+                            returnValues.Add(buffer[i]);
+                        }
+                    }
+
+                    return returnValues.ToArray();
+                }
+            }
         }
         #endregion
     }
