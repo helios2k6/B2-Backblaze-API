@@ -20,7 +20,6 @@
  */
 
 
-using System;
 using System.Collections.Generic;
 
 namespace B2BackupUtility.Commands
@@ -34,22 +33,18 @@ namespace B2BackupUtility.Commands
         #endregion
 
         #region protected methods
-        protected void DeleteFile(string fileID, string fileName, bool shouldUpdateManifest)
+        /// <summary>
+        /// Deletes a File that is represented as a Database.File. This will remove all
+        /// associated file shards from the B2 Backblaze server and update the File Database
+        /// Manifest
+        /// </summary>
+        /// <param name="file">The Database.File to delete</param>
+        protected void DeleteFile(Database.File file)
         {
-            throw new NotImplementedException();
         }
         #endregion
 
         #region private methods
-        private void UpdateFileManifest()
-        {
-            throw new NotImplementedException();
-        }
-
-        private void LogDeletion()
-        {
-            throw new NotImplementedException();
-        }
         #endregion
     }
 }

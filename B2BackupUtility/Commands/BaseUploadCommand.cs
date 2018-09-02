@@ -26,10 +26,10 @@ using Functional.Maybe;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text;
+using static B2BackblazeBridge.Core.BackblazeB2ListFilesResult;
 
 namespace B2BackupUtility.Commands
 {
@@ -72,6 +72,8 @@ namespace B2BackupUtility.Commands
         #region protected methods
         protected IEnumerable<BackblazeB2ActionResult<IBackblazeB2UploadResult>> UploadFile(string localFilePath)
         {
+            RemoveOldFileShardsIfOverridding(localFilePath);
+
             FileInfo info = new FileInfo(localFilePath);
             Database.File file = new Database.File
             {
@@ -94,14 +96,14 @@ namespace B2BackupUtility.Commands
                         new UploadWithSingleConnectionAction(
                             GetOrCreateAuthorizationSession(),
                             BucketID,
-                            fileShard.Payload,
+                            EncryptBytes(fileShard.Payload),
                             GetSafeFileName(fileShard.ID),
                             CancellationEventRouter.GlobalCancellationToken
                         ))
                     : ExecuteUploadAction(
                         new UploadWithMultipleConnectionsAction(
                             GetOrCreateAuthorizationSession(),
-                            new MemoryStream(fileShard.Payload),
+                            new MemoryStream(EncryptBytes(fileShard.Payload)),
                             GetSafeFileName(fileShard.ID),
                             BucketID,
                             DefaultUploadChunkSize,
@@ -122,7 +124,7 @@ namespace B2BackupUtility.Commands
             if (results.All(t => t.HasResult))
             {
                 // Update file manifest
-                FileDatabaseManifest.AddFile(file);
+                FileDatabaseManifestManager.AddFile(file);
                 UploadFileDatabaseManifest();
 
                 // Print upload statistics
@@ -189,6 +191,21 @@ namespace B2BackupUtility.Commands
         #endregion
 
         #region private methods
+        private void RemoveOldFileShardsIfOverridding(string localFilePath)
+        {
+            if (FileDatabaseManifestManager.TryGetFile(localFilePath, out Database.File outFile))
+            {
+                foreach (string shardID in outFile.FileShardIDs)
+                {
+                    Maybe<FileResult> result = (from fileResult in AllRemoteB2Files
+                                                where fileResult.FileName.Equals(localFilePath, StringComparison.Ordinal)
+                                                select fileResult).SingleMaybe();
+
+                    result.Do(t => DeleteRawFile(t.FileID, t.FileName));
+                }
+            }
+        }
+
         private static BackblazeB2ActionResult<IBackblazeB2UploadResult> ExecuteUploadAction<T>(BaseAction<T> action) where T : IBackblazeB2UploadResult
         {
             BackblazeB2ActionResult<T> uploadResult = action.Execute();

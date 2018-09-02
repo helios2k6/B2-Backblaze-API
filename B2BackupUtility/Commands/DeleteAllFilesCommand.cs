@@ -46,18 +46,22 @@ namespace B2BackupUtility.Commands
         #region public methods
         public override void ExecuteAction()
         {
+            LogInfo("Deleting all files and ignoring file database manifest");
             try
             {
-                ListFilesAction allFileVersionsAction = ListFilesAction.CreateListFileActionForFileVersions(
-                    GetOrCreateAuthorizationSession(),
-                    BucketID,
-                    true
-                );
-                BackblazeB2ActionResult<BackblazeB2ListFilesResult> allFileVersionsActionResult = allFileVersionsAction.Execute();
-                foreach (BackblazeB2ListFilesResult.FileResult fileResult in allFileVersionsActionResult.Result.Files)
+                foreach (BackblazeB2ListFilesResult.FileResult fileResult in AllRemoteB2Files)
                 {
                     CancellationEventRouter.GlobalCancellationToken.ThrowIfCancellationRequested();
-                    DeleteFile(fileResult.FileID, fileResult.FileName, false);
+                    BackblazeB2ActionResult<BackblazeB2DeleteFileResult> deletionResult = DeleteRawFile(fileResult.FileID, fileResult.FileName);
+
+                    if (deletionResult.HasResult)
+                    {
+                        LogInfo($"Deleted file {fileResult.FileName} - {fileResult.FileID}");
+                    }
+                    else
+                    {
+                        LogCritical($"Could not delete file {fileResult.FileName}. Reason: {deletionResult}");
+                    }
                 }
             }
             catch (OperationCanceledException)

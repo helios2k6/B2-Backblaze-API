@@ -7,6 +7,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="PureMVC-Standard" Version="1.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\B2BackblazeBridge\B2BackblazeBridge.csproj" />
     <ProjectReference Include="..\Functional.Maybe\Functional.Maybe.csproj" />
   </ItemGroup>

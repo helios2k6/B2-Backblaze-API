@@ -21,7 +21,6 @@
 
 using Newtonsoft.Json;
 using System;
-using System.Linq;
 
 namespace B2BackupUtility.Database
 {
@@ -39,22 +38,6 @@ namespace B2BackupUtility.Database
         /// </summary>
         [JsonProperty(PropertyName = "Files")]
         public File[] Files { get; set; }
-        #endregion
-
-        #region public methods
-        /// <summary>
-        /// Adds a file to the file manifest
-        /// </summary>
-        /// <param name="file">The file to add</param>
-        public void AddFile(File file)
-        {
-            if (file == null)
-            {
-                throw new ArgumentNullException("file");
-            }
-
-            Files = Files.Append(file).ToArray();
-        }
         #endregion
     }
 }

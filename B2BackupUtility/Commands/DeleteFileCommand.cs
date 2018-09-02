@@ -28,8 +28,6 @@ namespace B2BackupUtility.Commands
     {
         #region private fields
         private static string FileNameOption => "--file-name";
-
-        private static string FileIDOption => "--file-id";
         #endregion
 
         #region public properties
@@ -37,7 +35,7 @@ namespace B2BackupUtility.Commands
 
         public static string CommandSwitch => "--delete-file";
 
-        public static IEnumerable<string> CommandOptions => new[] { FileNameOption, FileIDOption };
+        public static IEnumerable<string> CommandOptions => new[] { FileNameOption };
         #endregion
 
         #region ctor
@@ -49,20 +47,13 @@ namespace B2BackupUtility.Commands
         #region public methods
         public override void ExecuteAction()
         {
-            bool hasFileIDOption = TryGetArgument(FileIDOption, out string fileID);
             bool hasFileNameOption = TryGetArgument(FileNameOption, out string fileName);
-
-            if (hasFileIDOption == false)
-            {
-                throw new InvalidOperationException("You must provide a file ID to delete");
-            }
-
             if (hasFileNameOption == false)
             {
                 throw new InvalidOperationException("You must provide a file name to delete");
             }
 
-            DeleteFile(fileID, fileName, true);
+
         }
         #endregion
     }

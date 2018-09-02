@@ -31,6 +31,7 @@ using System.IO.Compression;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
+using static B2BackblazeBridge.Core.BackblazeB2ListFilesResult;
 
 namespace B2BackupUtility.Commands
 {
@@ -45,7 +46,8 @@ namespace B2BackupUtility.Commands
         private static string RemoteFileDatabaseManifestName => "b2_backup_util_file_database_manifest.txt.aes.gz";
 
         private readonly IEnumerable<string> _rawArgs;
-        private readonly Lazy<FileDatabaseManifest> _fileManifest;
+        private readonly Lazy<IEnumerable<FileResult>> _allRemoteB2Files;
+        private readonly Lazy<FileDatabaseManifestManager> _fileManifestManager;
         private readonly Lazy<Config> _config;
 
         private BackblazeB2AuthorizationSession _authorizationSession;
@@ -80,10 +82,15 @@ namespace B2BackupUtility.Commands
         protected string InitializationVector => _config.Value.InitializationVector;
 
         /// <summary>
-        /// The FileDatabaseManifest that was either fetched from the server or created
+        /// The FileDatabaseManifestManager that was either fetched from the server or created
         /// fresh
         /// </summary>
-        protected FileDatabaseManifest FileDatabaseManifest => _fileManifest.Value;
+        protected FileDatabaseManifestManager FileDatabaseManifestManager => _fileManifestManager.Value;
+
+        /// <summary>
+        /// A list of all of the remote B2 files on the server
+        /// </summary>
+        protected IEnumerable<FileResult> AllRemoteB2Files => _allRemoteB2Files.Value;
         #endregion
 
         #region public properties
@@ -109,7 +116,8 @@ namespace B2BackupUtility.Commands
         {
             _rawArgs = rawArgs;
             _config = new Lazy<Config>(DeserializeConfig);
-            _fileManifest = new Lazy<FileDatabaseManifest>(InitializeFileDatabaseManifest);
+            _fileManifestManager = new Lazy<FileDatabaseManifestManager>(InitializeFileDatabaseManifest);
+            _allRemoteB2Files = new Lazy<IEnumerable<FileResult>>(InitializeListOfB2Files);
         }
         #endregion
 
@@ -237,6 +245,26 @@ namespace B2BackupUtility.Commands
         }
 
         /// <summary>
+        /// This deletes a raw file from the 
+        /// </summary>
+        /// <param name="b2FileID">The B2 Backblaze File ID</param>
+        /// <param name="b2FileName">The B2 Backblaze File Name</param>
+        /// <returns>The result of the deletion action</returns>
+        protected BackblazeB2ActionResult<BackblazeB2DeleteFileResult> DeleteRawFile(string b2FileID, string b2FileName)
+        {
+            if (string.IsNullOrWhiteSpace(b2FileID) || string.IsNullOrWhiteSpace(b2FileName))
+            {
+                throw new ArgumentException("File ID and File Name cannot be empty");
+            }
+
+            return new DeleteFileAction(
+                GetOrCreateAuthorizationSession(),
+                b2FileID,
+                b2FileName
+            ).Execute();
+        }
+
+        /// <summary>
         /// Encryptes a series of bytes using the encryption key and IV in the Config
         /// </summary>
         /// <param name="bytes">The bytes to encrypt</param>
@@ -307,29 +335,32 @@ namespace B2BackupUtility.Commands
         #endregion
 
         #region private methods
-        private FileDatabaseManifest InitializeFileDatabaseManifest()
+        #region initialization
+        private IEnumerable<FileResult> InitializeListOfB2Files()
+        {
+            ListFilesAction allFileVersionsAction = ListFilesAction.CreateListFileActionForFileVersions(
+                GetOrCreateAuthorizationSession(),
+                BucketID,
+                true
+             );
+
+            BackblazeB2ActionResult<BackblazeB2ListFilesResult> allFileVersionsActionResult = allFileVersionsAction.Execute();
+            if (allFileVersionsActionResult.HasErrors)
+            {
+                LogCritical($"Could not get list of files from B2. Reason: {allFileVersionsActionResult}");
+                throw new InvalidOperationException("Could not get list of files from B2");
+            }
+
+            return allFileVersionsActionResult.Result.Files;
+        }
+
+        private FileDatabaseManifestManager InitializeFileDatabaseManifest()
         {
             // First, list the files on the server
             // Second, find the file manifest
             // Third, download the file manifest. If you cannot find it, then return an empty file
             // manifest
-            ListFilesAction listFilesActions = ListFilesAction.CreateListFileActionForFileNames(
-                GetOrCreateAuthorizationSession(),
-                BucketID,
-                true
-            );
-
-            BackblazeB2ActionResult<BackblazeB2ListFilesResult> listFilesActionResult = listFilesActions.Execute();
-
-            // If we have issues listing the files, we probably have bigger problems. Going to throw an exception instead
-            if (listFilesActionResult.HasErrors)
-            {
-                throw new InvalidOperationException("We couldn't list the files on the B2 server. Crashing immediately");
-            }
-
-            // Search for the file database manifest
-            BackblazeB2ListFilesResult filesResult = listFilesActionResult.Result;
-            BackblazeB2ListFilesResult.FileResult fileDatabaseManifest = filesResult.Files.Where(
+            FileResult fileDatabaseManifest = AllRemoteB2Files.Where(
                 f => f.FileName.Equals(RemoteFileDatabaseManifestName, StringComparison.Ordinal)
             ).SingleOrDefault();
 
@@ -337,10 +368,10 @@ namespace B2BackupUtility.Commands
             {
                 // Just return a new file manifest if we can't find
                 // one on the server
-                return new FileDatabaseManifest
+                return new FileDatabaseManifestManager(new FileDatabaseManifest
                 {
                     Files = new Database.File[0],
-                };
+                });
             }
 
             // Download the file manifest 
@@ -356,18 +387,20 @@ namespace B2BackupUtility.Commands
                 {
                     // Now, read string from manifest
                     outputStream.Flush();
-                    return DeserializeManifest(outputStream.ToArray());
+                    return new FileDatabaseManifestManager(DeserializeManifest(outputStream.ToArray()));
                 }
                 else
                 {
-                    return new FileDatabaseManifest
+                    return new FileDatabaseManifestManager(new FileDatabaseManifest
                     {
                         Files = new Database.File[0],
-                    };
+                    });
                 }
             }
         }
+        #endregion
 
+        #region serialization
         private Config DeserializeConfig()
         {
             bool hasConfigFile = TryGetArgument(ConfigOption, out string configFilePath);
@@ -381,7 +414,7 @@ namespace B2BackupUtility.Commands
 
         private byte[] SerializeManifest()
         {
-            using (MemoryStream serializedManifestStream = new MemoryStream(Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(FileDatabaseManifest))))
+            using (MemoryStream serializedManifestStream = new MemoryStream(Encoding.UTF8.GetBytes(FileDatabaseManifestManager.SerializeManifest())))
             using (MemoryStream compressedMemoryStream = new MemoryStream())
             {
                 // It's very important that we dispose of the GZipStream before reading from the memory stream
@@ -409,6 +442,7 @@ namespace B2BackupUtility.Commands
                 );
             }
         }
+        #endregion
         #endregion
     }
 }

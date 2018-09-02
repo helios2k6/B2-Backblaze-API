@@ -119,10 +119,9 @@ namespace B2BackupUtility.Commands
                 yield break;
             }
 
-            IDictionary<string, Database.File> destinationToManifestEntry = FileDatabaseManifest.Files.ToDictionary(k => k.FileName, v => v);
             foreach (string localFilePath in allLocalFiles)
             {
-                if (destinationToManifestEntry.TryGetValue(localFilePath, out Database.File remoteFileEntry))
+                if (FileDatabaseManifestManager.TryGetFile(localFilePath, out Database.File remoteFileEntry))
                 {
                     // Need confirm if this is a duplicate or not
                     // 1. If the lengths and last modified dates are the same, then just assume the files are equals (do not upload)
@@ -153,60 +152,6 @@ namespace B2BackupUtility.Commands
                 {
                     // We have never uploaded this file to the server
                     yield return localFilePath;
-                }
-            }
-        }
-
-        private IEnumerable<string> FilterAnyDuplicatesDueToFileManifest(
-            IEnumerable<string> localFilePath,
-            FileDatabaseManifest manifest,
-            bool overrideFiles
-        )
-        {
-            if (overrideFiles)
-            {
-                foreach (string file in localFilePath)
-                {
-                    yield return file;
-                }
-
-                yield break;
-            }
-
-            IDictionary<string, Database.File> destinationToManifestEntry = manifest.Files.ToDictionary(k => k.FileName, v => v);
-            foreach (string filePath in localFilePath)
-            {
-                if (destinationToManifestEntry.TryGetValue(filePath, out Database.File remoteFileManifestEntry))
-                {
-                    // Need confirm if this is a duplicate or not
-                    // 1. If the lengths and last modified dates are the same, then just assume the files are equals (do not upload)
-                    // 2. If the lengths are different then the files are not the same (upload)
-                    // 3. If the lengths are the same but the last modified dates are different, then we need to perform a SHA-1 check to see
-                    //    if the contents are actually different (upload if SHA-1's are different)
-                    FileInfo localFileInfo = new FileInfo(filePath);
-                    if (localFileInfo.Length == remoteFileManifestEntry.FileLength)
-                    {
-                        // Scenario 3
-                        if (localFileInfo.LastWriteTimeUtc.Equals(DateTime.FromBinary(remoteFileManifestEntry.LastModified)) == false)
-                        {
-                            string sha1OfLocalFile = SHA1FileHashStore.Instance.ComputeSHA1(filePath);
-                            if (string.Equals(sha1OfLocalFile, remoteFileManifestEntry.SHA1, StringComparison.OrdinalIgnoreCase) == false)
-                            {
-                                yield return filePath;
-                            }
-                        }
-                        // Scenario 1 is implied 
-                    }
-                    else
-                    {
-                        // Scenario 2
-                        yield return filePath;
-                    }
-                }
-                else
-                {
-                    // We have never uploaded this file to the server
-                    yield return filePath;
                 }
             }
         }
