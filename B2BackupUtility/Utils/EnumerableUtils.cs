@@ -23,7 +23,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace B2BackupUtility
+namespace B2BackupUtility.Utils
 {
     /// <summary>
     /// A utility class used for Enumerables

@@ -72,7 +72,7 @@ namespace B2BackupUtility.Commands
                 destinationRemoteFilePath = localFilePath;
             }
 
-            UploadFile(localFilePath, destinationRemoteFilePath);
+            UploadFile(localFilePath);
         }
         #endregion
     }

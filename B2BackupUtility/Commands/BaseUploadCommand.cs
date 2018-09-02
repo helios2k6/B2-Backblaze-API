@@ -21,6 +21,7 @@
 
 using B2BackblazeBridge.Actions;
 using B2BackblazeBridge.Core;
+using B2BackupUtility.Database;
 using Functional.Maybe;
 using System;
 using System.Collections.Generic;
@@ -41,14 +42,6 @@ namespace B2BackupUtility.Commands
         private static int DefaultUploadConnections => 20;
         private static int MinimumFileLengthForMultipleConnections => 1048576;
         private static int DefaultUploadChunkSize => 5242880; // 5 mebibytes
-        #endregion
-
-        #region protected class
-        protected sealed class UploadInfo
-        {
-            public long UploadTimeInTicks { get; set; }
-            public BackblazeB2ActionResult<IBackblazeB2UploadResult> B2UploadResult { get; set; }
-        }
         #endregion
 
         #region protected properties
@@ -77,33 +70,66 @@ namespace B2BackupUtility.Commands
         #endregion
 
         #region protected methods
-        protected UploadInfo UploadFile(
-            string localFilePath,
-            string remoteDestinationPath
-        )
+        protected IEnumerable<BackblazeB2ActionResult<IBackblazeB2UploadResult>> UploadFile(string localFilePath)
         {
             FileInfo info = new FileInfo(localFilePath);
-            UploadInfo uploadInfo = info.Length < MinimumFileLengthForMultipleConnections || Connections == 1
-            ? ExecuteUploadAction(new UploadWithSingleConnectionAction(
-                GetOrCreateAuthorizationSession(),
-                localFilePath,
-                GetSafeFileName(remoteDestinationPath),
-                BucketID,
-                CancellationActions.GlobalCancellationToken
-            ))
-            : ExecuteUploadAction(new UploadWithMultipleConnectionsAction(
-                GetOrCreateAuthorizationSession(),
-                localFilePath,
-                GetSafeFileName(remoteDestinationPath),
-                BucketID,
-                DefaultUploadChunkSize,
-                Connections,
-                CancellationActions.GlobalCancellationToken
-            ));
+            Database.File file = new Database.File
+            {
+                FileLength = info.Length,
+                FileName = localFilePath,
+                FileShardIDs = new string[0],
+                LastModified = info.LastWriteTime.ToBinary(),
+                SHA1 = SHA1FileHashStore.Instance.ComputeSHA1(localFilePath),
+            };
 
-            UpdateFileManifest(uploadInfo, info);
-            PrintUploadResult(uploadInfo, info);
-            return uploadInfo;
+            IEnumerable<BackblazeB2ActionResult<IBackblazeB2UploadResult>> results = Enumerable.Empty<BackblazeB2ActionResult<IBackblazeB2UploadResult>>();
+            Stopwatch stopWatch = Stopwatch.StartNew();
+            foreach (FileShard fileShard in FileFactory.CreateFileShards(new FileStream(localFilePath, FileMode.Open, FileAccess.Read, FileShare.Read), true))
+            {
+                // Update Database.File
+                file.FileShardIDs = file.FileShardIDs.Append(fileShard.ID).ToArray();
+
+                BackblazeB2ActionResult<IBackblazeB2UploadResult> uploadResult = fileShard.Length < MinimumFileLengthForMultipleConnections
+                    ? ExecuteUploadAction(
+                        new UploadWithSingleConnectionAction(
+                            GetOrCreateAuthorizationSession(),
+                            BucketID,
+                            fileShard.Payload,
+                            GetSafeFileName(fileShard.ID),
+                            CancellationEventRouter.GlobalCancellationToken
+                        ))
+                    : ExecuteUploadAction(
+                        new UploadWithMultipleConnectionsAction(
+                            GetOrCreateAuthorizationSession(),
+                            new MemoryStream(fileShard.Payload),
+                            GetSafeFileName(fileShard.ID),
+                            BucketID,
+                            DefaultUploadChunkSize,
+                            Connections,
+                            CancellationEventRouter.GlobalCancellationToken
+                        ));
+
+                results = results.Append(uploadResult);
+
+                if (uploadResult.HasErrors)
+                {
+                    LogCritical($"Error uploading File Shard for File {localFilePath}. Reason: {uploadResult}");
+                    break;
+                }
+            }
+            stopWatch.Stop();
+
+            if (results.All(t => t.HasResult))
+            {
+                // Update file manifest
+                FileDatabaseManifest.AddFile(file);
+                UploadFileDatabaseManifest();
+
+                // Print upload statistics
+                PrintUploadResult(localFilePath, info.Length, stopWatch.ElapsedTicks);
+            }
+
+            return results;
         }
 
         /// <summary>
@@ -163,59 +189,12 @@ namespace B2BackupUtility.Commands
         #endregion
 
         #region private methods
-        private void PrintUploadResult(UploadInfo uploadInfo, FileInfo fileInfo)
+        private static BackblazeB2ActionResult<IBackblazeB2UploadResult> ExecuteUploadAction<T>(BaseAction<T> action) where T : IBackblazeB2UploadResult
         {
-            if (uploadInfo.B2UploadResult.HasResult)
-            {
-                IBackblazeB2UploadResult uploadResult = uploadInfo.B2UploadResult.Result;
-                double bytesPerSecond = uploadResult.ContentLength / ((double)uploadInfo.UploadTimeInTicks/ Stopwatch.Frequency);
-
-                StringBuilder builder = new StringBuilder();
-                builder.AppendFormat("File: {0}", uploadResult.FileName).AppendLine();
-                builder.AppendFormat("File ID: {0}", uploadResult.FileID).AppendLine();
-                builder.AppendFormat("Total Content Length: {0:n0} bytes", uploadResult.ContentLength).AppendLine();
-                builder.AppendFormat("Upload Time: {0} seconds", (double)uploadInfo.UploadTimeInTicks / Stopwatch.Frequency).AppendLine();
-                builder.AppendFormat("Upload Speed: {0:0,0.00} bytes / second", bytesPerSecond.ToString("0,0.00", CultureInfo.InvariantCulture));
-
-                LogInfo($"Uploaded File {uploadInfo.B2UploadResult.Result.FileName}");
-                LogVerbose(builder.ToString());
-            }
-            else
-            {
-                LogInfo($"Failed to upload: {fileInfo.FullName}");
-            }
-        }
-
-        private void UpdateFileManifest(UploadInfo uploadInfo, FileInfo fileInfo)
-        {
-            if (uploadInfo.B2UploadResult.HasResult)
-            {
-                FileManifestEntry addedFileEntry = new FileManifestEntry
-                {
-                    OriginalFilePath = fileInfo.FullName,
-                    DestinationFilePath = uploadInfo.B2UploadResult.Result.FileName,
-                    SHA1 = SHA1FileHashStore.Instance.GetFileHash(fileInfo.FullName),
-                    Length = uploadInfo.B2UploadResult.Result.ContentLength,
-                    LastModified = fileInfo.LastWriteTimeUtc.ToBinary(),
-                };
-                FileManifest.Version++;
-                FileManifest.FileEntries = FileManifest.FileEntries.Append(addedFileEntry).ToArray();
-                FileManifestActions.WriteManifestFileToServer(GetOrCreateAuthorizationSession(), BucketID, FileManifest);
-            }
-        }
-
-        private static UploadInfo ExecuteUploadAction<T>(BaseAction<T> action) where T : IBackblazeB2UploadResult
-        {
-            Stopwatch watch = new Stopwatch();
-            watch.Start();
             BackblazeB2ActionResult<T> uploadResult = action.Execute();
-            watch.Stop();
-
-            long uploadLength = 0;
             BackblazeB2ActionResult<IBackblazeB2UploadResult> castedResult;
             if (uploadResult.HasResult)
             {
-                uploadLength = uploadResult.Result.ContentLength;
                 castedResult = new BackblazeB2ActionResult<IBackblazeB2UploadResult>(uploadResult.Result);
             }
             else
@@ -226,11 +205,21 @@ namespace B2BackupUtility.Commands
                 );
             }
 
-            return new UploadInfo
-            {
-                B2UploadResult = castedResult,
-                UploadTimeInTicks = watch.ElapsedTicks,
-            };
+            return castedResult;
+        }
+
+        private void PrintUploadResult(string fileName, long contentLength, long uploadTimeInTicks)
+        {
+            double bytesPerSecond = contentLength / ((double)uploadTimeInTicks / Stopwatch.Frequency);
+
+            StringBuilder builder = new StringBuilder();
+            builder.AppendLine($"File: {fileName}");
+            builder.AppendLine($"Total Content Length: {contentLength:0:n0} bytes");
+            builder.AppendLine($"Upload Time: {(double)uploadTimeInTicks / Stopwatch.Frequency} seconds");
+            builder.AppendLine($"Upload Speed: {bytesPerSecond:0,0.00} bytes / second");
+
+            LogInfo($"Uploaded File {fileName}");
+            LogVerbose(builder.ToString());
         }
         #endregion
     }

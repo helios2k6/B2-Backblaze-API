@@ -52,7 +52,7 @@ namespace B2BackupUtility
         /// </summary>
         /// <param name="localFilePath">The path to the local file</param>
         /// <returns>A string representing the SHA1</returns>
-        public string GetFileHash(string localFilePath)
+        public string ComputeSHA1(string localFilePath)
         {
             if (File.Exists(localFilePath) == false)
             {
@@ -61,7 +61,7 @@ namespace B2BackupUtility
 
             if (_localFileToSHA1HashMap.TryGetValue(localFilePath, out string fileSHA1) == false)
             {
-                fileSHA1 = ComputeSHA1Hash(new FileStream(localFilePath, FileMode.Open, FileAccess.Read, FileShare.Read));
+                fileSHA1 = ComputeSHA1(new FileStream(localFilePath, FileMode.Open, FileAccess.Read, FileShare.Read));
                 _localFileToSHA1HashMap.Add(localFilePath, fileSHA1);
             }
 
@@ -74,7 +74,7 @@ namespace B2BackupUtility
         /// <param name="byteStream">The stream to read from</param>
         /// <remarks>This function will dispose of the stream</remarks>
         /// <returns>A string representing the SHA1</returns>
-        public string ComputeSHA1Hash(Stream byteStream)
+        public string ComputeSHA1(Stream byteStream)
         {
             using (byteStream)
             using (SHA1 shaHash = SHA1.Create())
@@ -97,7 +97,7 @@ namespace B2BackupUtility
         /// <returns>A string representing the SHA1</returns>
         public string ComputeSHA1Hash(byte[] rawBytes)
         {
-            return ComputeSHA1Hash(new MemoryStream(rawBytes));
+            return ComputeSHA1(new MemoryStream(rawBytes));
         }
         #endregion
     }

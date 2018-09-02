@@ -25,7 +25,10 @@ using System.Threading;
 
 namespace B2BackupUtility
 {
-    public static class CancellationActions
+    /// <summary>
+    /// Provides a static central routing point for all cancellation actions
+    /// </summary>
+    public static class CancellationEventRouter
     {
         private static readonly CancellationTokenSource CancellationTokenSource = new CancellationTokenSource();
         private static int CancellationRequestCounter = 0;

@@ -42,18 +42,23 @@ namespace B2BackupUtility.Commands
         #region private fields
         private static TimeSpan OneHour => TimeSpan.FromMinutes(60);
         private static int DefaultBufferSize => 104857600;
+        private static string RemoteFileDatabaseManifestName => "b2_backup_util_file_database_manifest.txt.aes.gz";
 
         private readonly IEnumerable<string> _rawArgs;
         private readonly Lazy<FileDatabaseManifest> _fileManifest;
         private readonly Lazy<Config> _config;
 
         private BackblazeB2AuthorizationSession _authorizationSession;
-        private FileDatabaseManifest _fileDatabaseManifest;
         private string ApplicationKey => _config.Value.ApplicationKey;
         private string ApplicationKeyID => _config.Value.ApplicationKeyID;
         #endregion
 
         #region protected properties
+        /// <summary>
+        /// The config for this command
+        /// </summary>
+        protected Config Config => _config.Value;
+
         /// <summary>
         /// Get the bucket ID
         /// </summary>
@@ -73,6 +78,12 @@ namespace B2BackupUtility.Commands
         /// The initialization vector that's used for AES encryption. Can be null
         /// </summary>
         protected string InitializationVector => _config.Value.InitializationVector;
+
+        /// <summary>
+        /// The FileDatabaseManifest that was either fetched from the server or created
+        /// fresh
+        /// </summary>
+        protected FileDatabaseManifest FileDatabaseManifest => _fileManifest.Value;
         #endregion
 
         #region public properties
@@ -90,14 +101,20 @@ namespace B2BackupUtility.Commands
         #endregion
 
         #region ctor
+        /// <summary>
+        /// Construct a new BaseCommand
+        /// </summary>
+        /// <param name="rawArgs">The raw arguments passed in from the command line</param>
         public BaseCommand(IEnumerable<string> rawArgs)
         {
             _rawArgs = rawArgs;
             _config = new Lazy<Config>(DeserializeConfig);
+            _fileManifest = new Lazy<FileDatabaseManifest>(InitializeFileDatabaseManifest);
         }
         #endregion
 
         #region protected methods
+        #region logging methods
         protected void LogCritical(string message)
         {
             Loggers.Logger.Log(LogLevel.CRITICAL, message);
@@ -122,6 +139,7 @@ namespace B2BackupUtility.Commands
         {
             Loggers.Logger.Log(LogLevel.DEBUG, message);
         }
+        #endregion
 
         protected BackblazeB2AuthorizationSession GetOrCreateAuthorizationSession()
         {
@@ -138,15 +156,6 @@ namespace B2BackupUtility.Commands
             }
 
             return _authorizationSession;
-        }
-
-        protected FileDatabaseManifest GetOrCreateFileDatabaseManifest()
-        {
-            // Check to see if this has to be initialized
-            if (_fileDatabaseManifest == null)
-            {
-
-            }
         }
 
         /// <summary>
@@ -202,41 +211,42 @@ namespace B2BackupUtility.Commands
             value = null;
             return false;
         }
-        #endregion
 
-        #region private methods
-        private Config DeserializeConfig()
+        /// <summary>
+        /// Serializes and uploads the file database manifest to the server
+        /// </summary>
+        protected void UploadFileDatabaseManifest()
         {
-            bool hasConfigFile = TryGetArgument(ConfigOption, out string configFilePath);
-            if (hasConfigFile == false)
+            UploadWithSingleConnectionAction uploadAction = new UploadWithSingleConnectionAction(
+                GetOrCreateAuthorizationSession(),
+                BucketID,
+                SerializeManifest(),
+                RemoteFileDatabaseManifestName,
+                CancellationEventRouter.GlobalCancellationToken
+            );
+
+            BackblazeB2ActionResult<BackblazeB2UploadFileResult> uploadResult = uploadAction.Execute();
+            if (uploadResult.HasErrors)
             {
-                throw new InvalidOperationException("You must provide a config file");
+                LogCritical($"Was not able to upload the File Database Manifest. Reason: {uploadResult}");
             }
-
-            return JsonConvert.DeserializeObject<Config>(System.IO.File.ReadAllText(configFilePath));
-        }
-
-        private static byte[] SerializeManifest(FileDatabaseManifest fileDatabaseManifest, Config config)
-        {
-            using (MemoryStream serializedManifestStream = new MemoryStream(Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(fileDatabaseManifest))))
-            using (MemoryStream compressedMemoryStream = new MemoryStream())
+            else
             {
-                // It's very important that we dispose of the GZipStream before reading from the memory stream
-                using (GZipStream compressionStream = new GZipStream(compressedMemoryStream, CompressionMode.Compress, true))
-                {
-                    serializedManifestStream.CopyTo(compressionStream);
-                }
-
-                return EncryptBytes(compressedMemoryStream.ToArray(), config);
+                LogDebug("Updated File Database Manifest");
             }
         }
 
-        private static byte[] EncryptBytes(byte[] bytes, Config config)
+        /// <summary>
+        /// Encryptes a series of bytes using the encryption key and IV in the Config
+        /// </summary>
+        /// <param name="bytes">The bytes to encrypt</param>
+        /// <returns>The encrypted bytes</returns>
+        protected byte[] EncryptBytes(byte[] bytes)
         {
             using (Aes aesAlg = Aes.Create())
             {
-                aesAlg.Key = Convert.FromBase64String(config.EncryptionKey);
-                aesAlg.IV = Convert.FromBase64String(config.InitializationVector);
+                aesAlg.Key = Convert.FromBase64String(Config.EncryptionKey);
+                aesAlg.IV = Convert.FromBase64String(Config.InitializationVector);
 
                 ICryptoTransform encryptor = aesAlg.CreateEncryptor(aesAlg.Key, aesAlg.IV);
 
@@ -255,28 +265,17 @@ namespace B2BackupUtility.Commands
             }
         }
 
-        private static FileDatabaseManifest DeserializeManifest(byte[] encryptedBytes, Config config)
-        {
-            using (MemoryStream deserializedMemoryStream = new MemoryStream())
-            {
-                using (MemoryStream compressedBytesStream = new MemoryStream(DecryptBytes(encryptedBytes, config)))
-                using (GZipStream decompressionStream = new GZipStream(compressedBytesStream, CompressionMode.Decompress))
-                {
-                    decompressionStream.CopyTo(deserializedMemoryStream);
-                }
-
-                return JsonConvert.DeserializeObject<FileDatabaseManifest>(
-                    Encoding.UTF8.GetString(deserializedMemoryStream.ToArray())
-                );
-            }
-        }
-
-        private static byte[] DecryptBytes(byte[] bytes, Config config)
+        /// <summary>
+        /// Decryptes a series of bytes using the encryption key and IV in the Config
+        /// </summary>
+        /// <param name="bytes">The bytes to decrypt</param>
+        /// <returns>The decrypted bytes</returns>
+        protected byte[] DecryptBytes(byte[] bytes)
         {
             using (Aes aesAlg = Aes.Create())
             {
-                aesAlg.Key = Convert.FromBase64String(config.EncryptionKey);
-                aesAlg.IV = Convert.FromBase64String(config.InitializationVector);
+                aesAlg.Key = Convert.FromBase64String(Config.EncryptionKey);
+                aesAlg.IV = Convert.FromBase64String(Config.InitializationVector);
 
                 ICryptoTransform decryptor = aesAlg.CreateDecryptor(aesAlg.Key, aesAlg.IV);
 
@@ -303,6 +302,111 @@ namespace B2BackupUtility.Commands
 
                     return returnValues.ToArray();
                 }
+            }
+        }
+        #endregion
+
+        #region private methods
+        private FileDatabaseManifest InitializeFileDatabaseManifest()
+        {
+            // First, list the files on the server
+            // Second, find the file manifest
+            // Third, download the file manifest. If you cannot find it, then return an empty file
+            // manifest
+            ListFilesAction listFilesActions = ListFilesAction.CreateListFileActionForFileNames(
+                GetOrCreateAuthorizationSession(),
+                BucketID,
+                true
+            );
+
+            BackblazeB2ActionResult<BackblazeB2ListFilesResult> listFilesActionResult = listFilesActions.Execute();
+
+            // If we have issues listing the files, we probably have bigger problems. Going to throw an exception instead
+            if (listFilesActionResult.HasErrors)
+            {
+                throw new InvalidOperationException("We couldn't list the files on the B2 server. Crashing immediately");
+            }
+
+            // Search for the file database manifest
+            BackblazeB2ListFilesResult filesResult = listFilesActionResult.Result;
+            BackblazeB2ListFilesResult.FileResult fileDatabaseManifest = filesResult.Files.Where(
+                f => f.FileName.Equals(RemoteFileDatabaseManifestName, StringComparison.Ordinal)
+            ).SingleOrDefault();
+
+            if (fileDatabaseManifest == null)
+            {
+                // Just return a new file manifest if we can't find
+                // one on the server
+                return new FileDatabaseManifest
+                {
+                    Files = new Database.File[0],
+                };
+            }
+
+            // Download the file manifest 
+            using (MemoryStream outputStream = new MemoryStream())
+            using (DownloadFileAction manifestFileDownloadAction = new DownloadFileAction(
+                GetOrCreateAuthorizationSession(),
+                outputStream,
+                fileDatabaseManifest.FileID
+            ))
+            {
+                BackblazeB2ActionResult<BackblazeB2DownloadFileResult> manifestResultOption = manifestFileDownloadAction.Execute();
+                if (manifestResultOption.HasResult)
+                {
+                    // Now, read string from manifest
+                    outputStream.Flush();
+                    return DeserializeManifest(outputStream.ToArray());
+                }
+                else
+                {
+                    return new FileDatabaseManifest
+                    {
+                        Files = new Database.File[0],
+                    };
+                }
+            }
+        }
+
+        private Config DeserializeConfig()
+        {
+            bool hasConfigFile = TryGetArgument(ConfigOption, out string configFilePath);
+            if (hasConfigFile == false)
+            {
+                throw new InvalidOperationException("You must provide a config file");
+            }
+
+            return JsonConvert.DeserializeObject<Config>(System.IO.File.ReadAllText(configFilePath));
+        }
+
+        private byte[] SerializeManifest()
+        {
+            using (MemoryStream serializedManifestStream = new MemoryStream(Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(FileDatabaseManifest))))
+            using (MemoryStream compressedMemoryStream = new MemoryStream())
+            {
+                // It's very important that we dispose of the GZipStream before reading from the memory stream
+                using (GZipStream compressionStream = new GZipStream(compressedMemoryStream, CompressionMode.Compress, true))
+                {
+                    serializedManifestStream.CopyTo(compressionStream);
+                }
+
+                return EncryptBytes(compressedMemoryStream.ToArray());
+            }
+        }
+
+        private FileDatabaseManifest DeserializeManifest(byte[] encryptedBytes)
+        {
+            using (MemoryStream deserializedMemoryStream = new MemoryStream())
+            {
+                using (MemoryStream compressedBytesStream = new MemoryStream(DecryptBytes(encryptedBytes)))
+                using (GZipStream decompressionStream = new GZipStream(compressedBytesStream, CompressionMode.Decompress))
+                {
+                    decompressionStream.CopyTo(deserializedMemoryStream);
+                }
+
+                return JsonConvert.DeserializeObject<FileDatabaseManifest>(
+                    Encoding.UTF8.GetString(deserializedMemoryStream.ToArray())
+                );
             }
         }
         #endregion

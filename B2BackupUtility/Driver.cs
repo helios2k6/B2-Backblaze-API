@@ -140,7 +140,7 @@ namespace B2BackupUtility
                 case CommandType.UPLOAD:
                 case CommandType.UPLOAD_FOLDER:
                 case CommandType.DELETE_ALL_FILES:
-                    Console.CancelKeyPress += CancellationActions.HandleCancel;
+                    Console.CancelKeyPress += CancellationEventRouter.HandleCancel;
                     break;
             }
         }

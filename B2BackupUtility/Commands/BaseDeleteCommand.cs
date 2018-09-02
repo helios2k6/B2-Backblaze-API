@@ -59,8 +59,8 @@ namespace B2BackupUtility.Commands
             if (result.HasResult)
             {
                 string fileName = result.Result.FileName;
-                FileManifest.FileEntries = FileManifest.FileEntries.Where(e => e.DestinationFilePath.Equals(fileName, StringComparison.Ordinal) == false).ToArray();
-                FileManifestActions.WriteManifestFileToServer(GetOrCreateAuthorizationSession(), BucketID, FileManifest);
+                FileDatabaseManifest.Files = FileDatabaseManifest.Files.Where(e => e.FileName.Equals(fileName, StringComparison.Ordinal) == false).ToArray();
+                UploadFileDatabaseManifest();
             }
         }
 

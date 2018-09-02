@@ -60,7 +60,7 @@ namespace B2BackupUtility.Commands
                 BackblazeB2ActionResult<BackblazeB2ListFilesResult> allFileVersionsActionResult = allFileVersionsAction.Execute();
                 foreach (BackblazeB2ListFilesResult.FileResult fileResult in allFileVersionsActionResult.Result.Files)
                 {
-                    CancellationActions.GlobalCancellationToken.ThrowIfCancellationRequested();
+                    CancellationEventRouter.GlobalCancellationToken.ThrowIfCancellationRequested();
                     DeleteFile(fileResult.FileID, fileResult.FileName, shouldDeleteManifest == false);
                 }
             }
