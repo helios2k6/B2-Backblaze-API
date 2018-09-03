@@ -62,6 +62,15 @@ namespace B2BackupUtility.PMVC.Proxies
 
         #region public methods
         /// <summary>
+        /// Gets all files in the file database manifest
+        /// </summary>
+        /// <returns>All of the files in the File Database Manifest</returns>
+        public IEnumerable<Database.File> GetAllFiles()
+        {
+            return FileDatabaseManifest.Files;
+        }
+
+        /// <summary>
         /// Adds a local file to the Remote File System
         /// </summary>
         /// <param name="authorizationSession">The authorization session</param>
@@ -74,6 +83,37 @@ namespace B2BackupUtility.PMVC.Proxies
             string localFilePath
         )
         {
+        }
+
+        /// <summary>
+        /// A more efficient function for deleting all files off the server. This will delete all
+        /// files on the B2 server, including those that aren't on the file database manifest and
+        /// the file database manifest itself!
+        /// </summary>
+        /// <param name="authorizationSession">The authorization session</param>
+        /// <param name="config">The program config</param>
+        /// <returns>All of the deletion results</returns>
+        public IEnumerable<BackblazeB2ActionResult<BackblazeB2DeleteFileResult>> DeleteAllFiles(
+            BackblazeB2AuthorizationSession authorizationSession,
+            Config config
+        )
+        {
+            FileDatabaseManifest.Files = new Database.File[0];
+            IEnumerable<FileResult> rawB2FileList = GetRawB2Files(authorizationSession, config);
+            IList<BackblazeB2ActionResult<BackblazeB2DeleteFileResult>> deletionResults =
+                new List<BackblazeB2ActionResult<BackblazeB2DeleteFileResult>>();
+
+            foreach (FileResult rawB2File in rawB2FileList)
+            {
+                DeleteFileAction deleteFileAction = 
+                    new DeleteFileAction(authorizationSession, rawB2File.FileID, rawB2File.FileName);
+
+                deletionResults.Add(deleteFileAction.Execute());
+            }
+
+            // Do not upload the file database manifest. Make sure the server is entirely clean
+
+            return deletionResults;
         }
 
         /// <summary>
@@ -96,7 +136,8 @@ namespace B2BackupUtility.PMVC.Proxies
             IEnumerable<FileResult> rawB2FileList = GetRawB2Files(authorizationSession, config);
             IDictionary<string, FileResult> fileNameToFileResult = rawB2FileList.ToDictionary(k => k.FileName, v => v);
 
-            IList<BackblazeB2ActionResult<BackblazeB2DeleteFileResult>> deletionResults = new List<BackblazeB2ActionResult<BackblazeB2DeleteFileResult>>();
+            IList<BackblazeB2ActionResult<BackblazeB2DeleteFileResult>> deletionResults =
+                new List<BackblazeB2ActionResult<BackblazeB2DeleteFileResult>>();
             // Cycle through each File Shard and remove them
             foreach (string shardID in file.FileShardIDs)
             {
@@ -124,13 +165,17 @@ namespace B2BackupUtility.PMVC.Proxies
         /// <param name="fileName"></param>
         /// <returns></returns>
         public bool TryGetFileByName(
-            BackblazeB2AuthorizationSession authorizationSession,
-            Config config,
             string fileName,
             out Database.File file
         )
         {
+            // Do linear search since this doesn't happen often
+            file = FileDatabaseManifest
+                .Files
+                .Where(f => f.FileName.Equals(fileName, StringComparison.Ordinal))
+                .SingleOrDefault();
 
+            return file != null;
         }
 
         /// <summary>

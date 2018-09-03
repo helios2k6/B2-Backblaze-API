@@ -19,9 +19,13 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+using B2BackblazeBridge.Core;
 using B2BackupUtility.Commands;
+using B2BackupUtility.PMVC.Proxies;
 using PureMVC.Interfaces;
 using PureMVC.Patterns.Command;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace B2BackupUtility.PMVC.Commands
 {
@@ -29,6 +33,10 @@ namespace B2BackupUtility.PMVC.Commands
     {
         #region public properties
         public static string CommandNotification => "Delete All Files";
+
+        public static string FailedCommandNotification => "Failed To Delete All Files";
+
+        public static string FinishedCommandNotification => "Finished Deleting All Files";
 
         public static string CommandSwitch => "--delete-all-files";
 
@@ -38,7 +46,21 @@ namespace B2BackupUtility.PMVC.Commands
         #region public methods
         public override void Execute(INotification notification)
         {
+            AuthorizationSessionProxy authorizationSessionProxy = (AuthorizationSessionProxy)Facade.RetrieveProxy(AuthorizationSessionProxy.Name);
+            ConfigProxy configProxy = (ConfigProxy)Facade.RetrieveProxy(ConfigProxy.Name);
+            RemoteFileSystemProxy remoteFileSystem = (RemoteFileSystemProxy)Facade.RetrieveProxy(RemoteFileSystemProxy.Name);
 
+            IEnumerable<BackblazeB2ActionResult<BackblazeB2DeleteFileResult>> deletionResult =
+                remoteFileSystem.DeleteAllFiles(authorizationSessionProxy.AuthorizationSession, configProxy.Config);
+
+            if (deletionResult.Any(t => t.HasErrors))
+            {
+                SendNotification(FailedCommandNotification, deletionResult, null);
+            }
+            else
+            {
+                SendNotification(FinishedCommandNotification, null, null);
+            }
         }
         #endregion
     }

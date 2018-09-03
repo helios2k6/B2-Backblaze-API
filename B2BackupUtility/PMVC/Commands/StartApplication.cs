@@ -41,6 +41,7 @@ namespace B2BackupUtility.PMVC.Commands
         protected override void InitializeMacroCommand()
         {
             AddSubCommand(() => new InitializeProgramArguments());
+            AddSubCommand(() => new InitializeModel());
             AddSubCommand(() => new StartSelectedProgramCommand());
         }
         #endregion
