@@ -36,7 +36,7 @@ namespace B2BackupUtility.PMVC.Commands
     /// <summary>
     /// Uploads the file database manifest to the B2 Backblaze Server
     /// </summary>
-    public sealed class UploadFileDatabaseManifestCommand : SimpleCommand
+    public sealed class UploadFileDatabaseManifest : SimpleCommand
     {
         #region public properties
         public static string CommandNotification => "Update File Database Manifest";

@@ -31,20 +31,26 @@ namespace B2BackupUtility.PMVC
     /// </summary>
     public sealed class ApplicationFacade : Facade, IFacade
     {
-        #region public properties
-        public static string StartApplicationNotification => "Start Application";
-        #endregion
-
         #region protected methods
         protected override void InitializeController()
         {
             base.InitializeController();
-            RegisterCommand(InitializeProgramArgumentsCommand.CommandNotification, () => new InitializeProgramArgumentsCommand());
-            RegisterCommand(InitializeConfigCommand.CommandNotification, () => new InitializeConfigCommand());
-            RegisterCommand(InitializeAuthorizationSessionCommand.CommandNotification, () => new InitializeAuthorizationSessionCommand());
-            RegisterCommand(InitializeFileDatabaseManifestCommand.CommandNotification, () => new InitializeFileDatabaseManifestCommand());
-            RegisterCommand(InitializeListOfFilesOnB2Command.CommandNotification, () => new InitializeListOfFilesOnB2Command());
-            RegisterCommand(UploadFileDatabaseManifestCommand.CommandNotification, () => new UploadFileDatabaseManifestCommand());
+            RegisterCommand(DeleteAllFiles.CommandNotification, () => new DeleteAllFiles());
+            RegisterCommand(DeleteFile.CommandNotification, () => new DeleteFile());
+            RegisterCommand(DownloadFile.CommandNotification, () => new DownloadFile());
+            RegisterCommand(GenerateEncryptionKey.CommandNotification, () => new GenerateEncryptionKey());
+            RegisterCommand(GetFileInfo.CommandNotification, () => new GetFileInfo());
+            RegisterCommand(InitializeAuthorizationSession.CommandNotification, () => new InitializeAuthorizationSession());
+            RegisterCommand(InitializeConfig.CommandNotification, () => new InitializeConfig());
+            RegisterCommand(InitializeFileDatabaseManifest.CommandNotification, () => new InitializeFileDatabaseManifest());
+            RegisterCommand(InitializeListOfFilesOnB2.CommandNotification, () => new InitializeListOfFilesOnB2());
+            RegisterCommand(InitializeProgramArguments.CommandNotification, () => new InitializeProgramArguments());
+            RegisterCommand(ListFiles.CommandNotification, () => new ListFiles());
+            RegisterCommand(StartApplication.CommandNotification, () => new StartApplication());
+            RegisterCommand(StartSelectedProgramCommand.CommandNotification, () => new StartSelectedProgramCommand());
+            RegisterCommand(UploadFile.CommandNotification, () => new UploadFile());
+            RegisterCommand(UploadFileDatabaseManifest.CommandNotification, () => new UploadFileDatabaseManifest());
+            RegisterCommand(UploadFolder.CommandNotification, () => new UploadFolder());
         }
 
         protected override void InitializeModel()
@@ -53,8 +59,8 @@ namespace B2BackupUtility.PMVC
             RegisterProxy(new AuthorizationSessionProxy());
             RegisterProxy(new ConfigProxy());
             RegisterProxy(new FileDatabaseManifestProxy());
-            RegisterProxy(new ProgramArgumentsProxy());
             RegisterProxy(new ListOfFilesOnB2Proxy());
+            RegisterProxy(new ProgramArgumentsProxy());
         }
         #endregion
     }

@@ -19,30 +19,17 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-using B2BackupUtility.PMVC.Proxies;
-using PureMVC.Interfaces;
+using B2BackupUtility.Commands;
 using PureMVC.Patterns.Command;
-using System.Collections.Generic;
 
 namespace B2BackupUtility.PMVC.Commands
 {
-    /// <summary>
-    /// Initializes the program arguments 
-    /// </summary>
-    public sealed class InitializeProgramArgumentsCommand : SimpleCommand
+    public sealed class DownloadFile : SimpleCommand
     {
-        #region public properties
-        public static string CommandNotification => "Initialize Program Arguments";
+        public static string CommandNotification => "Download File";
 
-        public static string FinishedCommandNotification => "Finished Initializing Program Arguments";
-        #endregion
+        public static string CommandSwitch => "--download-file";
 
-        #region public methods
-        public override void Execute(INotification notification)
-        {
-            Facade.RetrieveProxy(ProgramArgumentsProxy.Name).Data = (IEnumerable<string>)notification.Body;
-            SendNotification(FinishedCommandNotification, null, null);
-        }
-        #endregion
+        public static CommandType CommandType => CommandType.DOWNLOAD;
     }
 }

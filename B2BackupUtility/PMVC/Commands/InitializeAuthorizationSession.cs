@@ -18,45 +18,56 @@
  * AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
+
 using B2BackblazeBridge.Actions;
 using B2BackblazeBridge.Core;
 using B2BackupUtility.PMVC.Proxies;
 using PureMVC.Interfaces;
 using PureMVC.Patterns.Command;
+using System;
 
 namespace B2BackupUtility.PMVC.Commands
 {
-    public sealed class InitializeListOfFilesOnB2Command : SimpleCommand
+    /// <summary>
+    /// Initializes the authorization session
+    /// </summary>
+    public sealed class InitializeAuthorizationSession : SimpleCommand
     {
+        #region private static properties
+        private static TimeSpan OneHour => TimeSpan.FromMinutes(60);
+        #endregion
+
         #region public properties
-        public static string CommandNotification => "Initialize List Of Files On B2";
+        public static string CommandNotification => "Initialize Authorization Session";
 
-        public static string FailedCommandNotification => "Failed To Initialize List Of Files On B2";
+        public static string FailedCommandNotification => "Failed To Authorize Session";
 
-        public static string FinishedCommandNotification => "Finished Initializing List Of Files On B2";
+        public static string FinishedCommandNotification => "Finished Initializing Authorization Session";
         #endregion
 
         #region public methods
         public override void Execute(INotification notification)
         {
+            // Check the current authorization session
             AuthorizationSessionProxy authorizationProxy = (AuthorizationSessionProxy)Facade.RetrieveProxy(AuthorizationSessionProxy.Name);
-            ConfigProxy configProxy = (ConfigProxy)Facade.RetrieveProxy(ConfigProxy.Name);
-            ListFilesAction allFileVersionsAction = ListFilesAction.CreateListFileActionForFileVersions(
-                authorizationProxy.AuthorizationSession,
-                configProxy.Config.BucketID,
-                true
-             );
+            if (authorizationProxy.AuthorizationSession == null || authorizationProxy.AuthorizationSession.SessionExpirationDate - DateTime.Now < OneHour)
+            {
+                ConfigProxy configProxy = (ConfigProxy)Facade.RetrieveProxy(ConfigProxy.Name);
+                string applicationKeyID = configProxy.Config.ApplicationKey;
+                string applicationKey = configProxy.Config.ApplicationKey;
 
-            BackblazeB2ActionResult<BackblazeB2ListFilesResult> allFileVersionsActionResult = allFileVersionsAction.Execute();
-            if (allFileVersionsActionResult.HasResult)
-            {
-                Facade.RetrieveProxy(ListOfFilesOnB2Proxy.Name).Data = allFileVersionsActionResult.Result.Files;
-                SendNotification(FinishedCommandNotification, null, null);
+                AuthorizeAccountAction authorizeAccountAction = new AuthorizeAccountAction(applicationKeyID, applicationKey);
+                BackblazeB2ActionResult<BackblazeB2AuthorizationSession> authorizationSessionResult = authorizeAccountAction.Execute();
+                if (authorizationSessionResult.HasErrors)
+                {
+                    SendNotification(FailedCommandNotification, authorizationSessionResult, null);
+                    return;
+                }
+
+                authorizationProxy.Data = authorizationSessionResult.Result;
             }
-            else
-            {
-                SendNotification(FailedCommandNotification, allFileVersionsActionResult, null);
-            }
+
+            SendNotification(FinishedCommandNotification, null, null);
         }
         #endregion
     }

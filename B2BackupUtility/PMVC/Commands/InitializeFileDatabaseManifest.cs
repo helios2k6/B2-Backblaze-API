@@ -36,7 +36,7 @@ using static B2BackblazeBridge.Core.BackblazeB2ListFilesResult;
 
 namespace B2BackupUtility.PMVC.Commands
 {
-    public sealed class InitializeFileDatabaseManifestCommand : SimpleCommand
+    public sealed class InitializeFileDatabaseManifest : SimpleCommand
     {
         #region public properties
         public static string CommandNotification => "Initialize File Database Manifest";

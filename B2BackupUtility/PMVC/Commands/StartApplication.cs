@@ -19,48 +19,29 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-using B2BackupUtility.PMVC.Proxies;
-using Newtonsoft.Json;
-using PureMVC.Interfaces;
 using PureMVC.Patterns.Command;
 using System;
-using System.IO;
 
 namespace B2BackupUtility.PMVC.Commands
 {
     /// <summary>
-    /// This command initializes the config proxy
+    /// Starts the application and kicks off the entire program
     /// </summary>
-    public sealed class InitializeConfigCommand : SimpleCommand
+    public sealed class StartApplication : MacroCommand
     {
         #region public properties
-        public static string CommandNotification => "Initialize Config";
+        public static string CommandNotification => "Start Application";
 
-        public static string FailedCommandNotification => "Failed To Initialize Config";
+        public static string FailedCommandNotification => "Failed To Start Application";
 
-        public static string FinishedCommandNotification => "Finished Initializing Config";
-
-        public static string CommandOption = "--config";
+        public static string FinishedNotification => "Finished Starting Application";
         #endregion
 
-        #region public methods
-        public override void Execute(INotification notification)
+        #region protected methods
+        protected override void InitializeMacroCommand()
         {
-            try
-            {
-                ProgramArgumentsProxy argProxy = (ProgramArgumentsProxy)Facade.RetrieveProxy(ProgramArgumentsProxy.Name);
-                string configArgument = argProxy.GetArgumentOrThrow(CommandOption);
-
-                Config config = JsonConvert.DeserializeObject<Config>(File.ReadAllText(configArgument));
-
-                Facade.RetrieveProxy(ConfigProxy.Name).Data = config;
-
-                SendNotification(FinishedCommandNotification, null, null);
-            }
-            catch (Exception e)
-            {
-                SendNotification(FailedCommandNotification, e, null);
-            }
+            AddSubCommand(() => new InitializeProgramArguments());
+            AddSubCommand(() => new StartSelectedProgramCommand());
         }
         #endregion
     }
