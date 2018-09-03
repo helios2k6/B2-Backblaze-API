@@ -19,7 +19,9 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+using Newtonsoft.Json;
 using PureMVC.Patterns.Proxy;
+using System.IO;
 
 namespace B2BackupUtility.PMVC.Proxies
 {
@@ -40,6 +42,18 @@ namespace B2BackupUtility.PMVC.Proxies
         #region ctor
         public ConfigProxy() : base(Name, null)
         {
+        }
+        #endregion
+
+        #region public methods
+        /// <summary>
+        /// Initializes this Config Proxy with the passed in 
+        /// File Name
+        /// </summary>
+        /// <param name="fileName">The path to the config file</param>
+        public void Initialize(string fileName)
+        {
+            Data = JsonConvert.DeserializeObject<Config>(File.ReadAllText(fileName));
         }
         #endregion
     }

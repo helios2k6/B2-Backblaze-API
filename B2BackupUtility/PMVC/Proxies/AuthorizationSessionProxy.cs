@@ -19,6 +19,7 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+using B2BackblazeBridge.Actions;
 using B2BackblazeBridge.Core;
 using PureMVC.Patterns.Proxy;
 
@@ -32,15 +33,31 @@ namespace B2BackupUtility.PMVC.Proxies
         /// <summary>
         /// Get the authorization session
         /// </summary>
-        public BackblazeB2AuthorizationSession AuthorizationSession
-        {
-            get { return Data as BackblazeB2AuthorizationSession; }
-        }
+        public BackblazeB2AuthorizationSession AuthorizationSession => Data as BackblazeB2AuthorizationSession;
         #endregion
 
         #region ctor
         public AuthorizationSessionProxy() : base(Name, null)
         {
+        }
+        #endregion
+
+        #region public methods
+        /// <summary>
+        /// Initializes this authorization session
+        /// </summary>
+        /// <param name="applicationID">The application key ID</param>
+        /// <param name="applicationKey">The application key</param>
+        public BackblazeB2ActionResult<BackblazeB2AuthorizationSession> Initialize(Config config)
+        {
+            AuthorizeAccountAction authorizeAccountAction =
+                new AuthorizeAccountAction(config.ApplicationKeyID, config.ApplicationKey);
+            BackblazeB2ActionResult<BackblazeB2AuthorizationSession> authorizationSessionResult = authorizeAccountAction.Execute();
+            if (authorizationSessionResult.HasResult)
+            {
+                Data = authorizationSessionResult.Result;
+            }
+            return authorizationSessionResult;
         }
         #endregion
     }

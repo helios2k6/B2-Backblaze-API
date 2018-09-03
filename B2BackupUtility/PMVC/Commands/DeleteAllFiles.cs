@@ -20,16 +20,26 @@
  */
 
 using B2BackupUtility.Commands;
+using PureMVC.Interfaces;
 using PureMVC.Patterns.Command;
 
 namespace B2BackupUtility.PMVC.Commands
 {
     public sealed class DeleteAllFiles : SimpleCommand
     {
+        #region public properties
         public static string CommandNotification => "Delete All Files";
 
         public static string CommandSwitch => "--delete-all-files";
 
         public static CommandType CommandType => CommandType.DELETE_ALL_FILES;
+        #endregion
+
+        #region public methods
+        public override void Execute(INotification notification)
+        {
+
+        }
+        #endregion
     }
 }

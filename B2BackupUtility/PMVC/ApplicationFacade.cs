@@ -34,33 +34,10 @@ namespace B2BackupUtility.PMVC
         #region protected methods
         protected override void InitializeController()
         {
-            base.InitializeController();
-            RegisterCommand(DeleteAllFiles.CommandNotification, () => new DeleteAllFiles());
-            RegisterCommand(DeleteFile.CommandNotification, () => new DeleteFile());
-            RegisterCommand(DownloadFile.CommandNotification, () => new DownloadFile());
-            RegisterCommand(GenerateEncryptionKey.CommandNotification, () => new GenerateEncryptionKey());
-            RegisterCommand(GetFileInfo.CommandNotification, () => new GetFileInfo());
-            RegisterCommand(InitializeAuthorizationSession.CommandNotification, () => new InitializeAuthorizationSession());
-            RegisterCommand(InitializeConfig.CommandNotification, () => new InitializeConfig());
-            RegisterCommand(InitializeFileDatabaseManifest.CommandNotification, () => new InitializeFileDatabaseManifest());
-            RegisterCommand(InitializeListOfFilesOnB2.CommandNotification, () => new InitializeListOfFilesOnB2());
-            RegisterCommand(InitializeProgramArguments.CommandNotification, () => new InitializeProgramArguments());
-            RegisterCommand(ListFiles.CommandNotification, () => new ListFiles());
-            RegisterCommand(StartApplication.CommandNotification, () => new StartApplication());
-            RegisterCommand(StartSelectedProgramCommand.CommandNotification, () => new StartSelectedProgramCommand());
-            RegisterCommand(UploadFile.CommandNotification, () => new UploadFile());
-            RegisterCommand(UploadFileDatabaseManifest.CommandNotification, () => new UploadFileDatabaseManifest());
-            RegisterCommand(UploadFolder.CommandNotification, () => new UploadFolder());
         }
 
         protected override void InitializeModel()
         {
-            base.InitializeModel();
-            RegisterProxy(new AuthorizationSessionProxy());
-            RegisterProxy(new ConfigProxy());
-            RegisterProxy(new FileDatabaseManifestProxy());
-            RegisterProxy(new ListOfFilesOnB2Proxy());
-            RegisterProxy(new ProgramArgumentsProxy());
         }
         #endregion
     }

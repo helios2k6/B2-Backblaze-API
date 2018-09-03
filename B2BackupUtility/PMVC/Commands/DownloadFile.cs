@@ -20,16 +20,26 @@
  */
 
 using B2BackupUtility.Commands;
+using PureMVC.Interfaces;
 using PureMVC.Patterns.Command;
 
 namespace B2BackupUtility.PMVC.Commands
 {
     public sealed class DownloadFile : SimpleCommand
     {
+        #region public properties
         public static string CommandNotification => "Download File";
 
         public static string CommandSwitch => "--download-file";
 
         public static CommandType CommandType => CommandType.DOWNLOAD;
+        #endregion
+
+        #region public methods
+        public override void Execute(INotification notification)
+        {
+
+        }
+        #endregion
     }
 }

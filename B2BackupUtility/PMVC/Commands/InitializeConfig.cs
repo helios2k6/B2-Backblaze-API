@@ -20,11 +20,9 @@
  */
 
 using B2BackupUtility.PMVC.Proxies;
-using Newtonsoft.Json;
 using PureMVC.Interfaces;
 using PureMVC.Patterns.Command;
 using System;
-using System.IO;
 
 namespace B2BackupUtility.PMVC.Commands
 {
@@ -49,11 +47,10 @@ namespace B2BackupUtility.PMVC.Commands
             try
             {
                 ProgramArgumentsProxy argProxy = (ProgramArgumentsProxy)Facade.RetrieveProxy(ProgramArgumentsProxy.Name);
-                string configArgument = argProxy.GetArgumentOrThrow(CommandOption);
-
-                Config config = JsonConvert.DeserializeObject<Config>(File.ReadAllText(configArgument));
-
-                Facade.RetrieveProxy(ConfigProxy.Name).Data = config;
+                if (argProxy.TryGetArgument(CommandOption, out string configArgument))
+                {
+                    ((ConfigProxy)Facade.RetrieveProxy(ConfigProxy.Name)).Initialize(configArgument);
+                }
 
                 SendNotification(FinishedCommandNotification, null, null);
             }

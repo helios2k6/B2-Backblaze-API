@@ -101,14 +101,5 @@ namespace B2BackupUtility.PMVC.Proxies
             return false;
         }
         #endregion
-
-        #region private methods
-        #endregion
-
-
-
-
-
-
     }
 }

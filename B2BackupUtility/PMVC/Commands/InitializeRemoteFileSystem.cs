@@ -18,44 +18,42 @@
  * AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-using B2BackblazeBridge.Actions;
-using B2BackblazeBridge.Core;
+
 using B2BackupUtility.PMVC.Proxies;
 using PureMVC.Interfaces;
 using PureMVC.Patterns.Command;
+using System;
 
 namespace B2BackupUtility.PMVC.Commands
 {
-    public sealed class InitializeListOfFilesOnB2 : SimpleCommand
+    public sealed class InitializeRemoteFileSystem : SimpleCommand
     {
         #region public properties
-        public static string CommandNotification => "Initialize List Of Files On B2";
+        public static string CommandNotification => "Initialize File Database Manifest";
 
-        public static string FailedCommandNotification => "Failed To Initialize List Of Files On B2";
+        public static string FailedCommandNotification => "Failed To Initialize File Database Manifest";
 
-        public static string FinishedCommandNotification => "Finished Initializing List Of Files On B2";
+        public static string FinishCommandNotification => "Finished Initializing Fetching File Database Manifest";
         #endregion
 
         #region public methods
         public override void Execute(INotification notification)
         {
-            AuthorizationSessionProxy authorizationProxy = (AuthorizationSessionProxy)Facade.RetrieveProxy(AuthorizationSessionProxy.Name);
-            ConfigProxy configProxy = (ConfigProxy)Facade.RetrieveProxy(ConfigProxy.Name);
-            ListFilesAction allFileVersionsAction = ListFilesAction.CreateListFileActionForFileVersions(
-                authorizationProxy.AuthorizationSession,
-                configProxy.Config.BucketID,
-                true
-             );
+            try
+            {
+                AuthorizationSessionProxy authorizationSessionProxy = (AuthorizationSessionProxy)Facade.RetrieveProxy(AuthorizationSessionProxy.Name);
+                ConfigProxy configProxy = (ConfigProxy)Facade.RetrieveProxy(ConfigProxy.Name);
+                RemoteFileSystemProxy fileDatabaseManifestProxy = (RemoteFileSystemProxy)Facade.RetrieveProxy(RemoteFileSystemProxy.Name);
 
-            BackblazeB2ActionResult<BackblazeB2ListFilesResult> allFileVersionsActionResult = allFileVersionsAction.Execute();
-            if (allFileVersionsActionResult.HasResult)
-            {
-                Facade.RetrieveProxy(ListOfFilesOnB2Proxy.Name).Data = allFileVersionsActionResult.Result.Files;
-                SendNotification(FinishedCommandNotification, null, null);
+                fileDatabaseManifestProxy.Initialize(
+                    authorizationSessionProxy.AuthorizationSession,
+                    configProxy.Config
+                );
+                SendNotification(FinishCommandNotification, null, null);
             }
-            else
+            catch (Exception ex)
             {
-                SendNotification(FailedCommandNotification, allFileVersionsActionResult, null);
+                SendNotification(FailedCommandNotification, ex, null);
             }
         }
         #endregion

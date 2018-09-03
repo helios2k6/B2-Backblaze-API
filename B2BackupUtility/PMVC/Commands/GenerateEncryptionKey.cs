@@ -20,16 +20,25 @@
  */
 
 using B2BackupUtility.Commands;
+using PureMVC.Interfaces;
 using PureMVC.Patterns.Command;
 
 namespace B2BackupUtility.PMVC.Commands
 {
     public sealed class GenerateEncryptionKey : SimpleCommand
     {
+        #region public properties
         public static string CommandNotification => "Generate Encryption Key";
 
         public static string CommandSwitch => "--generate-encryption-key";
 
         public static CommandType CommandType => CommandType.GENERATE_ENCRYPTION_KEY;
+        #endregion
+
+        #region public methods
+        public override void Execute(INotification notification)
+        {
+        }
+        #endregion
     }
 }

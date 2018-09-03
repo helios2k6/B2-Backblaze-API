@@ -19,7 +19,6 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-using B2BackblazeBridge.Actions;
 using B2BackblazeBridge.Core;
 using B2BackupUtility.PMVC.Proxies;
 using PureMVC.Interfaces;
@@ -53,11 +52,7 @@ namespace B2BackupUtility.PMVC.Commands
             if (authorizationProxy.AuthorizationSession == null || authorizationProxy.AuthorizationSession.SessionExpirationDate - DateTime.Now < OneHour)
             {
                 ConfigProxy configProxy = (ConfigProxy)Facade.RetrieveProxy(ConfigProxy.Name);
-                string applicationKeyID = configProxy.Config.ApplicationKey;
-                string applicationKey = configProxy.Config.ApplicationKey;
-
-                AuthorizeAccountAction authorizeAccountAction = new AuthorizeAccountAction(applicationKeyID, applicationKey);
-                BackblazeB2ActionResult<BackblazeB2AuthorizationSession> authorizationSessionResult = authorizeAccountAction.Execute();
+                BackblazeB2ActionResult<BackblazeB2AuthorizationSession> authorizationSessionResult =  authorizationProxy.Initialize(configProxy.Config);
                 if (authorizationSessionResult.HasErrors)
                 {
                     SendNotification(FailedCommandNotification, authorizationSessionResult, null);

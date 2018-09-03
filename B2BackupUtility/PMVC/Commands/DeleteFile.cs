@@ -24,12 +24,19 @@ using PureMVC.Patterns.Command;
 
 namespace B2BackupUtility.PMVC.Commands
 {
+    /// <summary>
+    /// The Delete File command 
+    /// </summary>
     public sealed class DeleteFile : SimpleCommand
     {
+        #region public properties
         public static string CommandNotification => "Delete File";
 
         public static string CommandSwitch => "--delete-file";
 
+        public static string FileNameOption => "--file-name";
+
         public static CommandType CommandType => CommandType.DELETE;
+        #endregion
     }
 }

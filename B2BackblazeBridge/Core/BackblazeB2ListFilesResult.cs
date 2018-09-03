@@ -88,9 +88,6 @@ namespace B2BackblazeBridge.Core
             public long UploadTimeStamp { get; set; }
             #endregion
 
-            #region ctor
-            #endregion
-
             #region public methods
             public override string ToString()
             {

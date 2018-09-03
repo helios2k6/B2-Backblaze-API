@@ -19,34 +19,22 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-using PureMVC.Patterns.Proxy;
-using System.Collections.Generic;
-using static B2BackblazeBridge.Core.BackblazeB2ListFilesResult;
+using PureMVC.Patterns.Command;
 
-namespace B2BackupUtility.PMVC.Proxies
+namespace B2BackupUtility.PMVC.Commands
 {
     /// <summary>
-    /// Contains all of the files that are on the B2 server as returned by the 
-    /// ListFilesAction
+    /// Initializes the model
     /// </summary>
-    public sealed class ListOfFilesOnB2Proxy : Proxy
+    public sealed class InitializeModel : MacroCommand
     {
-        #region public properties
-        public static string Name => "List Of Files On B2 Proxy";
+        public static string CommandNotification => "Initialize All Program State";
 
-        public IEnumerable<FileResult> Files => Data as IEnumerable<FileResult>;
-        #endregion
-
-        #region ctor
-        /// <summary>
-        /// Default ctor
-        /// </summary>
-        public ListOfFilesOnB2Proxy() : base (Name, null)
+        protected override void InitializeMacroCommand()
         {
+            AddSubCommand(() => new InitializeConfig());
+            AddSubCommand(() => new InitializeAuthorizationSession());
+            AddSubCommand(() => new InitializeRemoteFileSystem());
         }
-        #endregion
-
-        #region public methods
-        #endregion
     }
 }
