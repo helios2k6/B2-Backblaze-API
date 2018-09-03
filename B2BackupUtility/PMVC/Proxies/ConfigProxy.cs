@@ -19,45 +19,27 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-using Newtonsoft.Json;
-using PureMVC.Interfaces;
-using PureMVC.Patterns.Command;
-using System.IO;
+using PureMVC.Patterns.Proxy;
 
-namespace B2BackupUtility.PMVC
+namespace B2BackupUtility.PMVC.Proxies
 {
-    /// <summary>
-    /// This command initializes the config proxy
-    /// </summary>
-    public sealed class InitializeConfigCommand : SimpleCommand
+    public sealed class ConfigProxy : Proxy
     {
         #region public properties
-        public static string CommandNotification => "Initialize Config";
-        #endregion
+        public static string Name => "Config Proxy";
 
-        #region public sealed class
         /// <summary>
-        /// The arguments to this command
+        /// Gets the Config of this Proxy
         /// </summary>
-        public sealed class Arguments
+        public Config Config
         {
-            /// <summary>
-            /// The path to the config
-            /// </summary>
-            public string ConfigPath { get; set; }
+            get { return Data as Config; }
         }
-            
         #endregion
 
-        #region public methods
-        public override void Execute(INotification notification)
+        #region ctor
+        public ConfigProxy() : base(Name, null)
         {
-            this.ThrowIfNotificationDoesNotMatch(CommandNotification, notification);
-            Arguments args = this.GetBody<Arguments>(notification);
-            Config config = JsonConvert.DeserializeObject<Config>(File.ReadAllText(args.ConfigPath));
-
-            IProxy configProxy = Facade.RetrieveProxy(ConfigProxy.Name);
-            configProxy.Data = config;
         }
         #endregion
     }

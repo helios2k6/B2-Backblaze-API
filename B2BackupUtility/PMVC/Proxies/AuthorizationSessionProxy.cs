@@ -19,26 +19,27 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+using B2BackblazeBridge.Core;
 using PureMVC.Patterns.Proxy;
 
-namespace B2BackupUtility.PMVC
+namespace B2BackupUtility.PMVC.Proxies
 {
-    public sealed class ConfigProxy : Proxy
+    public sealed class AuthorizationSessionProxy : Proxy
     {
         #region public properties
-        public static string Name => "Config Proxy";
+        public static string Name => "Authorization Session Proxy";
 
         /// <summary>
-        /// Gets the Config of this Proxy
+        /// Get the authorization session
         /// </summary>
-        public Config Config
+        public BackblazeB2AuthorizationSession AuthorizationSession
         {
-            get { return Data as Config; }
+            get { return Data as BackblazeB2AuthorizationSession; }
         }
         #endregion
 
         #region ctor
-        public ConfigProxy() : base(Name, null)
+        public AuthorizationSessionProxy() : base(Name, null)
         {
         }
         #endregion

@@ -21,12 +21,12 @@
 
 using B2BackblazeBridge.Actions;
 using B2BackblazeBridge.Core;
+using B2BackupUtility.PMVC.Proxies;
 using PureMVC.Interfaces;
 using PureMVC.Patterns.Command;
 using System;
-using System.Linq;
 
-namespace B2BackupUtility.PMVC
+namespace B2BackupUtility.PMVC.Commands
 {
     /// <summary>
     /// Initializes the authorization session
@@ -39,6 +39,10 @@ namespace B2BackupUtility.PMVC
 
         #region public properties
         public static string CommandNotification => "Initialize Authorization Session";
+
+        public static string FailedCommandNotification => "Failed To Authorize Session";
+
+        public static string FinishedCommandNotification => "Finished Initializing Authorization Session";
         #endregion
 
         #region public methods
@@ -51,17 +55,19 @@ namespace B2BackupUtility.PMVC
                 ConfigProxy configProxy = (ConfigProxy)Facade.RetrieveProxy(ConfigProxy.Name);
                 string applicationKeyID = configProxy.Config.ApplicationKey;
                 string applicationKey = configProxy.Config.ApplicationKey;
-                // Authorize the session
+
                 AuthorizeAccountAction authorizeAccountAction = new AuthorizeAccountAction(applicationKeyID, applicationKey);
                 BackblazeB2ActionResult<BackblazeB2AuthorizationSession> authorizationSessionResult = authorizeAccountAction.Execute();
                 if (authorizationSessionResult.HasErrors)
                 {
-                    string errorMessage = authorizationSessionResult.Errors.First().Message;
-                    throw new InvalidOperationException($"Could not authorize the account with Application Key ID: ${applicationKeyID} and Application Key: ${applicationKey}. ${errorMessage}");
+                    SendNotification(FailedCommandNotification, authorizationSessionResult, null);
+                    return;
                 }
 
                 authorizationProxy.Data = authorizationSessionResult.Result;
             }
+
+            SendNotification(FinishedCommandNotification, null, null);
         }
         #endregion
     }

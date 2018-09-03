@@ -23,7 +23,7 @@ using B2BackupUtility.Database;
 using PureMVC.Patterns.Proxy;
 using System.Collections.Generic;
 
-namespace B2BackupUtility.PMVC
+namespace B2BackupUtility.PMVC.Proxies
 {
     /// <summary>
     /// This is a proxy for the File Manifest Database

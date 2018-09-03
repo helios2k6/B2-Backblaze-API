@@ -19,6 +19,8 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+using B2BackupUtility.PMVC.Commands;
+using B2BackupUtility.PMVC.Proxies;
 using PureMVC.Interfaces;
 using PureMVC.Patterns.Facade;
 
@@ -33,19 +35,26 @@ namespace B2BackupUtility.PMVC
         protected override void InitializeController()
         {
             base.InitializeController();
+            RegisterCommand(InitializeProgramArgumentsCommand.CommandNotification, () => new InitializeProgramArgumentsCommand());
             RegisterCommand(InitializeConfigCommand.CommandNotification, () => new InitializeConfigCommand());
             RegisterCommand(InitializeAuthorizationSessionCommand.CommandNotification, () => new InitializeAuthorizationSessionCommand());
+            RegisterCommand(InitializeFileDatabaseManifestCommand.CommandNotification, () => new InitializeFileDatabaseManifestCommand());
+            RegisterCommand(InitializeListOfFilesOnB2Command.CommandNotification, () => new InitializeListOfFilesOnB2Command());
         }
 
         protected override void InitializeModel()
         {
             base.InitializeModel();
+            RegisterProxy(new AuthorizationSessionProxy());
             RegisterProxy(new ConfigProxy());
             RegisterProxy(new FileDatabaseManifestProxy());
+            RegisterProxy(new ProgramArgumentsProxy());
+            RegisterProxy(new ListOfFilesOnB2Proxy());
         }
 
         protected override void InitializeView()
         {
+            base.InitializeView();
         }
         #endregion
     }

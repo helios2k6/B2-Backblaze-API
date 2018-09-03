@@ -19,24 +19,30 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+using B2BackupUtility.PMVC.Proxies;
 using PureMVC.Interfaces;
 using PureMVC.Patterns.Command;
+using System.Collections.Generic;
 
-namespace B2BackupUtility.PMVC
+namespace B2BackupUtility.PMVC.Commands
 {
-    public sealed class FetchFileDatabaseManifestCommand : SimpleCommand
+    /// <summary>
+    /// Initializes the program arguments 
+    /// </summary>
+    public sealed class InitializeProgramArgumentsCommand : SimpleCommand
     {
         #region public properties
-        public static string CommandNotification => "Fetch File Database Manifest";
+        public static string CommandNotification => "Initialize Program Arguments";
+
+        public static string FinishedCommandNotification => "Finished Initializing Program Arguments";
         #endregion
 
         #region public methods
         public override void Execute(INotification notification)
         {
+            Facade.RetrieveProxy(ProgramArgumentsProxy.Name).Data = (IEnumerable<string>)notification.Body;
+            SendNotification(FinishedCommandNotification, null, null);
         }
-        #endregion
-
-        #region private methods
         #endregion
     }
 }

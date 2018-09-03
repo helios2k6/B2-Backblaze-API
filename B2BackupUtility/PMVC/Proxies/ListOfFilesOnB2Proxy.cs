@@ -19,29 +19,34 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-using B2BackblazeBridge.Core;
 using PureMVC.Patterns.Proxy;
+using System.Collections.Generic;
+using static B2BackblazeBridge.Core.BackblazeB2ListFilesResult;
 
-namespace B2BackupUtility.PMVC
+namespace B2BackupUtility.PMVC.Proxies
 {
-    public sealed class AuthorizationSessionProxy : Proxy
+    /// <summary>
+    /// Contains all of the files that are on the B2 server as returned by the 
+    /// ListFilesAction
+    /// </summary>
+    public sealed class ListOfFilesOnB2Proxy : Proxy
     {
         #region public properties
-        public static string Name => "Authorization Session Proxy";
+        public static string Name => "List Of Files On B2 Proxy";
 
-        /// <summary>
-        /// Get the authorization session
-        /// </summary>
-        public BackblazeB2AuthorizationSession AuthorizationSession
-        {
-            get { return Data as BackblazeB2AuthorizationSession; }
-        }
+        public IEnumerable<FileResult> Files => Data as IEnumerable<FileResult>;
         #endregion
 
         #region ctor
-        public AuthorizationSessionProxy() : base(Name, null)
+        /// <summary>
+        /// Default ctor
+        /// </summary>
+        public ListOfFilesOnB2Proxy() : base (Name, null)
         {
         }
+        #endregion
+
+        #region public methods
         #endregion
     }
 }
