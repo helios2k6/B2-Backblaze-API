@@ -37,6 +37,8 @@ namespace B2BackupUtility.PMVC.Proxies
         #region public properties
         public static string Name => "File Manifest Database Proxy";
 
+        public static string RemoteFileDatabaseManifestName => "b2_backup_util_file_database_manifest.txt.aes.gz";
+
         /// <summary>
         /// Gets the file database manifest
         /// </summary>

@@ -38,10 +38,6 @@ namespace B2BackupUtility.PMVC.Commands
 {
     public sealed class InitializeFileDatabaseManifestCommand : SimpleCommand
     {
-        #region private fields
-        private static string RemoteFileDatabaseManifestName => "b2_backup_util_file_database_manifest.txt.aes.gz";
-        #endregion
-
         #region public properties
         public static string CommandNotification => "Initialize File Database Manifest";
 
@@ -62,7 +58,7 @@ namespace B2BackupUtility.PMVC.Commands
                 // Third, download the file manifest. If you cannot find it, then return an empty file
                 // manifest
                 FileResult fileDatabaseManifest = listOfFilesProxy.Files.Where(
-                    f => f.FileName.Equals(RemoteFileDatabaseManifestName, StringComparison.Ordinal)
+                    f => f.FileName.Equals(FileDatabaseManifestProxy.RemoteFileDatabaseManifestName, StringComparison.Ordinal)
                 ).SingleOrDefault();
 
                 if (fileDatabaseManifest == null)
@@ -103,7 +99,7 @@ namespace B2BackupUtility.PMVC.Commands
 
                 SendNotification(FinishCommandNotification, null, null);
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 SendNotification(FailedCommandNotification, ex, null);
             }

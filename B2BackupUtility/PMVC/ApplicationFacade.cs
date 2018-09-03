@@ -31,6 +31,10 @@ namespace B2BackupUtility.PMVC
     /// </summary>
     public sealed class ApplicationFacade : Facade, IFacade
     {
+        #region public properties
+        public static string StartApplicationNotification => "Start Application";
+        #endregion
+
         #region protected methods
         protected override void InitializeController()
         {
@@ -40,6 +44,7 @@ namespace B2BackupUtility.PMVC
             RegisterCommand(InitializeAuthorizationSessionCommand.CommandNotification, () => new InitializeAuthorizationSessionCommand());
             RegisterCommand(InitializeFileDatabaseManifestCommand.CommandNotification, () => new InitializeFileDatabaseManifestCommand());
             RegisterCommand(InitializeListOfFilesOnB2Command.CommandNotification, () => new InitializeListOfFilesOnB2Command());
+            RegisterCommand(UploadFileDatabaseManifestCommand.CommandNotification, () => new UploadFileDatabaseManifestCommand());
         }
 
         protected override void InitializeModel()
@@ -50,11 +55,6 @@ namespace B2BackupUtility.PMVC
             RegisterProxy(new FileDatabaseManifestProxy());
             RegisterProxy(new ProgramArgumentsProxy());
             RegisterProxy(new ListOfFilesOnB2Proxy());
-        }
-
-        protected override void InitializeView()
-        {
-            base.InitializeView();
         }
         #endregion
     }
