@@ -19,16 +19,27 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+using System;
+using System.Security.Cryptography;
 using B2BackupUtility.Commands;
 using PureMVC.Interfaces;
 using PureMVC.Patterns.Command;
 
 namespace B2BackupUtility.PMVC.Commands
 {
+    /// <summary>
+    /// Generates and prints a new encryption key and IV
+    /// </summary>
     public sealed class GenerateEncryptionKey : SimpleCommand
     {
         #region public properties
         public static string CommandNotification => "Generate Encryption Key";
+
+        public static string FinishedCommandNotification => "Finished Generating Encryption Key";
+
+        public static string EncryptionKeyNotification => "Generated Encryption Key";
+
+        public static string InitializationVectorNotification => "Generated Initialization Vector";
 
         public static string CommandSwitch => "--generate-encryption-key";
 
@@ -38,6 +49,19 @@ namespace B2BackupUtility.PMVC.Commands
         #region public methods
         public override void Execute(INotification notification)
         {
+            using (Aes aes = Aes.Create())
+            {
+                byte[] key = aes.Key;
+                byte[] iv = aes.IV;
+
+                string keyAsString = Convert.ToBase64String(key);
+                string ivAsString = Convert.ToBase64String(iv);
+
+                // Send out notififcations that will be printed later
+                SendNotification(FinishedCommandNotification, null, null);
+                SendNotification(EncryptionKeyNotification, keyAsString, null);
+                SendNotification(InitializationVectorNotification, ivAsString, null);
+            }
         }
         #endregion
     }
