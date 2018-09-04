@@ -23,10 +23,12 @@ using B2BackblazeBridge.Actions;
 using B2BackblazeBridge.Core;
 using B2BackupUtility.Database;
 using B2BackupUtility.PMVC.Encryption;
+using Functional.Maybe;
 using Newtonsoft.Json;
 using PureMVC.Patterns.Proxy;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
@@ -42,6 +44,10 @@ namespace B2BackupUtility.PMVC.Proxies
     public sealed class RemoteFileSystemProxy : Proxy
     {
         #region private fields
+        private static int DefaultUploadConnections => 20;
+        private static int MinimumFileLengthForMultipleConnections => 1048576;
+        private static int DefaultUploadChunkSize => 5242880; // 5 mebibytes
+
         private FileDatabaseManifest FileDatabaseManifest => Data as FileDatabaseManifest;
         #endregion
 
@@ -83,7 +89,60 @@ namespace B2BackupUtility.PMVC.Proxies
             string localFilePath
         )
         {
-            throw new NotImplementedException();
+            // Remove old file and shards if they exist
+            if (TryGetFileByName(localFilePath, out Database.File oldFile))
+            {
+                DeleteFile(authorizationSession, config, oldFile);
+            }
+
+            FileInfo info = new FileInfo(localFilePath);
+            Database.File file = new Database.File
+            {
+                FileLength = info.Length,
+                FileName = localFilePath,
+                FileShardIDs = new string[0],
+                LastModified = info.LastWriteTime.ToBinary(),
+                SHA1 = SHA1FileHashStore.Instance.ComputeSHA1(localFilePath),
+            };
+            IEnumerable<BackblazeB2ActionResult<IBackblazeB2UploadResult>> results = Enumerable.Empty<BackblazeB2ActionResult<IBackblazeB2UploadResult>>();
+            foreach (FileShard fileShard in FileFactory.CreateFileShards(new FileStream(localFilePath, FileMode.Open, FileAccess.Read, FileShare.Read), true))
+            {
+                // Update Database.File
+                file.FileShardIDs = file.FileShardIDs.Append(fileShard.ID).ToArray();
+
+                BackblazeB2ActionResult<IBackblazeB2UploadResult> uploadResult = fileShard.Length < MinimumFileLengthForMultipleConnections
+                    ? ExecuteUploadAction(
+                        new UploadWithSingleConnectionAction(
+                            authorizationSession,
+                            config.BucketID,
+                            EncryptionHelpers.EncryptBytes(fileShard.Payload, config.EncryptionKey, config.InitializationVector),
+                            fileShard.ID,
+                            CancellationEventRouter.GlobalCancellationToken
+                        ))
+                    : ExecuteUploadAction(
+                        new UploadWithMultipleConnectionsAction(
+                            authorizationSession,
+                            new MemoryStream(EncryptionHelpers.EncryptBytes(fileShard.Payload, config.EncryptionKey, config.InitializationVector)),
+                            fileShard.ID,
+                            config.BucketID,
+                            DefaultUploadChunkSize,
+                            DefaultUploadConnections,
+                            CancellationEventRouter.GlobalCancellationToken
+                        ));
+
+                results = results.Append(uploadResult);
+
+                if (uploadResult.HasErrors)
+                {
+                    throw new InvalidOperationException($"Could not finish upload. Reason {uploadResult}");
+                }
+            }
+
+            // Update manifest
+            FileDatabaseManifest.Files = FileDatabaseManifest.Files.Append(file).ToArray();
+            UploadFileDatabaseManifest(authorizationSession, config);
+
+            return file;
         }
 
         /// <summary>
@@ -113,7 +172,6 @@ namespace B2BackupUtility.PMVC.Proxies
             }
 
             // Do not upload the file database manifest. Make sure the server is entirely clean
-
             return deletionResults;
         }
 
@@ -221,6 +279,25 @@ namespace B2BackupUtility.PMVC.Proxies
         #endregion
 
         #region private methods
+        private static BackblazeB2ActionResult<IBackblazeB2UploadResult> ExecuteUploadAction<T>(BaseAction<T> action) where T : IBackblazeB2UploadResult
+        {
+            BackblazeB2ActionResult<T> uploadResult = action.Execute();
+            BackblazeB2ActionResult<IBackblazeB2UploadResult> castedResult;
+            if (uploadResult.HasResult)
+            {
+                castedResult = new BackblazeB2ActionResult<IBackblazeB2UploadResult>(uploadResult.Result);
+            }
+            else
+            {
+                castedResult = new BackblazeB2ActionResult<IBackblazeB2UploadResult>(
+                    Maybe<IBackblazeB2UploadResult>.Nothing,
+                    uploadResult.Errors
+                );
+            }
+
+            return castedResult;
+        }
+
         private void UploadFileDatabaseManifest(
             BackblazeB2AuthorizationSession authorizationSession,
             Config config
