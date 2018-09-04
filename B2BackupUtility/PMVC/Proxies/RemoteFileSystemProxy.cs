@@ -83,6 +83,7 @@ namespace B2BackupUtility.PMVC.Proxies
             string localFilePath
         )
         {
+            throw new NotImplementedException();
         }
 
         /// <summary>
