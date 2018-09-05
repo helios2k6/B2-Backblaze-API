@@ -66,7 +66,7 @@ namespace B2BackupUtility.PMVC.Commands
             {
                 try
                 {
-                    Database.File file = fileSystemProxy.AddLocalFile(authorizationSessionProxy.AuthorizationSession, configProxy.Config, fileToUpload);
+                    Database.File file = fileSystemProxy.AddLocalFile(authorizationSessionProxy.AuthorizationSession, fileToUpload);
                     SendNotification(FinishedCommandNotification, null, null);
                 }
                 catch (FailedToUploadFileException ex)

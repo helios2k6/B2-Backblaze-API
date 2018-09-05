@@ -40,7 +40,6 @@ namespace B2BackupUtility.PMVC.Commands
             { DeleteFile.CommandSwitch, CommandType.DELETE },
             { DownloadFile.CommandSwitch, CommandType.DOWNLOAD },
             { GenerateEncryptionKey.CommandSwitch, CommandType.GENERATE_ENCRYPTION_KEY },
-            { GetFileInfo.CommandSwitch, CommandType.GET_FILE_INFO },
             { ListFiles.CommandSwitch, CommandType.LIST },
             { UploadFile.CommandSwitch, CommandType.UPLOAD },
             { UploadFolder.CommandSwitch, CommandType.UPLOAD_FOLDER }
@@ -52,7 +51,6 @@ namespace B2BackupUtility.PMVC.Commands
             { DeleteFile.CommandType, DeleteFile.CommandNotification },
             { DownloadFile.CommandType, DownloadFile.CommandNotification },
             { GenerateEncryptionKey.CommandType, GenerateEncryptionKey.CommandNotification },
-            { GetFileInfo.CommandType, GetFileInfo.CommandNotification },
             { ListFiles.CommandType, ListFiles.CommandNotification },
             { UploadFile.CommandType, UploadFile.CommandNotification },
             { UploadFolder.CommandType, UploadFolder.CommandNotification },
