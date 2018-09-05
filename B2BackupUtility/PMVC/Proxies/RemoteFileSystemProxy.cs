@@ -59,6 +59,10 @@ namespace B2BackupUtility.PMVC.Proxies
 
         public static string CouldNotGetB2FilesNotification => "Could Not Get Files On B2";
 
+        public static string BeginUploadingFileNotification => "Begin Uploading File";
+
+        public static string FinishedUploadingFileNotification => "Finished Uploading File";
+
         public static string RemoteFileDatabaseManifestName => "b2_backup_util_file_database_manifest.txt.aes.gz";
         #endregion
 
@@ -102,11 +106,9 @@ namespace B2BackupUtility.PMVC.Proxies
             string localFilePath
         )
         {
-            // TODO: Add printing of stats by sending a notification about it
-
             if (System.IO.File.Exists(localFilePath) == false)
             {
-                throw new FileNotFoundException("Could not find the file", localFilePath);
+                throw new FileNotFoundException("Could not find file to upload", localFilePath);
             }
 
             // Remove old file and shards if they exist
@@ -124,6 +126,8 @@ namespace B2BackupUtility.PMVC.Proxies
                 LastModified = info.LastWriteTime.ToBinary(),
                 SHA1 = SHA1FileHashStore.Instance.ComputeSHA1(localFilePath),
             };
+
+            SendNotification(BeginUploadingFileNotification, localFilePath, null);
             IEnumerable<BackblazeB2ActionResult<IBackblazeB2UploadResult>> results = Enumerable.Empty<BackblazeB2ActionResult<IBackblazeB2UploadResult>>();
             foreach (FileShard fileShard in FileFactory.CreateFileShards(new FileStream(localFilePath, FileMode.Open, FileAccess.Read, FileShare.Read), true))
             {
@@ -160,6 +164,7 @@ namespace B2BackupUtility.PMVC.Proxies
                     };
                 }
             }
+            SendNotification(FinishedUploadingFileNotification, localFilePath, null);
 
             // Update manifest
             FileDatabaseManifest.Files = FileDatabaseManifest.Files.Append(file).ToArray();
