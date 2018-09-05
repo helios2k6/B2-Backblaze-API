@@ -22,23 +22,49 @@
 using B2BackblazeBridge.Actions;
 using B2BackblazeBridge.Core;
 using PureMVC.Patterns.Proxy;
+using System;
 
 namespace B2BackupUtility.PMVC.Proxies
 {
+    /// <summary>
+    /// A proxy for the authorization session for this program
+    /// </summary>
     public sealed class AuthorizationSessionProxy : Proxy
     {
+        #region private fields
+        private static TimeSpan OneHour => TimeSpan.FromMinutes(60);
+
+        private readonly Config _config;
+        private BackblazeB2AuthorizationSession _authorizationSession;
+        #endregion
+
         #region public properties
         public static string Name => "Authorization Session Proxy";
 
         /// <summary>
         /// Get the authorization session
         /// </summary>
-        public BackblazeB2AuthorizationSession AuthorizationSession => Data as BackblazeB2AuthorizationSession;
+        public BackblazeB2AuthorizationSession AuthorizationSession
+        {
+            get
+            {
+                if (_authorizationSession == null || _authorizationSession.SessionExpirationDate - DateTime.Now < OneHour)
+                {
+                    _authorizationSession = CreateNewAuthorizationSession();
+                }
+                return _authorizationSession;
+            }
+        }
         #endregion
 
         #region ctor
-        public AuthorizationSessionProxy() : base(Name, null)
+        /// <summary>
+        /// Construcs a new Authorization Session Proxy
+        /// </summary>
+        /// <param name="config"></param>
+        public AuthorizationSessionProxy(Config config) : base(Name, null)
         {
+            _config = config;
         }
         #endregion
 
@@ -48,16 +74,17 @@ namespace B2BackupUtility.PMVC.Proxies
         /// </summary>
         /// <param name="applicationID">The application key ID</param>
         /// <param name="applicationKey">The application key</param>
-        public BackblazeB2ActionResult<BackblazeB2AuthorizationSession> Initialize(Config config)
+        private BackblazeB2AuthorizationSession CreateNewAuthorizationSession()
         {
             AuthorizeAccountAction authorizeAccountAction =
-                new AuthorizeAccountAction(config.ApplicationKeyID, config.ApplicationKey);
+                new AuthorizeAccountAction(_config.ApplicationKeyID, _config.ApplicationKey);
             BackblazeB2ActionResult<BackblazeB2AuthorizationSession> authorizationSessionResult = authorizeAccountAction.Execute();
-            if (authorizationSessionResult.HasResult)
+            if (authorizationSessionResult.HasErrors)
             {
-                Data = authorizationSessionResult.Result;
+                throw new InvalidOperationException($"Could not create authorization session. Reason: {authorizationSessionResult}");
             }
-            return authorizationSessionResult;
+
+            return authorizationSessionResult.Result;
         }
         #endregion
     }

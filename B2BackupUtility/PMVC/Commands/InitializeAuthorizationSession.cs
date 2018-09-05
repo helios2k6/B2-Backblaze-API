@@ -47,22 +47,16 @@ namespace B2BackupUtility.PMVC.Commands
         #region public methods
         public override void Execute(INotification notification)
         {
-            // Check the current authorization session
-            AuthorizationSessionProxy authorizationProxy = (AuthorizationSessionProxy)Facade.RetrieveProxy(AuthorizationSessionProxy.Name);
-            if (authorizationProxy.AuthorizationSession == null || authorizationProxy.AuthorizationSession.SessionExpirationDate - DateTime.Now < OneHour)
+            try
             {
                 ConfigProxy configProxy = (ConfigProxy)Facade.RetrieveProxy(ConfigProxy.Name);
-                BackblazeB2ActionResult<BackblazeB2AuthorizationSession> authorizationSessionResult =  authorizationProxy.Initialize(configProxy.Config);
-                if (authorizationSessionResult.HasErrors)
-                {
-                    SendNotification(FailedCommandNotification, authorizationSessionResult, null);
-                    return;
-                }
-
-                authorizationProxy.Data = authorizationSessionResult.Result;
+                Facade.RegisterProxy(new AuthorizationSessionProxy(configProxy.Config));
+                SendNotification(FinishedCommandNotification, null, null);
             }
-
-            SendNotification(FinishedCommandNotification, null, null);
+            catch (Exception ex)
+            {
+                SendNotification(FailedCommandNotification, ex, null);
+            }
         }
         #endregion
     }

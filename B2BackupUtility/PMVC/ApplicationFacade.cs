@@ -39,6 +39,10 @@ namespace B2BackupUtility.PMVC
         protected override void InitializeModel()
         {
         }
+
+        protected override void InitializeView()
+        {
+        }
         #endregion
     }
 }

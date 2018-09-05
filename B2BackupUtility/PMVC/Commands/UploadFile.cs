@@ -20,16 +20,65 @@
  */
 
 using B2BackupUtility.Commands;
+using B2BackupUtility.PMVC.Proxies;
+using PureMVC.Interfaces;
 using PureMVC.Patterns.Command;
+using System;
+using System.Diagnostics;
+using System.Text;
 
 namespace B2BackupUtility.PMVC.Commands
 {
+    /// <summary>
+    /// Upload a single file
+    /// </summary>
     public sealed class UploadFile : SimpleCommand
     {
+        #region public properties
         public static string CommandNotification => "Upload File";
+
+        public static string FailedCommandNotification => "Failed Uploading File";
+
+        public static string FinishedCommandNotification => "Finished Uploading File";
 
         public static string CommandSwitch => "--upload-file";
 
+        public static string FileOption => "--file";
+
         public static CommandType CommandType => CommandType.UPLOAD;
+        #endregion
+
+        #region public methods
+        public override void Execute(INotification notification)
+        {
+            AuthorizationSessionProxy authorizationSessionProxy = (AuthorizationSessionProxy)Facade.RetrieveProxy(AuthorizationSessionProxy.Name);
+            ConfigProxy configProxy = (ConfigProxy)Facade.RetrieveProxy(ConfigProxy.Name);
+            ProgramArgumentsProxy programArgProxy = (ProgramArgumentsProxy)Facade.RetrieveProxy(ProgramArgumentsProxy.Name);
+            RemoteFileSystemProxy fileSystemProxy = (RemoteFileSystemProxy)Facade.RetrieveProxy(RemoteFileSystemProxy.Name);
+
+            if (programArgProxy.TryGetArgument(FileOption, out string fileToUpload))
+            {
+                try
+                {
+                    Stopwatch stopwatch = Stopwatch.StartNew();
+                    Database.File file = fileSystemProxy.AddLocalFile(authorizationSessionProxy.AuthorizationSession, configProxy.Config, fileToUpload);
+                    stopwatch.Stop();
+
+                    double uploadTimeInSeconds = (double)stopwatch.ElapsedTicks / Stopwatch.Frequency;
+                    StringBuilder builder = new StringBuilder();
+                    builder.AppendLine($"File: {fileToUpload}");
+                    builder.AppendLine($"Total Content Length: {file.FileLength:0:n0} bytes");
+                    builder.AppendLine($"Upload Time: {uploadTimeInSeconds} seconds");
+                    builder.AppendLine($"Upload Speed: {file.FileLength / uploadTimeInSeconds:0,0.00} bytes / second");
+
+                    SendNotification(FinishedCommandNotification, builder.ToString(), null);
+                }
+                catch (Exception ex)
+                {
+                    SendNotification(FailedCommandNotification, ex, null);
+                }
+            }
+        }
+        #endregion
     }
 }
