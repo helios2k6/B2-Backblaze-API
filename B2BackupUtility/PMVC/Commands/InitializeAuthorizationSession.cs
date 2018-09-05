@@ -40,8 +40,6 @@ namespace B2BackupUtility.PMVC.Commands
         public static string CommandNotification => "Initialize Authorization Session";
 
         public static string FailedCommandNotification => "Failed To Authorize Session";
-
-        public static string FinishedCommandNotification => "Finished Initializing Authorization Session";
         #endregion
 
         #region public methods
@@ -51,7 +49,6 @@ namespace B2BackupUtility.PMVC.Commands
             {
                 ConfigProxy configProxy = (ConfigProxy)Facade.RetrieveProxy(ConfigProxy.Name);
                 Facade.RegisterProxy(new AuthorizationSessionProxy(configProxy.Config));
-                SendNotification(FinishedCommandNotification, null, null);
             }
             catch (Exception ex)
             {

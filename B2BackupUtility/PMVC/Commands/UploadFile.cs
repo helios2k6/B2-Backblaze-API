@@ -48,6 +48,13 @@ namespace B2BackupUtility.PMVC.Commands
         public static CommandType CommandType => CommandType.UPLOAD;
         #endregion
 
+        #region public sealed classes
+        public sealed class ErrorDetails
+        {
+
+        }
+        #endregion
+
         #region public methods
         public override void Execute(INotification notification)
         {
@@ -55,28 +62,21 @@ namespace B2BackupUtility.PMVC.Commands
             ConfigProxy configProxy = (ConfigProxy)Facade.RetrieveProxy(ConfigProxy.Name);
             ProgramArgumentsProxy programArgProxy = (ProgramArgumentsProxy)Facade.RetrieveProxy(ProgramArgumentsProxy.Name);
             RemoteFileSystemProxy fileSystemProxy = (RemoteFileSystemProxy)Facade.RetrieveProxy(RemoteFileSystemProxy.Name);
-
             if (programArgProxy.TryGetArgument(FileOption, out string fileToUpload))
             {
                 try
                 {
-                    Stopwatch stopwatch = Stopwatch.StartNew();
                     Database.File file = fileSystemProxy.AddLocalFile(authorizationSessionProxy.AuthorizationSession, configProxy.Config, fileToUpload);
-                    stopwatch.Stop();
-
-                    double uploadTimeInSeconds = (double)stopwatch.ElapsedTicks / Stopwatch.Frequency;
-                    StringBuilder builder = new StringBuilder();
-                    builder.AppendLine($"File: {fileToUpload}");
-                    builder.AppendLine($"Total Content Length: {file.FileLength:0:n0} bytes");
-                    builder.AppendLine($"Upload Time: {uploadTimeInSeconds} seconds");
-                    builder.AppendLine($"Upload Speed: {file.FileLength / uploadTimeInSeconds:0,0.00} bytes / second");
-
-                    SendNotification(FinishedCommandNotification, builder.ToString(), null);
+                    SendNotification(FinishedCommandNotification, null, null);
                 }
-                catch (Exception ex)
+                catch (FailedToUploadFileException ex)
                 {
                     SendNotification(FailedCommandNotification, ex, null);
                 }
+            }
+            else
+            {
+                SendNotification(FailedCommandNotification, "No file provided", null);
             }
         }
         #endregion

@@ -39,9 +39,10 @@ namespace B2BackupUtility.PMVC.Proxies
 
         #region ctor
         /// <summary>
-        /// Default ctor
+        /// Constructs this Program Arguments Proxy with the given program args
         /// </summary>
-        public ProgramArgumentsProxy() : base(Name, null)
+        /// <param name="programArgs"></param>
+        public ProgramArgumentsProxy(IEnumerable<string> programArgs) : base(Name, programArgs)
         {
         }
         #endregion
@@ -55,22 +56,6 @@ namespace B2BackupUtility.PMVC.Proxies
         public bool DoesOptionExist(string option)
         {
             return ProgramArguments.Any(t => t.Equals(option, StringComparison.OrdinalIgnoreCase));
-        }
-
-        /// <summary>
-        /// Attempts to get the value for the specified option. If it doesn't exist, an
-        /// exception is thrown
-        /// </summary>
-        /// <param name="option">The option to retrieve the value for</param>
-        /// <returns>The value to the option</returns>
-        public string GetArgumentOrThrow(string option)
-        {
-            if (TryGetArgument(option, out string value))
-            {
-                return value;
-            }
-
-            throw new InvalidOperationException($"Was not able to retrieve value for option {option}");
         }
 
         /// <summary>

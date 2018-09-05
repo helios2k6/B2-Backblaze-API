@@ -26,14 +26,15 @@ using System;
 
 namespace B2BackupUtility.PMVC.Commands
 {
+    /// <summary>
+    /// Initializes the Remote File System
+    /// </summary>
     public sealed class InitializeRemoteFileSystem : SimpleCommand
     {
         #region public properties
         public static string CommandNotification => "Initialize File Database Manifest";
 
         public static string FailedCommandNotification => "Failed To Initialize File Database Manifest";
-
-        public static string FinishCommandNotification => "Finished Initializing Fetching File Database Manifest";
         #endregion
 
         #region public methods
@@ -43,13 +44,8 @@ namespace B2BackupUtility.PMVC.Commands
             {
                 AuthorizationSessionProxy authorizationSessionProxy = (AuthorizationSessionProxy)Facade.RetrieveProxy(AuthorizationSessionProxy.Name);
                 ConfigProxy configProxy = (ConfigProxy)Facade.RetrieveProxy(ConfigProxy.Name);
-                RemoteFileSystemProxy fileDatabaseManifestProxy = (RemoteFileSystemProxy)Facade.RetrieveProxy(RemoteFileSystemProxy.Name);
 
-                fileDatabaseManifestProxy.Initialize(
-                    authorizationSessionProxy.AuthorizationSession,
-                    configProxy.Config
-                );
-                SendNotification(FinishCommandNotification, null, null);
+                Facade.RegisterProxy(new RemoteFileSystemProxy(authorizationSessionProxy.AuthorizationSession, configProxy.Config));
             }
             catch (Exception ex)
             {

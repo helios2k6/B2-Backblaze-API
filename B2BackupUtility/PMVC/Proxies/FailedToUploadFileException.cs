@@ -20,41 +20,46 @@
  */
 
 using B2BackblazeBridge.Core;
-using B2BackupUtility.Commands;
-using B2BackupUtility.PMVC.Proxies;
-using PureMVC.Interfaces;
-using PureMVC.Patterns.Command;
+using System;
 using System.Collections.Generic;
-using System.Linq;
+using System.Text;
 
-namespace B2BackupUtility.PMVC.Commands
+namespace B2BackupUtility.PMVC.Proxies
 {
-    public sealed class DeleteAllFiles : SimpleCommand
+    /// <summary>
+    /// An Exception that is thrown when a file fails to upload
+    /// </summary>
+    public sealed class FailedToUploadFileException : Exception
     {
         #region public properties
-        public static string CommandNotification => "Delete All Files";
+        public IEnumerable<BackblazeB2ActionErrorDetails> BackblazeErrorDetails { get; set; }
+        #endregion
 
-        public static string FailedCommandNotification => "Failed To Delete All Files";
+        #region ctor
+        public FailedToUploadFileException()
+        {
+        }
 
-        public static string CommandSwitch => "--delete-all-files";
+        public FailedToUploadFileException(string message) : base(message)
+        {
+        }
 
-        public static CommandType CommandType => CommandType.DELETE_ALL_FILES;
+        public FailedToUploadFileException(string message, Exception innerException) : base(message, innerException)
+        {
+        }
         #endregion
 
         #region public methods
-        public override void Execute(INotification notification)
+        public override string ToString()
         {
-            AuthorizationSessionProxy authorizationSessionProxy = (AuthorizationSessionProxy)Facade.RetrieveProxy(AuthorizationSessionProxy.Name);
-            ConfigProxy configProxy = (ConfigProxy)Facade.RetrieveProxy(ConfigProxy.Name);
-            RemoteFileSystemProxy remoteFileSystem = (RemoteFileSystemProxy)Facade.RetrieveProxy(RemoteFileSystemProxy.Name);
-
-            IEnumerable<BackblazeB2ActionResult<BackblazeB2DeleteFileResult>> deletionResult =
-                remoteFileSystem.DeleteAllFiles(authorizationSessionProxy.AuthorizationSession, configProxy.Config);
-
-            if (deletionResult.Any(t => t.HasErrors))
+            StringBuilder builder = new StringBuilder();
+            builder.AppendLine(base.ToString());
+            foreach (BackblazeB2ActionErrorDetails errorDetails in BackblazeErrorDetails)
             {
-                SendNotification(FailedCommandNotification, deletionResult, null);
+                builder.AppendLine(errorDetails.ToString()).AppendLine();
             }
+
+            return builder.ToString();
         }
         #endregion
     }

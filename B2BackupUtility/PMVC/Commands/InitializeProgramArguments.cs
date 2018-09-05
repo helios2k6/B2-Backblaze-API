@@ -33,15 +33,12 @@ namespace B2BackupUtility.PMVC.Commands
     {
         #region public properties
         public static string CommandNotification => "Initialize Program Arguments";
-
-        public static string FinishedCommandNotification => "Finished Initializing Program Arguments";
         #endregion
 
         #region public methods
         public override void Execute(INotification notification)
         {
-            Facade.RetrieveProxy(ProgramArgumentsProxy.Name).Data = (IEnumerable<string>)notification.Body;
-            SendNotification(FinishedCommandNotification, null, null);
+            Facade.RegisterProxy(new ProgramArgumentsProxy((IEnumerable<string>)notification.Body));
         }
         #endregion
     }

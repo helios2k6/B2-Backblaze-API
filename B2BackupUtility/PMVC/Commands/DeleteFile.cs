@@ -39,8 +39,6 @@ namespace B2BackupUtility.PMVC.Commands
 
         public static string FailedCommandNotification => "Failed To Delete File";
 
-        public static string FinishCommandNotification => "Finished Deleting File";
-
         public static string CommandSwitch => "--delete-file";
 
         public static string FileNameOption => "--file-name";
@@ -66,10 +64,6 @@ namespace B2BackupUtility.PMVC.Commands
                     if (deletionResult.Any(t => t.HasErrors))
                     {
                         SendNotification(FailedCommandNotification, deletionResult, null);
-                    }
-                    else
-                    {
-                        SendNotification(FinishCommandNotification, null, null);
                     }
                 }
             }

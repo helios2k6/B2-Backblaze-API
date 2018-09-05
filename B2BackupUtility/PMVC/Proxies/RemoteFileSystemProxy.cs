@@ -22,6 +22,7 @@
 using B2BackblazeBridge.Actions;
 using B2BackblazeBridge.Core;
 using B2BackupUtility.Database;
+using B2BackupUtility.PMVC.Commands;
 using B2BackupUtility.PMVC.Encryption;
 using Functional.Maybe;
 using Newtonsoft.Json;
@@ -48,20 +49,35 @@ namespace B2BackupUtility.PMVC.Proxies
         private static int DefaultUploadChunkSize => 5242880; // 5 mebibytes
 
         private FileDatabaseManifest FileDatabaseManifest => Data as FileDatabaseManifest;
+        private readonly Config _config;
         #endregion
 
         #region public properties
         public static string Name => "File Manifest Database Proxy";
+
+        public static string CouldNotUploadFileManifestNotification => "Could Not Upload File Manifest";
+
+        public static string CouldNotGetB2FilesNotification => "Could Not Get Files On B2";
 
         public static string RemoteFileDatabaseManifestName => "b2_backup_util_file_database_manifest.txt.aes.gz";
         #endregion
 
         #region ctor
         /// <summary>
-        /// Default constructor of this proxy
+        /// Construcs a new RemoteFileSystemProxy and initializes this by fetching the file database manifest
+        /// from the server. The reference to the authorization session is not kept around as this can expire
         /// </summary>
-        public RemoteFileSystemProxy() : base(Name, new FileDatabaseManifest { Files = new Database.File[0] })
+        /// <param name="authorizationSession"
+        /// >The authorization session to use to initialize this. This is is not kept around
+        /// </param>
+        /// <param name="config">The program config</param>
+        public RemoteFileSystemProxy(
+            BackblazeB2AuthorizationSession authorizationSession,
+            Config config
+        ) : base(Name, null)
         {
+            _config = config;
+            Data = GetOrCreateFileDatabaseManifest(authorizationSession);
         }
         #endregion
 
@@ -79,19 +95,24 @@ namespace B2BackupUtility.PMVC.Proxies
         /// Adds a local file to the Remote File System
         /// </summary>
         /// <param name="authorizationSession">The authorization session</param>
-        /// <param name="config">The program config</param>
         /// <param name="localFilePath">The local path to the </param>
-        /// <returns></returns>
+        /// <returns>The database file that represents the file that was uploaded</returns>
         public Database.File AddLocalFile(
             BackblazeB2AuthorizationSession authorizationSession,
-            Config config,
             string localFilePath
         )
         {
+            // TODO: Add printing of stats by sending a notification about it
+
+            if (System.IO.File.Exists(localFilePath) == false)
+            {
+                throw new FileNotFoundException("Could not find the file", localFilePath);
+            }
+
             // Remove old file and shards if they exist
             if (TryGetFileByName(localFilePath, out Database.File oldFile))
             {
-                DeleteFile(authorizationSession, config, oldFile);
+                DeleteFile(authorizationSession, _config, oldFile);
             }
 
             FileInfo info = new FileInfo(localFilePath);
@@ -113,17 +134,17 @@ namespace B2BackupUtility.PMVC.Proxies
                     ? ExecuteUploadAction(
                         new UploadWithSingleConnectionAction(
                             authorizationSession,
-                            config.BucketID,
-                            EncryptionHelpers.EncryptBytes(fileShard.Payload, config.EncryptionKey, config.InitializationVector),
+                            _config.BucketID,
+                            EncryptionHelpers.EncryptBytes(fileShard.Payload, _config.EncryptionKey, _config.InitializationVector),
                             fileShard.ID,
                             CancellationEventRouter.GlobalCancellationToken
                         ))
                     : ExecuteUploadAction(
                         new UploadWithMultipleConnectionsAction(
                             authorizationSession,
-                            new MemoryStream(EncryptionHelpers.EncryptBytes(fileShard.Payload, config.EncryptionKey, config.InitializationVector)),
+                            new MemoryStream(EncryptionHelpers.EncryptBytes(fileShard.Payload, _config.EncryptionKey, _config.InitializationVector)),
                             fileShard.ID,
-                            config.BucketID,
+                            _config.BucketID,
                             DefaultUploadChunkSize,
                             DefaultUploadConnections,
                             CancellationEventRouter.GlobalCancellationToken
@@ -133,15 +154,36 @@ namespace B2BackupUtility.PMVC.Proxies
 
                 if (uploadResult.HasErrors)
                 {
-                    throw new InvalidOperationException($"Could not finish upload. Reason {uploadResult}");
+                    throw new FailedToUploadFileException
+                    {
+                        BackblazeErrorDetails = uploadResult.Errors,
+                    };
                 }
             }
 
             // Update manifest
             FileDatabaseManifest.Files = FileDatabaseManifest.Files.Append(file).ToArray();
-            UploadFileDatabaseManifest(authorizationSession, config);
+            UploadFileDatabaseManifest(authorizationSession);
 
             return file;
+        }
+
+        /// <summary>
+        /// Adds a local folder to the server
+        /// </summary>
+        /// <param name="authorizationSession">The authorization session</param>
+        /// <param name="config">The program config</param>
+        /// <param name="localDirectoryToUpload">The local directory to upload</param>
+        /// <param name="overrideFiles">Whether to override any existing files on the server</param>
+        /// <returns>An IEnumerable of database files that were uploaded</returns>
+        public IEnumerable<Database.File> UploadFolder(
+            BackblazeB2AuthorizationSession authorizationSession,
+            Config config,
+            string localDirectoryToUpload,
+            bool overrideFiles
+        )
+        {
+            throw new NotImplementedException();
         }
 
         /// <summary>
@@ -158,7 +200,7 @@ namespace B2BackupUtility.PMVC.Proxies
         )
         {
             FileDatabaseManifest.Files = new Database.File[0];
-            IEnumerable<FileResult> rawB2FileList = GetRawB2Files(authorizationSession, config);
+            IEnumerable<FileResult> rawB2FileList = GetRawB2Files(authorizationSession);
             IList<BackblazeB2ActionResult<BackblazeB2DeleteFileResult>> deletionResults =
                 new List<BackblazeB2ActionResult<BackblazeB2DeleteFileResult>>();
 
@@ -191,7 +233,7 @@ namespace B2BackupUtility.PMVC.Proxies
             FileDatabaseManifest.Files = FileDatabaseManifest.Files.Where(f => f.Equals(file) == false).ToArray();
 
             // Get the raw B2 File List
-            IEnumerable<FileResult> rawB2FileList = GetRawB2Files(authorizationSession, config);
+            IEnumerable<FileResult> rawB2FileList = GetRawB2Files(authorizationSession);
             IDictionary<string, FileResult> fileNameToFileResult = rawB2FileList.ToDictionary(k => k.FileName, v => v);
 
             IList<BackblazeB2ActionResult<BackblazeB2DeleteFileResult>> deletionResults =
@@ -209,7 +251,7 @@ namespace B2BackupUtility.PMVC.Proxies
             }
 
             // Upload the file manifest now
-            UploadFileDatabaseManifest(authorizationSession, config);
+            UploadFileDatabaseManifest(authorizationSession);
 
             // Return deletion results
             return deletionResults;
@@ -239,17 +281,16 @@ namespace B2BackupUtility.PMVC.Proxies
         /// <summary>
         /// Initializes this file database manifest
         /// </summary>
-        public void Initialize(
-            BackblazeB2AuthorizationSession authorizationSession,
-            Config config
+        public FileDatabaseManifest GetOrCreateFileDatabaseManifest(
+            BackblazeB2AuthorizationSession authorizationSession
         )
         {
-            FileResult fileDatabaseManifestFileResult = GetRawB2Files(authorizationSession, config)
+            FileResult fileDatabaseManifestFileResult = GetRawB2Files(authorizationSession)
                 .Where(f => f.FileName.Equals(RemoteFileDatabaseManifestName, StringComparison.Ordinal))
                 .SingleOrDefault();
             if (fileDatabaseManifestFileResult == null)
             {
-                return;
+                return new FileDatabaseManifest { Files = new Database.File[0] };
             }
 
             using (MemoryStream outputStream = new MemoryStream())
@@ -264,14 +305,11 @@ namespace B2BackupUtility.PMVC.Proxies
                 {
                     // Now, read string from manifest
                     outputStream.Flush();
-                    Data = DeserializeManifest(outputStream.ToArray(), config.EncryptionKey, config.InitializationVector);
+                    return DeserializeManifest(outputStream.ToArray(), _config.EncryptionKey, _config.InitializationVector);
                 }
                 else
                 {
-                    Data = new FileDatabaseManifest
-                    {
-                        Files = new Database.File[0],
-                    };
+                    return new FileDatabaseManifest { Files = new Database.File[0] };
                 }
             }
         }
@@ -298,14 +336,13 @@ namespace B2BackupUtility.PMVC.Proxies
         }
 
         private void UploadFileDatabaseManifest(
-            BackblazeB2AuthorizationSession authorizationSession,
-            Config config
+            BackblazeB2AuthorizationSession authorizationSession
         )
         {
             UploadWithSingleConnectionAction uploadAction = new UploadWithSingleConnectionAction(
                 authorizationSession,
-                config.BucketID,
-                SerializeManifest(config),
+                _config.BucketID,
+                SerializeManifest(FileDatabaseManifest, _config),
                 RemoteFileDatabaseManifestName,
                 CancellationToken.None
             );
@@ -313,28 +350,29 @@ namespace B2BackupUtility.PMVC.Proxies
             BackblazeB2ActionResult<BackblazeB2UploadFileResult> result = uploadAction.Execute();
             if (result.HasErrors)
             {
-                throw new InvalidOperationException($"Could not upload file manifest {result}");
+                SendNotification(CouldNotUploadFileManifestNotification, result, null);
             }
         }
 
         private IEnumerable<FileResult> GetRawB2Files(
-            BackblazeB2AuthorizationSession authorizationSession,
-            Config config
+            BackblazeB2AuthorizationSession authorizationSession
         )
         {
-            ListFilesAction listFilesAction = ListFilesAction.CreateListFileActionForFileVersions(authorizationSession, config.BucketID, true);
+            ListFilesAction listFilesAction = ListFilesAction.CreateListFileActionForFileVersions(authorizationSession, _config.BucketID, true);
             BackblazeB2ActionResult<BackblazeB2ListFilesResult> listFilesActionResult = listFilesAction.Execute();
             if (listFilesActionResult.HasErrors)
             {
-                throw new InvalidOperationException($"Could not get list of files {listFilesActionResult}");
+                SendNotification(CouldNotGetB2FilesNotification, listFilesActionResult, null);
+                SendNotification(TerminateProgramImmediately.CommandNotification, null, null);
+                throw new InvalidOperationException("Should not be here! Application must terminate");
             }
 
             return listFilesActionResult.Result.Files;
         }
 
-        private byte[] SerializeManifest(Config config)
+        private static byte[] SerializeManifest(FileDatabaseManifest fileDatabaseManifest, Config config)
         {
-            using (MemoryStream serializedManifestStream = new MemoryStream(Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(FileDatabaseManifest))))
+            using (MemoryStream serializedManifestStream = new MemoryStream(Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(fileDatabaseManifest))))
             using (MemoryStream compressedMemoryStream = new MemoryStream())
             {
                 // It's very important that we dispose of the GZipStream before reading from the memory stream
@@ -347,7 +385,7 @@ namespace B2BackupUtility.PMVC.Proxies
             }
         }
 
-        private FileDatabaseManifest DeserializeManifest(
+        private static FileDatabaseManifest DeserializeManifest(
             byte[] encryptedBytes,
             string encryptionKey,
             string initializationVector

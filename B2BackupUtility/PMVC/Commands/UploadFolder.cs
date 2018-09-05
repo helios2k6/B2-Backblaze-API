@@ -20,16 +20,51 @@
  */
 
 using B2BackupUtility.Commands;
+using B2BackupUtility.PMVC.Proxies;
+using PureMVC.Interfaces;
 using PureMVC.Patterns.Command;
 
 namespace B2BackupUtility.PMVC.Commands
 {
     public sealed class UploadFolder : SimpleCommand
     {
+        #region public properties
         public static string CommandNotification => "Upload Folder";
+
+        public static string FailedCommandNotification => "Failed To Upload Folder";
+
+        public static string FinishedCommandNotification => "Finished Uploading Folder";
 
         public static string CommandSwitch => "--upload-folder";
 
+        public static string FolderOption => "--folder";
+
+        public static string OverrideFilesOption => "--override-files";
+
         public static CommandType CommandType => CommandType.UPLOAD_FOLDER;
+        #endregion
+
+        #region public methods
+        public override void Execute(INotification notification)
+        {
+            AuthorizationSessionProxy authorizationSessionProxy = (AuthorizationSessionProxy)Facade.RetrieveProxy(AuthorizationSessionProxy.Name);
+            ConfigProxy configProxy = (ConfigProxy)Facade.RetrieveProxy(ConfigProxy.Name);
+            ProgramArgumentsProxy programArgProxy = (ProgramArgumentsProxy)Facade.RetrieveProxy(ProgramArgumentsProxy.Name);
+            RemoteFileSystemProxy fileSystemProxy = (RemoteFileSystemProxy)Facade.RetrieveProxy(RemoteFileSystemProxy.Name);
+            if (programArgProxy.TryGetArgument(FolderOption, out string folderToUpload))
+            {
+                fileSystemProxy.UploadFolder(
+                    authorizationSessionProxy.AuthorizationSession,
+                    configProxy.Config,
+                    folderToUpload,
+                    programArgProxy.DoesOptionExist(OverrideFilesOption)
+                );
+            }
+            else
+            {
+                SendNotification(FailedCommandNotification, "No folder provided", null);
+            }
+        }
+        #endregion
     }
 }

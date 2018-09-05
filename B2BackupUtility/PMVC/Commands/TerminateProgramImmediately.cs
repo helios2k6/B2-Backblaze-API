@@ -19,42 +19,33 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-using B2BackblazeBridge.Core;
-using B2BackupUtility.Commands;
-using B2BackupUtility.PMVC.Proxies;
 using PureMVC.Interfaces;
 using PureMVC.Patterns.Command;
-using System.Collections.Generic;
-using System.Linq;
+using System;
 
 namespace B2BackupUtility.PMVC.Commands
 {
-    public sealed class DeleteAllFiles : SimpleCommand
+    /// <summary>
+    /// Forcably terminates this application after sending a notification to log the reason why
+    /// </summary>
+    public sealed class TerminateProgramImmediately : SimpleCommand
     {
         #region public properties
-        public static string CommandNotification => "Delete All Files";
+        public static string CommandNotification => "Terminate Program Immediately";
 
-        public static string FailedCommandNotification => "Failed To Delete All Files";
+        public static string LogProgramTerminationMessage => "Termination Reason Message";
 
-        public static string CommandSwitch => "--delete-all-files";
-
-        public static CommandType CommandType => CommandType.DELETE_ALL_FILES;
+        public static int ExitCode => -1;
         #endregion
 
         #region public methods
         public override void Execute(INotification notification)
         {
-            AuthorizationSessionProxy authorizationSessionProxy = (AuthorizationSessionProxy)Facade.RetrieveProxy(AuthorizationSessionProxy.Name);
-            ConfigProxy configProxy = (ConfigProxy)Facade.RetrieveProxy(ConfigProxy.Name);
-            RemoteFileSystemProxy remoteFileSystem = (RemoteFileSystemProxy)Facade.RetrieveProxy(RemoteFileSystemProxy.Name);
+            // Assume that the body of the notification contains the reason why this was terminated
+            SendNotification(LogProgramTerminationMessage, notification, null);
 
-            IEnumerable<BackblazeB2ActionResult<BackblazeB2DeleteFileResult>> deletionResult =
-                remoteFileSystem.DeleteAllFiles(authorizationSessionProxy.AuthorizationSession, configProxy.Config);
-
-            if (deletionResult.Any(t => t.HasErrors))
-            {
-                SendNotification(FailedCommandNotification, deletionResult, null);
-            }
+            // Exit this process immediately and cease processing other notifications
+            Environment.Exit(ExitCode);
         }
         #endregion
     }

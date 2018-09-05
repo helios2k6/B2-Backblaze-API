@@ -40,20 +40,21 @@ namespace B2BackupUtility.PMVC.Proxies
         #endregion
 
         #region ctor
-        public ConfigProxy() : base(Name, null)
+        /// <summary>
+        /// Constructs a new ConfigProxy with the given local path to the 
+        /// program configuration file
+        /// </summary>
+        /// <param name="fileName">The local path to the program configuration file</param>
+        public ConfigProxy(string fileName)
+            : base(Name, JsonConvert.DeserializeObject<Config>(File.ReadAllText(fileName)))
         {
         }
-        #endregion
 
-        #region public methods
         /// <summary>
-        /// Initializes this Config Proxy with the passed in 
-        /// File Name
+        /// Default constructor for this ConfigProxy
         /// </summary>
-        /// <param name="fileName">The path to the config file</param>
-        public void Initialize(string fileName)
+        public ConfigProxy() : base(Name, new Config())
         {
-            Data = JsonConvert.DeserializeObject<Config>(File.ReadAllText(fileName));
         }
         #endregion
     }

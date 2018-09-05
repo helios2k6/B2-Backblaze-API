@@ -36,8 +36,6 @@ namespace B2BackupUtility.PMVC.Commands
 
         public static string FailedCommandNotification => "Failed To Initialize Config";
 
-        public static string FinishedCommandNotification => "Finished Initializing Config";
-
         public static string CommandOption = "--config";
         #endregion
 
@@ -49,14 +47,18 @@ namespace B2BackupUtility.PMVC.Commands
                 ProgramArgumentsProxy argProxy = (ProgramArgumentsProxy)Facade.RetrieveProxy(ProgramArgumentsProxy.Name);
                 if (argProxy.TryGetArgument(CommandOption, out string configArgument))
                 {
-                    ((ConfigProxy)Facade.RetrieveProxy(ConfigProxy.Name)).Initialize(configArgument);
+                    Facade.RegisterProxy(new ConfigProxy(configArgument));
                 }
-
-                SendNotification(FinishedCommandNotification, null, null);
+                else
+                {
+                    Facade.RegisterProxy(new ConfigProxy());
+                }
             }
             catch (Exception e)
             {
                 SendNotification(FailedCommandNotification, e, null);
+                SendNotification(TerminateProgramImmediately.CommandNotification, e, null);
+                throw new InvalidOperationException("Should not be here! Terminate this application immediately!", e);
             }
         }
         #endregion

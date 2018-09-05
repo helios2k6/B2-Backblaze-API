@@ -35,8 +35,6 @@ namespace B2BackupUtility.PMVC.Commands
         #region public properties
         public static string CommandNotification => "Generate Encryption Key";
 
-        public static string FinishedCommandNotification => "Finished Generating Encryption Key";
-
         public static string EncryptionKeyNotification => "Generated Encryption Key";
 
         public static string InitializationVectorNotification => "Generated Initialization Vector";
@@ -58,7 +56,6 @@ namespace B2BackupUtility.PMVC.Commands
                 string ivAsString = Convert.ToBase64String(iv);
 
                 // Send out notififcations that will be printed later
-                SendNotification(FinishedCommandNotification, null, null);
                 SendNotification(EncryptionKeyNotification, keyAsString, null);
                 SendNotification(InitializationVectorNotification, ivAsString, null);
             }

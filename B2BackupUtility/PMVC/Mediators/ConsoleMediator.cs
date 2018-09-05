@@ -39,6 +39,8 @@ namespace B2BackupUtility.PMVC.Mediators
         private static readonly IDictionary<string, LogLevel> NotifLogLevels = new Dictionary<string, LogLevel>
         {
             // Critical messsages
+            { TerminateProgramImmediately.LogProgramTerminationMessage, LogLevel.CRITICAL },
+            { RemoteFileSystemProxy.CouldNotUploadFileManifestNotification, LogLevel.CRITICAL },
 
             // Warning messages
 
@@ -119,6 +121,10 @@ namespace B2BackupUtility.PMVC.Mediators
             else if (notification.Body is string s)
             {
                 return $"{notification.Name} - {s}";
+            }
+            else if (notification.Body != null)
+            {
+                return $"{notification.Name} - {notification.Body.ToString()}";
             }
 
             return notification.Name;
