@@ -19,11 +19,13 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+using B2BackblazeBridge.Core;
 using B2BackupUtility.Commands;
 using B2BackupUtility.PMVC.Proxies;
 using PureMVC.Interfaces;
 using PureMVC.Patterns.Command;
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Text;
 
@@ -39,11 +41,15 @@ namespace B2BackupUtility.PMVC.Commands
 
         public static string FailedCommandNotification => "Failed Uploading File";
 
-        public static string FinishedCommandNotification => "Finished Uploading File";
+        public static string BeginUploadingFileNotification => "Begin Uploading File";
+
+        public static string FinishedUploadingFileNotification => "Finished Uploading File";
 
         public static string CommandSwitch => "--upload-file";
 
         public static string FileOption => "--file";
+        
+        public static string OverrideOption => "--override";
 
         public static CommandType CommandType => CommandType.UPLOAD;
         #endregion
@@ -66,8 +72,14 @@ namespace B2BackupUtility.PMVC.Commands
             {
                 try
                 {
-                    Database.File file = fileSystemProxy.AddLocalFile(authorizationSessionProxy.AuthorizationSession, fileToUpload);
-                    SendNotification(FinishedCommandNotification, null, null);
+                    SendNotification(BeginUploadingFileNotification, fileToUpload, null);
+                    IEnumerable<BackblazeB2ActionResult<IBackblazeB2UploadResult>> results =
+                        fileSystemProxy.AddLocalFile(
+                            authorizationSessionProxy.AuthorizationSession,
+                            fileToUpload,
+                            programArgProxy.DoesOptionExist(OverrideOption)
+                        );
+                    SendNotification(FinishedUploadingFileNotification, results, null);
                 }
                 catch (FailedToUploadFileException ex)
                 {

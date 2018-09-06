@@ -55,14 +55,6 @@ namespace B2BackupUtility.PMVC.Proxies
         #region public properties
         public static string Name => "File Manifest Database Proxy";
 
-        public static string CouldNotUploadFileManifestNotification => "Could Not Upload File Manifest";
-
-        public static string CouldNotGetB2FilesNotification => "Could Not Get Files On B2";
-
-        public static string BeginUploadingFileNotification => "Begin Uploading File";
-
-        public static string FinishedUploadingFileNotification => "Finished Uploading File";
-
         public static string RemoteFileDatabaseManifestName => "b2_backup_util_file_database_manifest.txt.aes.gz";
         #endregion
 
@@ -100,10 +92,12 @@ namespace B2BackupUtility.PMVC.Proxies
         /// </summary>
         /// <param name="authorizationSession">The authorization session</param>
         /// <param name="localFilePath">The local path to the </param>
-        /// <returns>The database file that represents the file that was uploaded</returns>
-        public Database.File AddLocalFile(
+        /// <param name="shouldOverride">Whether to overide old files</param>
+        /// <returns>The file upload results for this upload</returns>
+        public IEnumerable<BackblazeB2ActionResult<IBackblazeB2UploadResult>> AddLocalFile(
             BackblazeB2AuthorizationSession authorizationSession,
-            string localFilePath
+            string localFilePath,
+            bool shouldOverride
         )
         {
             if (System.IO.File.Exists(localFilePath) == false)
@@ -114,7 +108,14 @@ namespace B2BackupUtility.PMVC.Proxies
             // Remove old file and shards if they exist
             if (TryGetFileByName(localFilePath, out Database.File oldFile))
             {
-                DeleteFile(authorizationSession, _config, oldFile);
+                if (shouldOverride)
+                {
+                    DeleteFile(authorizationSession, _config, oldFile);
+                }
+                else
+                {
+                    throw new InvalidOperationException($"Cannot override existing file {localFilePath}");
+                }
             }
 
             FileInfo info = new FileInfo(localFilePath);
@@ -127,7 +128,6 @@ namespace B2BackupUtility.PMVC.Proxies
                 SHA1 = SHA1FileHashStore.Instance.ComputeSHA1(localFilePath),
             };
 
-            SendNotification(BeginUploadingFileNotification, localFilePath, null);
             IEnumerable<BackblazeB2ActionResult<IBackblazeB2UploadResult>> results = Enumerable.Empty<BackblazeB2ActionResult<IBackblazeB2UploadResult>>();
             foreach (FileShard fileShard in FileFactory.CreateFileShards(new FileStream(localFilePath, FileMode.Open, FileAccess.Read, FileShare.Read), true))
             {
@@ -164,31 +164,12 @@ namespace B2BackupUtility.PMVC.Proxies
                     };
                 }
             }
-            SendNotification(FinishedUploadingFileNotification, localFilePath, null);
 
             // Update manifest
             FileDatabaseManifest.Files = FileDatabaseManifest.Files.Append(file).ToArray();
             UploadFileDatabaseManifest(authorizationSession);
 
-            return file;
-        }
-
-        /// <summary>
-        /// Adds a local folder to the server
-        /// </summary>
-        /// <param name="authorizationSession">The authorization session</param>
-        /// <param name="config">The program config</param>
-        /// <param name="localDirectoryToUpload">The local directory to upload</param>
-        /// <param name="overrideFiles">Whether to override any existing files on the server</param>
-        /// <returns>An IEnumerable of database files that were uploaded</returns>
-        public IEnumerable<Database.File> UploadFolder(
-            BackblazeB2AuthorizationSession authorizationSession,
-            Config config,
-            string localDirectoryToUpload,
-            bool overrideFiles
-        )
-        {
-            throw new NotImplementedException();
+            return results;
         }
 
         /// <summary>
@@ -355,7 +336,10 @@ namespace B2BackupUtility.PMVC.Proxies
             BackblazeB2ActionResult<BackblazeB2UploadFileResult> result = uploadAction.Execute();
             if (result.HasErrors)
             {
-                SendNotification(CouldNotUploadFileManifestNotification, result, null);
+                throw new FailedToUploadFileDatabaseManifestException
+                {
+                    BackblazeErrorDetails = result.Errors,
+                };
             }
         }
 
@@ -367,9 +351,10 @@ namespace B2BackupUtility.PMVC.Proxies
             BackblazeB2ActionResult<BackblazeB2ListFilesResult> listFilesActionResult = listFilesAction.Execute();
             if (listFilesActionResult.HasErrors)
             {
-                SendNotification(CouldNotGetB2FilesNotification, listFilesActionResult, null);
-                SendNotification(TerminateProgramImmediately.CommandNotification, null, null);
-                throw new InvalidOperationException("Should not be here! Application must terminate");
+                throw new FailedToGetListOfFilesOnB2Exception
+                {
+                    BackblazeErrorDetails = listFilesActionResult.Errors,
+                };
             }
 
             return listFilesActionResult.Result.Files;

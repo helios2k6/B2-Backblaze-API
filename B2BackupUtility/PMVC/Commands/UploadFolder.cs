@@ -19,6 +19,9 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+using System;
+using System.Collections.Generic;
+using B2BackblazeBridge.Core;
 using B2BackupUtility.Commands;
 using B2BackupUtility.PMVC.Proxies;
 using PureMVC.Interfaces;
@@ -33,13 +36,15 @@ namespace B2BackupUtility.PMVC.Commands
 
         public static string FailedCommandNotification => "Failed To Upload Folder";
 
+        public static string BeginUploadingFolderNotification => "Begin Uploading Folder";
+
         public static string FinishedCommandNotification => "Finished Uploading Folder";
 
         public static string CommandSwitch => "--upload-folder";
 
         public static string FolderOption => "--folder";
 
-        public static string OverrideFilesOption => "--override-files";
+        public static string OverrideOption => "--override";
 
         public static CommandType CommandType => CommandType.UPLOAD_FOLDER;
         #endregion
@@ -53,12 +58,9 @@ namespace B2BackupUtility.PMVC.Commands
             RemoteFileSystemProxy fileSystemProxy = (RemoteFileSystemProxy)Facade.RetrieveProxy(RemoteFileSystemProxy.Name);
             if (programArgProxy.TryGetArgument(FolderOption, out string folderToUpload))
             {
-                fileSystemProxy.UploadFolder(
-                    authorizationSessionProxy.AuthorizationSession,
-                    configProxy.Config,
-                    folderToUpload,
-                    programArgProxy.DoesOptionExist(OverrideFilesOption)
-                );
+                bool overrideFiles = programArgProxy.DoesOptionExist(OverrideOption);
+                // TODO: Finish this later
+                throw new NotImplementedException();
             }
             else
             {

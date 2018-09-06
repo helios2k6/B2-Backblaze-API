@@ -40,7 +40,6 @@ namespace B2BackupUtility.PMVC.Mediators
         {
             // Critical messsages
             { TerminateProgramImmediately.LogProgramTerminationMessage, LogLevel.CRITICAL },
-            { RemoteFileSystemProxy.CouldNotUploadFileManifestNotification, LogLevel.CRITICAL },
 
             // Warning messages
 
