@@ -70,6 +70,7 @@ namespace B2BackupUtility.PMVC.Commands
             CommandType command = CommandType.UNKNOWN;
             if (TryGetCommand(programArgsProxy.ProgramArguments, out command))
             {
+                InitializeModelIfNecessary(command);
                 SendNotification(CommandTypeToNotification[command], null, null);
             }
             else
@@ -80,6 +81,14 @@ namespace B2BackupUtility.PMVC.Commands
         #endregion
 
         #region private methods
+        private void InitializeModelIfNecessary(CommandType commandType)
+        {
+            if (commandType != CommandType.GENERATE_ENCRYPTION_KEY)
+            {
+                SendNotification(InitializeModel.CommandNotification, null, null);
+            }
+        }
+
         private static bool TryGetCommand(IEnumerable<string> args, out CommandType action)
         {
             foreach (string arg in args)

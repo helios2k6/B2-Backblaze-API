@@ -21,7 +21,7 @@
 
 using B2BackblazeBridge.Actions;
 using B2BackblazeBridge.Core;
-using B2BackupUtility.PMVC.Commands;
+using B2BackupUtility.PMVC.Proxies.Exceptions;
 using PureMVC.Patterns.Proxy;
 using System;
 
@@ -82,8 +82,10 @@ namespace B2BackupUtility.PMVC.Proxies
             BackblazeB2ActionResult<BackblazeB2AuthorizationSession> authorizationSessionResult = authorizeAccountAction.Execute();
             if (authorizationSessionResult.HasErrors)
             {
-                SendNotification(TerminateProgramImmediately.CommandNotification, authorizationSessionResult, null);
-                throw new InvalidOperationException("Should not be here. Application must terminate now!");
+                throw new AuthorizationException
+                {
+                    BackblazeErrorDetails = authorizationSessionResult.Errors,
+                };
             }
 
             return authorizationSessionResult.Result;

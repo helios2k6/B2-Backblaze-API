@@ -49,13 +49,6 @@ namespace B2BackupUtility.PMVC.Proxies
             : base(Name, JsonConvert.DeserializeObject<Config>(File.ReadAllText(fileName)))
         {
         }
-
-        /// <summary>
-        /// Default constructor for this ConfigProxy
-        /// </summary>
-        public ConfigProxy() : base(Name, new Config())
-        {
-        }
         #endregion
     }
 }

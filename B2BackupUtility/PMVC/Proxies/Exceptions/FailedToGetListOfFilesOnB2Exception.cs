@@ -1,4 +1,4 @@
-﻿/* 
+/* 
  * Copyright (c) 2015 Andrew Johnson
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy of 
@@ -19,29 +19,47 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-using PureMVC.Patterns.Command;
+using B2BackblazeBridge.Core;
 using System;
+using System.Collections.Generic;
+using System.Text;
 
-namespace B2BackupUtility.PMVC.Commands
+namespace B2BackupUtility.PMVC.Proxies.Exceptions
 {
     /// <summary>
-    /// Starts the application and kicks off the entire program
+    /// An Exception that is thrown we could not get the list of files on B2
     /// </summary>
-    public sealed class StartApplication : MacroCommand
+    public sealed class FailedToGetListOfFilesOnB2Exception : Exception, IExceptionHasB2BackblazeDetails
     {
         #region public properties
-        public static string CommandNotification => "Start Application";
-
-        public static string FailedCommandNotification => "Failed To Start Application";
-
-        public static string FinishedNotification => "Finished Starting Application";
+        public IEnumerable<BackblazeB2ActionErrorDetails> BackblazeErrorDetails { get; set; }
         #endregion
 
-        #region protected methods
-        protected override void InitializeMacroCommand()
+        #region ctor
+        public FailedToGetListOfFilesOnB2Exception()
         {
-            AddSubCommand(() => new InitializeProgramArguments());
-            AddSubCommand(() => new StartSelectedProgramCommand());
+        }
+
+        public FailedToGetListOfFilesOnB2Exception(string message) : base(message)
+        {
+        }
+
+        public FailedToGetListOfFilesOnB2Exception(string message, Exception innerException) : base(message, innerException)
+        {
+        }
+        #endregion
+
+        #region public methods
+        public override string ToString()
+        {
+            StringBuilder builder = new StringBuilder();
+            builder.AppendLine(base.ToString());
+            foreach (BackblazeB2ActionErrorDetails errorDetails in BackblazeErrorDetails)
+            {
+                builder.AppendLine(errorDetails.ToString()).AppendLine();
+            }
+
+            return builder.ToString();
         }
         #endregion
     }

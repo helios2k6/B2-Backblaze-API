@@ -19,13 +19,10 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-using B2BackblazeBridge.Core;
 using B2BackupUtility.Commands;
 using B2BackupUtility.PMVC.Proxies;
 using PureMVC.Interfaces;
 using PureMVC.Patterns.Command;
-using System.Collections.Generic;
-using System.Linq;
 
 namespace B2BackupUtility.PMVC.Commands
 {
@@ -53,23 +50,20 @@ namespace B2BackupUtility.PMVC.Commands
             if (programArgsProxy.TryGetArgument(FileNameOption, out string fileName))
             {
                 AuthorizationSessionProxy authorizationSessionProxy = (AuthorizationSessionProxy)Facade.RetrieveProxy(AuthorizationSessionProxy.Name);
-                ConfigProxy configProxy = (ConfigProxy)Facade.RetrieveProxy(ConfigProxy.Name);
                 RemoteFileSystemProxy remoteFileSystem = (RemoteFileSystemProxy)Facade.RetrieveProxy(RemoteFileSystemProxy.Name);
 
                 if (remoteFileSystem.TryGetFileByName(fileName, out Database.File fileToDelete))
                 {
-                    IEnumerable<BackblazeB2ActionResult<BackblazeB2DeleteFileResult>> deletionResult = 
-                        remoteFileSystem.DeleteFile(authorizationSessionProxy.AuthorizationSession, configProxy.Config, fileToDelete);
-
-                    if (deletionResult.Any(t => t.HasErrors))
-                    {
-                        SendNotification(FailedCommandNotification, deletionResult, null);
-                    }
+                    remoteFileSystem.DeleteFile(authorizationSessionProxy.AuthorizationSession, fileToDelete);
+                }
+                else
+                {
+                    SendNotification(FailedCommandNotification, $"Could not find file {fileName} to delete", null);
                 }
             }
             else
             {
-                SendNotification(FailedCommandNotification, null, null);
+                SendNotification(FailedCommandNotification, "You must provided a file name to delete", null);
             }
         }
         #endregion

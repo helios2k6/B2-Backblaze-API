@@ -19,30 +19,13 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-using PureMVC.Patterns.Command;
-using System;
+using B2BackblazeBridge.Core;
+using System.Collections.Generic;
 
-namespace B2BackupUtility.PMVC.Commands
+namespace B2BackupUtility.PMVC.Proxies.Exceptions
 {
-    /// <summary>
-    /// Starts the application and kicks off the entire program
-    /// </summary>
-    public sealed class StartApplication : MacroCommand
+    interface IExceptionHasB2BackblazeDetails
     {
-        #region public properties
-        public static string CommandNotification => "Start Application";
-
-        public static string FailedCommandNotification => "Failed To Start Application";
-
-        public static string FinishedNotification => "Finished Starting Application";
-        #endregion
-
-        #region protected methods
-        protected override void InitializeMacroCommand()
-        {
-            AddSubCommand(() => new InitializeProgramArguments());
-            AddSubCommand(() => new StartSelectedProgramCommand());
-        }
-        #endregion
+        IEnumerable<BackblazeB2ActionErrorDetails> BackblazeErrorDetails { get; set; }
     }
 }

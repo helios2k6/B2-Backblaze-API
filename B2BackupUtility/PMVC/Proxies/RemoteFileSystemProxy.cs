@@ -22,8 +22,8 @@
 using B2BackblazeBridge.Actions;
 using B2BackblazeBridge.Core;
 using B2BackupUtility.Database;
-using B2BackupUtility.PMVC.Commands;
 using B2BackupUtility.PMVC.Encryption;
+using B2BackupUtility.PMVC.Proxies.Exceptions;
 using Functional.Maybe;
 using Newtonsoft.Json;
 using PureMVC.Patterns.Proxy;
@@ -54,6 +54,18 @@ namespace B2BackupUtility.PMVC.Proxies
 
         #region public properties
         public static string Name => "File Manifest Database Proxy";
+
+        // Uploads
+        public static string BeginUploadFile => "Begin Upload File";
+        public static string FailedToUploadFile => "Failed To Upload File";
+        public static string FailedToUploadFileManifest => "Failed To Upload File Manifest";
+        public static string SkippedUploadFile => "Skip Uploading File";
+        public static string FinishUploadFile => "Finished Uploading File";
+
+        // Deletions
+        public static string BeginDeletingFile => "Begin Deleting File";
+        public static string FailedToDeleteFile => "Failed To Delete File";
+        public static string FinishedDeletingFile => "Finished Deleting File";
 
         public static string RemoteFileDatabaseManifestName => "b2_backup_util_file_database_manifest.txt.aes.gz";
         #endregion
@@ -86,6 +98,51 @@ namespace B2BackupUtility.PMVC.Proxies
         {
             return FileDatabaseManifest.Files;
         }
+        #region adding files
+        /// <summary>
+        /// Uploads a local folder
+        /// </summary>
+        /// <param name="authorizationSessionGenerator">
+        /// A function that returns an authorization session. This is required because this can be a 
+        /// very long running function and this gives callers the opportunity to fetch a new 
+        /// authorization session should this run over 24 hours
+        /// </param>
+        /// <param name="localFilePath">The local path to the </param>
+        /// <param name="shouldOverride">
+        /// Whether to overide old files. If false, this will not throw an exception, but
+        /// instead will quietly skip that file
+        /// </param>
+        public void AddFolder(
+            Func<BackblazeB2AuthorizationSession> authorizationSessionGenerator,
+            string localFolderPath,
+            bool shouldOverride
+        )
+        {
+            if (Directory.Exists(localFolderPath) == false)
+            {
+                throw new DirectoryNotFoundException($"Could not find directory {localFolderPath}");
+            }
+
+            foreach (string localFilePath in GetFilesToUpload(localFolderPath, shouldOverride))
+            {
+                CancellationEventRouter.GlobalCancellationToken.ThrowIfCancellationRequested();
+
+                try
+                {
+                    AddLocalFile(authorizationSessionGenerator(), localFilePath, shouldOverride);
+                }
+                catch (FailedToUploadFileException ex)
+                {
+                    // Just send a notification and move on
+                    SendNotification(FailedToUploadFile, ex, null);
+                }
+                catch (FailedToUploadFileDatabaseManifestException ex)
+                {
+                    // Just send a notification here as well. Continue uploading
+                    SendNotification(FailedToUploadFileManifest, ex, null);
+                }
+            }
+        }
 
         /// <summary>
         /// Adds a local file to the Remote File System
@@ -93,8 +150,7 @@ namespace B2BackupUtility.PMVC.Proxies
         /// <param name="authorizationSession">The authorization session</param>
         /// <param name="localFilePath">The local path to the </param>
         /// <param name="shouldOverride">Whether to overide old files</param>
-        /// <returns>The file upload results for this upload</returns>
-        public IEnumerable<BackblazeB2ActionResult<IBackblazeB2UploadResult>> AddLocalFile(
+        public void AddLocalFile(
             BackblazeB2AuthorizationSession authorizationSession,
             string localFilePath,
             bool shouldOverride
@@ -110,11 +166,12 @@ namespace B2BackupUtility.PMVC.Proxies
             {
                 if (shouldOverride)
                 {
-                    DeleteFile(authorizationSession, _config, oldFile);
+                    DeleteFile(authorizationSession, oldFile);
                 }
                 else
                 {
-                    throw new InvalidOperationException($"Cannot override existing file {localFilePath}");
+                    SendNotification(SkippedUploadFile, localFilePath, null);
+                    return;
                 }
             }
 
@@ -128,6 +185,7 @@ namespace B2BackupUtility.PMVC.Proxies
                 SHA1 = SHA1FileHashStore.Instance.ComputeSHA1(localFilePath),
             };
 
+            SendNotification(BeginUploadFile, localFilePath, null);
             IEnumerable<BackblazeB2ActionResult<IBackblazeB2UploadResult>> results = Enumerable.Empty<BackblazeB2ActionResult<IBackblazeB2UploadResult>>();
             foreach (FileShard fileShard in FileFactory.CreateFileShards(new FileStream(localFilePath, FileMode.Open, FileAccess.Read, FileShare.Read), true))
             {
@@ -164,54 +222,50 @@ namespace B2BackupUtility.PMVC.Proxies
                     };
                 }
             }
+            SendNotification(FinishUploadFile, localFilePath, null);
 
             // Update manifest
             FileDatabaseManifest.Files = FileDatabaseManifest.Files.Append(file).ToArray();
             UploadFileDatabaseManifest(authorizationSession);
-
-            return results;
         }
-
+        #endregion
+        #region deleting files
         /// <summary>
         /// A more efficient function for deleting all files off the server. This will delete all
         /// files on the B2 server, including those that aren't on the file database manifest and
         /// the file database manifest itself!
         /// </summary>
         /// <param name="authorizationSession">The authorization session</param>
-        /// <param name="config">The program config</param>
-        /// <returns>All of the deletion results</returns>
-        public IEnumerable<BackblazeB2ActionResult<BackblazeB2DeleteFileResult>> DeleteAllFiles(
-            BackblazeB2AuthorizationSession authorizationSession,
-            Config config
-        )
+        public void DeleteAllFiles(BackblazeB2AuthorizationSession authorizationSession)
         {
             FileDatabaseManifest.Files = new Database.File[0];
             IEnumerable<FileResult> rawB2FileList = GetRawB2Files(authorizationSession);
-            IList<BackblazeB2ActionResult<BackblazeB2DeleteFileResult>> deletionResults =
-                new List<BackblazeB2ActionResult<BackblazeB2DeleteFileResult>>();
-
             foreach (FileResult rawB2File in rawB2FileList)
             {
-                DeleteFileAction deleteFileAction = 
+                CancellationEventRouter.GlobalCancellationToken.ThrowIfCancellationRequested();
+
+                SendNotification(BeginDeletingFile, rawB2File.FileName, null);
+                DeleteFileAction deleteFileAction =
                     new DeleteFileAction(authorizationSession, rawB2File.FileID, rawB2File.FileName);
-
-                deletionResults.Add(deleteFileAction.Execute());
+                BackblazeB2ActionResult<BackblazeB2DeleteFileResult> deletionResult = deleteFileAction.Execute();
+                if (deletionResult.HasErrors)
+                {
+                    SendNotification(FailedToDeleteFile, deletionResult, null);
+                }
+                else
+                {
+                    SendNotification(FinishedDeletingFile, rawB2File.FileName, null);
+                }
             }
-
-            // Do not upload the file database manifest. Make sure the server is entirely clean
-            return deletionResults;
         }
 
         /// <summary>
         /// Deletes a file off the remote file system
         /// </summary>
         /// <param name="authorizationSession">The authorization session</param>
-        /// <param name="config">The config for this program</param>
         /// <param name="file">The file to delete</param>
-        /// <returns>Returns an IEnumerable of all of the results</returns>
-        public IEnumerable<BackblazeB2ActionResult<BackblazeB2DeleteFileResult>> DeleteFile(
+        public void DeleteFile(
             BackblazeB2AuthorizationSession authorizationSession,
-            Config config,
             Database.File file
         )
         {
@@ -222,9 +276,7 @@ namespace B2BackupUtility.PMVC.Proxies
             IEnumerable<FileResult> rawB2FileList = GetRawB2Files(authorizationSession);
             IDictionary<string, FileResult> fileNameToFileResult = rawB2FileList.ToDictionary(k => k.FileName, v => v);
 
-            IList<BackblazeB2ActionResult<BackblazeB2DeleteFileResult>> deletionResults =
-                new List<BackblazeB2ActionResult<BackblazeB2DeleteFileResult>>();
-            // Cycle through each File Shard and remove them
+            SendNotification(BeginDeletingFile, file.FileName, null);
             foreach (string shardID in file.FileShardIDs)
             {
                 if (fileNameToFileResult.TryGetValue(shardID, out FileResult fileShardToDelete))
@@ -232,17 +284,18 @@ namespace B2BackupUtility.PMVC.Proxies
                     DeleteFileAction deleteFileAction =
                         new DeleteFileAction(authorizationSession, fileShardToDelete.FileID, fileShardToDelete.FileName);
 
-                    deletionResults.Add(deleteFileAction.Execute());
+                    BackblazeB2ActionResult<BackblazeB2DeleteFileResult> deletionResult = deleteFileAction.Execute();
+                    if (deletionResult.HasErrors)
+                    {
+                        SendNotification(FailedToDeleteFile, deletionResult, null);
+                    }
                 }
             }
+            SendNotification(FinishedDeletingFile, file.FileName, null);
 
-            // Upload the file manifest now
             UploadFileDatabaseManifest(authorizationSession);
-
-            // Return deletion results
-            return deletionResults;
         }
-
+        #endregion
         /// <summary>
         /// Tries to get a file by name
         /// </summary>
@@ -302,6 +355,59 @@ namespace B2BackupUtility.PMVC.Proxies
         #endregion
 
         #region private methods
+        private IEnumerable<string> GetFilesToUpload(
+            string folder,
+            bool overrideFiles
+        )
+        {
+            IEnumerable<string> allLocalFiles = Directory.EnumerateFiles(folder, "*", SearchOption.AllDirectories);
+            if (overrideFiles)
+            {
+                foreach (string localFilePath in allLocalFiles)
+                {
+                    yield return localFilePath;
+                }
+
+                yield break;
+            }
+
+            foreach (string localFilePath in allLocalFiles)
+            {
+                if (TryGetFileByName(localFilePath, out Database.File remoteFileEntry))
+                {
+                    // Need confirm if this is a duplicate or not
+                    // 1. If the lengths and last modified dates are the same, then just assume the files are equals (do not upload)
+                    // 2. If the lengths are different then the files are not the same (upload)
+                    // 3. If the lengths are the same but the last modified dates are different, then we need to perform a SHA-1 check to see
+                    //    if the contents are actually different (upload if SHA-1's are different)
+                    FileInfo localFileInfo = new FileInfo(localFilePath);
+                    if (localFileInfo.Length == remoteFileEntry.FileLength)
+                    {
+                        // Scenario 3
+                        if (localFileInfo.LastWriteTimeUtc.Equals(DateTime.FromBinary(remoteFileEntry.LastModified)) == false)
+                        {
+                            string sha1OfLocalFile = SHA1FileHashStore.Instance.ComputeSHA1(localFilePath);
+                            if (string.Equals(sha1OfLocalFile, remoteFileEntry.SHA1, StringComparison.OrdinalIgnoreCase) == false)
+                            {
+                                yield return localFilePath;
+                            }
+                        }
+                        // Scenario 1 is implied 
+                    }
+                    else
+                    {
+                        // Scenario 2
+                        yield return localFilePath;
+                    }
+                }
+                else
+                {
+                    // We have never uploaded this file to the server
+                    yield return localFilePath;
+                }
+            }
+        }
+
         private static BackblazeB2ActionResult<IBackblazeB2UploadResult> ExecuteUploadAction<T>(BaseAction<T> action) where T : IBackblazeB2UploadResult
         {
             BackblazeB2ActionResult<T> uploadResult = action.Execute();
