@@ -24,12 +24,12 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace B2BackupUtility.PMVC.Proxies
+namespace B2BackupUtility.PMVC.Proxies.Exceptions
 {
     /// <summary>
     /// An Exception that is thrown when a file fails to upload
     /// </summary>
-    public sealed class FailedToUploadFileException : Exception
+    public sealed class FailedToUploadFileException : Exception, IExceptionHasB2BackblazeDetails
     {
         #region public properties
         public IEnumerable<BackblazeB2ActionErrorDetails> BackblazeErrorDetails { get; set; }

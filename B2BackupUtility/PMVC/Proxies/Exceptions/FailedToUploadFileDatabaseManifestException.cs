@@ -24,27 +24,27 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace B2BackupUtility.PMVC.Proxies
+namespace B2BackupUtility.PMVC.Proxies.Exceptions
 {
     /// <summary>
-    /// An Exception that is thrown we could not get the list of files on B2
+    /// An Exception that is thrown when we could not upload the file database manifest
     /// </summary>
-    public sealed class FailedToGetListOfFilesOnB2Exception : Exception
+    public sealed class FailedToUploadFileDatabaseManifestException : Exception, IExceptionHasB2BackblazeDetails
     {
         #region public properties
         public IEnumerable<BackblazeB2ActionErrorDetails> BackblazeErrorDetails { get; set; }
         #endregion
 
         #region ctor
-        public FailedToGetListOfFilesOnB2Exception()
+        public FailedToUploadFileDatabaseManifestException()
         {
         }
 
-        public FailedToGetListOfFilesOnB2Exception(string message) : base(message)
+        public FailedToUploadFileDatabaseManifestException(string message) : base(message)
         {
         }
 
-        public FailedToGetListOfFilesOnB2Exception(string message, Exception innerException) : base(message, innerException)
+        public FailedToUploadFileDatabaseManifestException(string message, Exception innerException) : base(message, innerException)
         {
         }
         #endregion

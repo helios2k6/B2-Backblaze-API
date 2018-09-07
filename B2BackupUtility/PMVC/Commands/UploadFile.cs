@@ -19,15 +19,12 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-using B2BackblazeBridge.Core;
 using B2BackupUtility.Commands;
 using B2BackupUtility.PMVC.Proxies;
+using B2BackupUtility.PMVC.Proxies.Exceptions;
 using PureMVC.Interfaces;
 using PureMVC.Patterns.Command;
-using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Text;
+using System.IO;
 
 namespace B2BackupUtility.PMVC.Commands
 {
@@ -41,24 +38,13 @@ namespace B2BackupUtility.PMVC.Commands
 
         public static string FailedCommandNotification => "Failed Uploading File";
 
-        public static string BeginUploadingFileNotification => "Begin Uploading File";
-
-        public static string FinishedUploadingFileNotification => "Finished Uploading File";
-
         public static string CommandSwitch => "--upload-file";
 
         public static string FileOption => "--file";
-        
+
         public static string OverrideOption => "--override";
 
         public static CommandType CommandType => CommandType.UPLOAD;
-        #endregion
-
-        #region public sealed classes
-        public sealed class ErrorDetails
-        {
-
-        }
         #endregion
 
         #region public methods
@@ -72,18 +58,19 @@ namespace B2BackupUtility.PMVC.Commands
             {
                 try
                 {
-                    SendNotification(BeginUploadingFileNotification, fileToUpload, null);
-                    IEnumerable<BackblazeB2ActionResult<IBackblazeB2UploadResult>> results =
-                        fileSystemProxy.AddLocalFile(
-                            authorizationSessionProxy.AuthorizationSession,
-                            fileToUpload,
-                            programArgProxy.DoesOptionExist(OverrideOption)
-                        );
-                    SendNotification(FinishedUploadingFileNotification, results, null);
+                    fileSystemProxy.AddLocalFile(
+                        authorizationSessionProxy.AuthorizationSession,
+                        fileToUpload,
+                        programArgProxy.DoesOptionExist(OverrideOption)
+                    );
                 }
                 catch (FailedToUploadFileException ex)
                 {
                     SendNotification(FailedCommandNotification, ex, null);
+                }
+                catch (FileNotFoundException)
+                {
+                    SendNotification(FailedCommandNotification, "Could not find file to upload", null);
                 }
             }
             else

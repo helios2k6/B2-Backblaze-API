@@ -19,14 +19,17 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+using B2BackblazeBridge.Core;
 using B2BackupUtility.Logging;
 using B2BackupUtility.PMVC.Commands;
 using B2BackupUtility.PMVC.Proxies;
+using B2BackupUtility.PMVC.Proxies.Exceptions;
 using PureMVC.Interfaces;
 using PureMVC.Patterns.Mediator;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 
 namespace B2BackupUtility.PMVC.Mediators
 {
@@ -115,6 +118,11 @@ namespace B2BackupUtility.PMVC.Mediators
         {
             if (notification.Body is Exception e)
             {
+                if (e is IExceptionHasB2BackblazeDetails d)
+                {
+                    return $"{notification.Name} - {PrintErrorDetails(d)}";
+                }
+
                 return $"{notification.Name} - {e.Message}";
             }
             else if (notification.Body is string s)
@@ -127,6 +135,17 @@ namespace B2BackupUtility.PMVC.Mediators
             }
 
             return notification.Name;
+        }
+
+        private static string PrintErrorDetails(IExceptionHasB2BackblazeDetails errorDetails)
+        {
+            StringBuilder builder = new StringBuilder();
+            foreach (BackblazeB2ActionErrorDetails error in errorDetails.BackblazeErrorDetails)
+            {
+                builder.AppendLine(error.ToString()).AppendLine();
+            }
+
+            return builder.ToString();
         }
         #endregion
     }

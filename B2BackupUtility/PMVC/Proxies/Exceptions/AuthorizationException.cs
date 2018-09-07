@@ -1,4 +1,4 @@
-/* 
+﻿/* 
  * Copyright (c) 2015 Andrew Johnson
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy of 
@@ -24,27 +24,27 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace B2BackupUtility.PMVC.Proxies
+namespace B2BackupUtility.PMVC.Proxies.Exceptions
 {
     /// <summary>
-    /// An Exception that is thrown when we could not upload the file database manifest
+    /// An exception that's thrown when an authorization issue arrises
     /// </summary>
-    public sealed class FailedToUploadFileDatabaseManifestException : Exception
+    public sealed class AuthorizationException : Exception, IExceptionHasB2BackblazeDetails
     {
         #region public properties
         public IEnumerable<BackblazeB2ActionErrorDetails> BackblazeErrorDetails { get; set; }
         #endregion
 
         #region ctor
-        public FailedToUploadFileDatabaseManifestException()
+        public AuthorizationException()
         {
         }
 
-        public FailedToUploadFileDatabaseManifestException(string message) : base(message)
+        public AuthorizationException(string message) : base(message)
         {
         }
 
-        public FailedToUploadFileDatabaseManifestException(string message, Exception innerException) : base(message, innerException)
+        public AuthorizationException(string message, Exception innerException) : base(message, innerException)
         {
         }
         #endregion

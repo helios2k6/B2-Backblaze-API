@@ -49,16 +49,11 @@ namespace B2BackupUtility.PMVC.Commands
                 {
                     Facade.RegisterProxy(new ConfigProxy(configArgument));
                 }
-                else
-                {
-                    Facade.RegisterProxy(new ConfigProxy());
-                }
             }
             catch (Exception e)
             {
                 SendNotification(FailedCommandNotification, e, null);
                 SendNotification(TerminateProgramImmediately.CommandNotification, e, null);
-                throw new InvalidOperationException("Should not be here! Terminate this application immediately!", e);
             }
         }
         #endregion

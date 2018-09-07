@@ -19,13 +19,11 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-using System;
-using System.Collections.Generic;
-using B2BackblazeBridge.Core;
 using B2BackupUtility.Commands;
 using B2BackupUtility.PMVC.Proxies;
 using PureMVC.Interfaces;
 using PureMVC.Patterns.Command;
+using System.IO;
 
 namespace B2BackupUtility.PMVC.Commands
 {
@@ -53,14 +51,22 @@ namespace B2BackupUtility.PMVC.Commands
         public override void Execute(INotification notification)
         {
             AuthorizationSessionProxy authorizationSessionProxy = (AuthorizationSessionProxy)Facade.RetrieveProxy(AuthorizationSessionProxy.Name);
-            ConfigProxy configProxy = (ConfigProxy)Facade.RetrieveProxy(ConfigProxy.Name);
             ProgramArgumentsProxy programArgProxy = (ProgramArgumentsProxy)Facade.RetrieveProxy(ProgramArgumentsProxy.Name);
             RemoteFileSystemProxy fileSystemProxy = (RemoteFileSystemProxy)Facade.RetrieveProxy(RemoteFileSystemProxy.Name);
             if (programArgProxy.TryGetArgument(FolderOption, out string folderToUpload))
             {
-                bool overrideFiles = programArgProxy.DoesOptionExist(OverrideOption);
-                // TODO: Finish this later
-                throw new NotImplementedException();
+                try
+                {
+                    fileSystemProxy.AddFolder(
+                        () => authorizationSessionProxy.AuthorizationSession,
+                        folderToUpload,
+                        programArgProxy.DoesOptionExist(OverrideOption)
+                    );
+                }
+                catch(DirectoryNotFoundException ex)
+                {
+                    SendNotification(FailedCommandNotification, ex, null);
+                }
             }
             else
             {
