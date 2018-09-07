@@ -27,6 +27,9 @@ using System.IO;
 
 namespace B2BackupUtility.PMVC.Commands
 {
+    /// <summary>
+    /// Uploades a folder to the B2 Backblaze Server
+    /// </summary>
     public sealed class UploadFolder : SimpleCommand
     {
         #region public properties

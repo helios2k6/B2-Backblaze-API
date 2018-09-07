@@ -43,14 +43,30 @@ namespace B2BackupUtility.PMVC.Mediators
         {
             // Critical messsages
             { TerminateProgramImmediately.LogProgramTerminationMessage, LogLevel.CRITICAL },
+            { DeleteFile.FailedCommandNotification, LogLevel.CRITICAL },
+            { InitializeConfig.FailedCommandNotification, LogLevel.CRITICAL },
+            { StartSelectedProgramCommand.FailedCommandNotification, LogLevel.CRITICAL },
+            { UploadFile.FailedCommandNotification, LogLevel.CRITICAL },
+            { UploadFolder.FailedCommandNotification, LogLevel.CRITICAL },
 
             // Warning messages
+            { RemoteFileSystemProxy.FailedToDeleteFile, LogLevel.WARNING},
+            { RemoteFileSystemProxy.FailedToUploadFile, LogLevel.WARNING },
+            { RemoteFileSystemProxy.FailedToUploadFileManifest, LogLevel.WARNING },
 
             // Info level messages
             { GenerateEncryptionKey.EncryptionKeyNotification, LogLevel.INFO },
             { GenerateEncryptionKey.InitializationVectorNotification, LogLevel.INFO },
+            { ListFiles.AllFilesListNotification, LogLevel.INFO },
+            { RemoteFileSystemProxy.FinishUploadFile, LogLevel.INFO },
+            { RemoteFileSystemProxy.FinishedDeletingFile, LogLevel.INFO },
+            { RemoteFileSystemProxy.SkippedUploadFile, LogLevel.INFO },
+            { UploadFolder.FinishedCommandNotification, LogLevel.INFO },
 
             // Verbose messages
+            { RemoteFileSystemProxy.BeginUploadFile, LogLevel.VERBOSE },
+            { RemoteFileSystemProxy.BeginDeletingFile, LogLevel.VERBOSE },
+            { UploadFolder.BeginUploadingFolderNotification, LogLevel.VERBOSE },
 
             // Debug messages
         };

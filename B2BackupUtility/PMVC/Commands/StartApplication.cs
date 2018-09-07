@@ -31,10 +31,6 @@ namespace B2BackupUtility.PMVC.Commands
     {
         #region public properties
         public static string CommandNotification => "Start Application";
-
-        public static string FailedCommandNotification => "Failed To Start Application";
-
-        public static string FinishedNotification => "Finished Starting Application";
         #endregion
 
         #region protected methods

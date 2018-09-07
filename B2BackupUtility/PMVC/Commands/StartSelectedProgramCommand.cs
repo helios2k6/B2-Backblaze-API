@@ -75,7 +75,7 @@ namespace B2BackupUtility.PMVC.Commands
             }
             else
             {
-                SendNotification(FailedCommandNotification, null, null);
+                SendNotification(FailedCommandNotification, $"Could not find command", null);
             }
         }
         #endregion
