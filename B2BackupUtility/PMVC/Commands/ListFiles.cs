@@ -20,16 +20,33 @@
  */
 
 using B2BackupUtility.Commands;
+using B2BackupUtility.PMVC.Proxies;
+using PureMVC.Interfaces;
 using PureMVC.Patterns.Command;
 
 namespace B2BackupUtility.PMVC.Commands
 {
+    /// <summary>
+    /// This lists the files that are currently on the server
+    /// </summary>
     public sealed class ListFiles : SimpleCommand
     {
+        #region public properties
         public static string CommandNotification => "List Files";
+
+        public static string AllFilesListNotification => "All Files List";
 
         public static string CommandSwitch => "--list-files";
 
         public static CommandType CommandType => CommandType.LIST;
+        #endregion
+
+        #region public methods
+        public override void Execute(INotification notification)
+        {
+            RemoteFileSystemProxy remoteFileSystemProxy = (RemoteFileSystemProxy)Facade.RetrieveProxy(RemoteFileSystemProxy.Name);
+            SendNotification(AllFilesListNotification, remoteFileSystemProxy.GetAllFiles(), null);
+        }
+        #endregion
     }
 }
