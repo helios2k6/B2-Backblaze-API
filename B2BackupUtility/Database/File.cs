@@ -65,6 +65,11 @@ namespace B2BackupUtility.Database
         #endregion
 
         #region public methods
+        public override string ToString()
+        {
+            return $"{FileName} - [{SHA1}]";
+        }
+
         public override bool Equals(object obj)
         {
             return Equals(obj as File);

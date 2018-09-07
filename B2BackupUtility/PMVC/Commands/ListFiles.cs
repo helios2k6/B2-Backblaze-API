@@ -19,6 +19,8 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+using System.Collections.Generic;
+using System.Text;
 using B2BackupUtility.Commands;
 using B2BackupUtility.PMVC.Proxies;
 using PureMVC.Interfaces;
@@ -45,7 +47,20 @@ namespace B2BackupUtility.PMVC.Commands
         public override void Execute(INotification notification)
         {
             RemoteFileSystemProxy remoteFileSystemProxy = (RemoteFileSystemProxy)Facade.RetrieveProxy(RemoteFileSystemProxy.Name);
-            SendNotification(AllFilesListNotification, remoteFileSystemProxy.GetAllFiles(), null);
+            SendNotification(AllFilesListNotification, BuildStringFromFiles(remoteFileSystemProxy.GetAllFiles()), null);
+        }
+        #endregion
+
+        #region private methods
+        private static string BuildStringFromFiles(IEnumerable<Database.File> files)
+        {
+            StringBuilder builder = new StringBuilder();
+            foreach (Database.File file in files)
+            {
+                builder.AppendLine(file.ToString());
+            }
+
+            return builder.ToString();
         }
         #endregion
     }
