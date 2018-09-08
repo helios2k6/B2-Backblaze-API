@@ -25,10 +25,15 @@ using System.IO;
 
 namespace B2BackupUtility.Proxies
 {
+    /// <summary>
+    /// The model proxy for the program config
+    /// </summary>
     public sealed class ConfigProxy : Proxy
     {
         #region public properties
         public static string Name => "Config Proxy";
+
+        public static string ConfigArgument => "--config";
 
         /// <summary>
         /// Gets the Config of this Proxy

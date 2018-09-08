@@ -156,13 +156,14 @@ namespace B2BackupUtility.Proxies
             bool shouldOverride
         )
         {
-            if (System.IO.File.Exists(localFilePath) == false)
+            string absoluteFilePath = Path.GetFullPath(localFilePath);
+            if (System.IO.File.Exists(absoluteFilePath) == false)
             {
-                throw new FileNotFoundException("Could not find file to upload", localFilePath);
+                throw new FileNotFoundException("Could not find file to upload", absoluteFilePath);
             }
 
             // Remove old file and shards if they exist
-            if (TryGetFileByName(localFilePath, out Database.File oldFile))
+            if (TryGetFileByName(absoluteFilePath, out Database.File oldFile))
             {
                 if (shouldOverride)
                 {
@@ -170,15 +171,15 @@ namespace B2BackupUtility.Proxies
                 }
                 else
                 {
-                    SendNotification(SkippedUploadFile, localFilePath, null);
+                    SendNotification(SkippedUploadFile, absoluteFilePath, null);
                     return;
                 }
             }
 
             IList<FileShard> fileShards = new List<FileShard>();
-            SendNotification(BeginUploadFile, localFilePath, null);
+            SendNotification(BeginUploadFile, absoluteFilePath, null);
             IEnumerable<BackblazeB2ActionResult<IBackblazeB2UploadResult>> results = Enumerable.Empty<BackblazeB2ActionResult<IBackblazeB2UploadResult>>();
-            foreach (FileShard fileShard in FileFactory.CreateFileShards(new FileStream(localFilePath, FileMode.Open, FileAccess.Read, FileShare.Read), true))
+            foreach (FileShard fileShard in FileFactory.CreateFileShards(new FileStream(absoluteFilePath, FileMode.Open, FileAccess.Read, FileShare.Read), true))
             {
                 // Update Database.File
                 fileShards.Add(fileShard);
@@ -216,17 +217,17 @@ namespace B2BackupUtility.Proxies
                     };
                 }
             }
-            SendNotification(FinishUploadFile, localFilePath, null);
+            SendNotification(FinishUploadFile, absoluteFilePath, null);
 
             // Create file
-            FileInfo info = new FileInfo(localFilePath);
+            FileInfo info = new FileInfo(absoluteFilePath);
             Database.File file = new Database.File
             {
                 FileLength = info.Length,
-                FileName = localFilePath,
+                FileName = absoluteFilePath,
                 FileShardIDs = fileShards.OrderBy(s => s.PieceNumber).Select(s => s.ID).ToArray(),
                 LastModified = info.LastWriteTime.ToBinary(),
-                SHA1 = SHA1FileHashStore.Instance.ComputeSHA1(localFilePath),
+                SHA1 = SHA1FileHashStore.Instance.ComputeSHA1(absoluteFilePath),
             };
 
             // Update manifest

@@ -19,9 +19,12 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+using B2BackupUtility.Mediators;
+using B2BackupUtility.Proxies;
 using PureMVC.Interfaces;
 using PureMVC.Patterns.Command;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 
 namespace B2BackupUtility.Commands
@@ -46,17 +49,25 @@ namespace B2BackupUtility.Commands
 
         private static IEnumerable<string> NecessaryOptions => new string[]
         {
-
+            ConfigProxy.ConfigArgument,
         };
 
         private static IEnumerable<string> LoggerOptions => new string[]
         {
-
+            ConsoleMediator.VerboseLevelSwitch,
+            ConsoleMediator.DebugLevelSwitch,
         };
 
         private static IDictionary<string, IEnumerable<string>> CommandSwitchesToOptionsMap = new Dictionary<string, IEnumerable<string>>
         {
-
+            { DeleteAllFiles.CommandSwitch, Enumerable.Empty<string>() },
+            { DeleteFile.CommandSwitch, new[] { DeleteFile.FileNameOption } },
+            { DownloadFile.CommandSwitch, new[] { DownloadFile.FileOption } },
+            { GenerateEncryptionKey.CommandSwitch, Enumerable.Empty<string>() },
+            { ListFiles.CommandSwitch, Enumerable.Empty<string>() },
+            { CommandSwitch, Enumerable.Empty<string>() },
+            { UploadFile.CommandSwitch, new[] { UploadFile.FileOption, UploadFile.OverrideOption } },
+            { UploadFolder.CommandSwitch, new[] { UploadFolder.FolderOption, UploadFolder.OverrideOption } },
         };
         #endregion
 
