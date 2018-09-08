@@ -19,6 +19,9 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+using B2BackupUtility.Commands;
+using PureMVC.Patterns.Facade;
+
 namespace B2BackupUtility
 {
     /// <summary>
@@ -28,6 +31,9 @@ namespace B2BackupUtility
     {
         public static void Main(string[] args)
         {
+            Facade
+                .GetInstance(() => new ApplicationFacade(args))
+                .SendNotification(StartSelectedProgramCommand.CommandNotification, null, null);
         }
     }
 }

@@ -19,8 +19,11 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+using B2BackupUtility.Commands;
+using B2BackupUtility.Proxies;
 using PureMVC.Interfaces;
 using PureMVC.Patterns.Facade;
+using System.Collections.Generic;
 
 namespace B2BackupUtility
 {
@@ -29,13 +32,44 @@ namespace B2BackupUtility
     /// </summary>
     public sealed class ApplicationFacade : Facade, IFacade
     {
+        #region private fields
+        private readonly IEnumerable<string> _programArguments;
+        #endregion
+
+        #region ctor
+        /// <summary>
+        /// Constructs a new application facade
+        /// </summary>
+        /// <param name="programArguments"></param>
+        public ApplicationFacade(IEnumerable<string> programArguments)
+        {
+            _programArguments = programArguments;
+        }
+        #endregion
+
         #region protected methods
         protected override void InitializeController()
         {
+            RegisterCommand(DeleteAllFiles.CommandNotification, () => new DeleteAllFiles());
+            RegisterCommand(DeleteFile.CommandNotification, () => new DeleteFile());
+            RegisterCommand(DownloadFile.CommandNotification, () => new DownloadFile());
+            RegisterCommand(GenerateEncryptionKey.CommandNotification, () => new GenerateEncryptionKey());
+            RegisterCommand(InitializeAuthorizationSession.CommandNotification, () => new InitializeAuthorizationSession());
+            RegisterCommand(InitializeConfig.CommandNotification, () => new InitializeConfig());
+            RegisterCommand(InitializeDownloadProxy.CommandNotification, () => new InitializeDownloadProxy());
+            RegisterCommand(Commands.InitializeModel.CommandNotification, () => new InitializeModel());
+            RegisterCommand(InitializeRemoteFileSystem.CommandNotification, () => new InitializeRemoteFileSystem());
+            RegisterCommand(ListFiles.CommandNotification, () => new ListFiles());
+            RegisterCommand(PrintHelp.CommandNotification, () => new PrintHelp());
+            RegisterCommand(StartSelectedProgramCommand.CommandNotification, () => new StartSelectedProgramCommand());
+            RegisterCommand(TerminateProgramImmediately.CommandNotification, () => new TerminateProgramImmediately());
+            RegisterCommand(UploadFile.CommandNotification, () => new UploadFile());
+            RegisterCommand(UploadFolder.CommandNotification, () => new UploadFolder());
         }
 
         protected override void InitializeModel()
         {
+            RegisterProxy(new ProgramArgumentsProxy(_programArguments));
         }
 
         protected override void InitializeView()

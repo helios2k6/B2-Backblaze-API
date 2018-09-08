@@ -43,11 +43,10 @@ namespace B2BackupUtility
             {
                 // Prevent the console from shutting down the first time
                 e.Cancel = true;
-                PureMVC.Patterns.Facade.Facade.GetInstance(() => new ApplicationFacade()).SendNotification(CancellationEvent, null, null);
             }
             else
             {
-                PureMVC.Patterns.Facade.Facade.GetInstance(() => new ApplicationFacade()).SendNotification(ImmediateCancellationEvent, null, null);
+                // Immediately shutdown this application
             }
             
             CancellationTokenSource.Cancel();

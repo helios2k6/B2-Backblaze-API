@@ -70,6 +70,21 @@ namespace B2BackupUtility.Mediators
             { UploadFolder.BeginUploadingFolderNotification, LogLevel.VERBOSE },
 
             // Debug messages
+            { DeleteAllFiles.CommandNotification, LogLevel.DEBUG },
+            { DeleteFile.CommandNotification, LogLevel.DEBUG },
+            { DownloadFile.CommandNotification, LogLevel.DEBUG },
+            { GenerateEncryptionKey.CommandNotification, LogLevel.DEBUG },
+            { InitializeAuthorizationSession.CommandNotification, LogLevel.DEBUG },
+            { InitializeConfig.CommandNotification, LogLevel.DEBUG },
+            { InitializeDownloadProxy.CommandNotification, LogLevel.DEBUG },
+            { InitializeModel.CommandNotification, LogLevel.DEBUG },
+            { InitializeRemoteFileSystem.CommandNotification, LogLevel.DEBUG },
+            { ListFiles.CommandNotification, LogLevel.DEBUG },
+            { PrintHelp.CommandNotification, LogLevel.DEBUG },
+            { StartSelectedProgramCommand.CommandNotification, LogLevel.DEBUG },
+            { TerminateProgramImmediately.CommandNotification, LogLevel.DEBUG },
+            { UploadFile.CommandNotification, LogLevel.DEBUG },
+            { UploadFolder.CommandNotification, LogLevel.DEBUG },
         };
 
         private static readonly IDictionary<LogLevel, string> LogLevelToPrefix = new Dictionary<LogLevel, string>
