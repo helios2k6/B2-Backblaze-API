@@ -46,7 +46,9 @@ namespace B2BackupUtility.Database
         public string FileName { get; set; }
 
         /// <summary>
-        /// The file shard IDs that comprise this file
+        /// The file shard IDs that comprise this file. The ordering
+        /// of the IDs in this array follows the ordering of the shards
+        /// themselves
         /// </summary>
         [JsonProperty(PropertyName = "FileShardIDs")]
         public string[] FileShardIDs { get; set; }

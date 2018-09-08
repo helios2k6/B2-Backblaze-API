@@ -19,7 +19,10 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+using System.IO;
 using B2BackupUtility.Commands;
+using B2BackupUtility.PMVC.Proxies;
+using B2BackupUtility.PMVC.Proxies.Exceptions;
 using PureMVC.Interfaces;
 using PureMVC.Patterns.Command;
 
@@ -30,7 +33,15 @@ namespace B2BackupUtility.PMVC.Commands
         #region public properties
         public static string CommandNotification => "Download File";
 
+        public static string FailedCommandNotification => "Failed To Download File";
+
+        public static string FinishedCommandNotification => "Finished Downloading File";
+
         public static string CommandSwitch => "--download-file";
+
+        public static string FileOption => "--file";
+
+        public static string DestinationOption => "--destination";
 
         public static CommandType CommandType => CommandType.DOWNLOAD;
         #endregion
@@ -38,7 +49,41 @@ namespace B2BackupUtility.PMVC.Commands
         #region public methods
         public override void Execute(INotification notification)
         {
+            AuthorizationSessionProxy authorizationProxy = (AuthorizationSessionProxy)Facade.RetrieveProxy(AuthorizationSessionProxy.Name);
+            ProgramArgumentsProxy programArgsProxy = (ProgramArgumentsProxy)Facade.RetrieveProxy(ProgramArgumentsProxy.Name);
+            if (programArgsProxy.TryGetArgument(FileOption, out string fileToDownload))
+            {
+                try
+                {
+                    RemoteFileSystemProxy remoteFileSystemProxy = (RemoteFileSystemProxy)Facade.RetrieveProxy(RemoteFileSystemProxy.Name);
+                    if (remoteFileSystemProxy.TryGetFileByName(fileToDownload, out Database.File remoteFileToDownload))
+                    {
+                        if (programArgsProxy.TryGetArgument(DestinationOption, out string localFileDestination) == false)
+                        {
+                            localFileDestination = Path.Combine(
+                                Directory.GetCurrentDirectory(),
+                                Path.GetFileName(remoteFileToDownload.FileName)
+                            );
+                        }
 
+                        DownloadFileProxy downloadFileProxy = (DownloadFileProxy)Facade.RetrieveProxy(DownloadFileProxy.Name);
+                        downloadFileProxy.DownloadFile(authorizationProxy.AuthorizationSession, remoteFileToDownload, localFileDestination);
+                        SendNotification(FinishedCommandNotification, $"Finished downloading file {fileToDownload}", null);
+                    }
+                    else
+                    {
+                        SendNotification(FailedCommandNotification, $"The file {fileToDownload} could not be found in the manifest", null);
+                    }
+                }
+                catch (FailedToDownloadFileException ex)
+                {
+                    SendNotification(FailedCommandNotification, ex, null);
+                }
+            }
+            else
+            {
+                SendNotification(FailedCommandNotification, "No file specified for download", null);
+            }
         }
         #endregion
     }

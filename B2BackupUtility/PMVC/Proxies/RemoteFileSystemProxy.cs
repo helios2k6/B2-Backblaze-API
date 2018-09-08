@@ -175,36 +175,30 @@ namespace B2BackupUtility.PMVC.Proxies
                 }
             }
 
-            FileInfo info = new FileInfo(localFilePath);
-            Database.File file = new Database.File
-            {
-                FileLength = info.Length,
-                FileName = localFilePath,
-                FileShardIDs = new string[0],
-                LastModified = info.LastWriteTime.ToBinary(),
-                SHA1 = SHA1FileHashStore.Instance.ComputeSHA1(localFilePath),
-            };
-
+            IList<FileShard> fileShards = new List<FileShard>();
             SendNotification(BeginUploadFile, localFilePath, null);
             IEnumerable<BackblazeB2ActionResult<IBackblazeB2UploadResult>> results = Enumerable.Empty<BackblazeB2ActionResult<IBackblazeB2UploadResult>>();
             foreach (FileShard fileShard in FileFactory.CreateFileShards(new FileStream(localFilePath, FileMode.Open, FileAccess.Read, FileShare.Read), true))
             {
                 // Update Database.File
-                file.FileShardIDs = file.FileShardIDs.Append(fileShard.ID).ToArray();
+                fileShards.Add(fileShard);
+
+                // Serialized file shard
+                byte[] serializedFileShard = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(fileShard));
 
                 BackblazeB2ActionResult<IBackblazeB2UploadResult> uploadResult = fileShard.Length < MinimumFileLengthForMultipleConnections
                     ? ExecuteUploadAction(
                         new UploadWithSingleConnectionAction(
                             authorizationSession,
                             _config.BucketID,
-                            EncryptionHelpers.EncryptBytes(fileShard.Payload, _config.EncryptionKey, _config.InitializationVector),
+                            EncryptionHelpers.EncryptBytes(serializedFileShard, _config.EncryptionKey, _config.InitializationVector),
                             fileShard.ID,
                             CancellationEventRouter.GlobalCancellationToken
                         ))
                     : ExecuteUploadAction(
                         new UploadWithMultipleConnectionsAction(
                             authorizationSession,
-                            new MemoryStream(EncryptionHelpers.EncryptBytes(fileShard.Payload, _config.EncryptionKey, _config.InitializationVector)),
+                            new MemoryStream(EncryptionHelpers.EncryptBytes(serializedFileShard, _config.EncryptionKey, _config.InitializationVector)),
                             fileShard.ID,
                             _config.BucketID,
                             DefaultUploadChunkSize,
@@ -223,6 +217,17 @@ namespace B2BackupUtility.PMVC.Proxies
                 }
             }
             SendNotification(FinishUploadFile, localFilePath, null);
+
+            // Create file
+            FileInfo info = new FileInfo(localFilePath);
+            Database.File file = new Database.File
+            {
+                FileLength = info.Length,
+                FileName = localFilePath,
+                FileShardIDs = fileShards.OrderBy(s => s.PieceNumber).Select(s => s.ID).ToArray(),
+                LastModified = info.LastWriteTime.ToBinary(),
+                SHA1 = SHA1FileHashStore.Instance.ComputeSHA1(localFilePath),
+            };
 
             // Update manifest
             FileDatabaseManifest.Files = FileDatabaseManifest.Files.Append(file).ToArray();
