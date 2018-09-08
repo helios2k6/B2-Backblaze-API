@@ -19,15 +19,39 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-namespace B2BackupUtility
+using B2BackupUtility.Proxies;
+using PureMVC.Interfaces;
+using PureMVC.Patterns.Command;
+using System;
+
+namespace B2BackupUtility.Commands
 {
     /// <summary>
-    /// The entry point for this utility program
+    /// Initializes the Remote File System
     /// </summary>
-    public static class Driver
+    public sealed class InitializeRemoteFileSystem : SimpleCommand
     {
-        public static void Main(string[] args)
+        #region public properties
+        public static string CommandNotification => "Initialize File Database Manifest";
+
+        public static string FailedCommandNotification => "Failed To Initialize File Database Manifest";
+        #endregion
+
+        #region public methods
+        public override void Execute(INotification notification)
         {
+            try
+            {
+                AuthorizationSessionProxy authorizationSessionProxy = (AuthorizationSessionProxy)Facade.RetrieveProxy(AuthorizationSessionProxy.Name);
+                ConfigProxy configProxy = (ConfigProxy)Facade.RetrieveProxy(ConfigProxy.Name);
+
+                Facade.RegisterProxy(new RemoteFileSystemProxy(authorizationSessionProxy.AuthorizationSession, configProxy.Config));
+            }
+            catch (Exception ex)
+            {
+                SendNotification(FailedCommandNotification, ex, null);
+            }
         }
+        #endregion
     }
 }

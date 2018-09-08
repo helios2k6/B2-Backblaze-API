@@ -19,15 +19,23 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-namespace B2BackupUtility
+using PureMVC.Patterns.Command;
+
+namespace B2BackupUtility.Commands
 {
     /// <summary>
-    /// The entry point for this utility program
+    /// Initializes the model
     /// </summary>
-    public static class Driver
+    public sealed class InitializeModel : MacroCommand
     {
-        public static void Main(string[] args)
+        public static string CommandNotification => "Initialize All Program State";
+
+        protected override void InitializeMacroCommand()
         {
+            AddSubCommand(() => new InitializeConfig());
+            AddSubCommand(() => new InitializeAuthorizationSession());
+            AddSubCommand(() => new InitializeRemoteFileSystem());
+            AddSubCommand(() => new InitializeDownloadProxy());
         }
     }
 }

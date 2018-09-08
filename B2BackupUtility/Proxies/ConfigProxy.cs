@@ -19,15 +19,36 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-namespace B2BackupUtility
+using Newtonsoft.Json;
+using PureMVC.Patterns.Proxy;
+using System.IO;
+
+namespace B2BackupUtility.Proxies
 {
-    /// <summary>
-    /// The entry point for this utility program
-    /// </summary>
-    public static class Driver
+    public sealed class ConfigProxy : Proxy
     {
-        public static void Main(string[] args)
+        #region public properties
+        public static string Name => "Config Proxy";
+
+        /// <summary>
+        /// Gets the Config of this Proxy
+        /// </summary>
+        public Config Config
+        {
+            get { return Data as Config; }
+        }
+        #endregion
+
+        #region ctor
+        /// <summary>
+        /// Constructs a new ConfigProxy with the given local path to the 
+        /// program configuration file
+        /// </summary>
+        /// <param name="fileName">The local path to the program configuration file</param>
+        public ConfigProxy(string fileName)
+            : base(Name, JsonConvert.DeserializeObject<Config>(File.ReadAllText(fileName)))
         {
         }
+        #endregion
     }
 }

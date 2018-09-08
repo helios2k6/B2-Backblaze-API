@@ -19,15 +19,33 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-namespace B2BackupUtility
+using B2BackupUtility.Proxies;
+using PureMVC.Interfaces;
+using PureMVC.Patterns.Command;
+
+namespace B2BackupUtility.Commands
 {
     /// <summary>
-    /// The entry point for this utility program
+    /// Deletes all files on the B2 Backblaze server
     /// </summary>
-    public static class Driver
+    public sealed class DeleteAllFiles : SimpleCommand
     {
-        public static void Main(string[] args)
+        #region public properties
+        public static string CommandNotification => "Delete All Files";
+
+        public static string CommandSwitch => "--delete-all-files";
+
+        public static CommandType CommandType => CommandType.DELETE_ALL_FILES;
+        #endregion
+
+        #region public methods
+        public override void Execute(INotification notification)
         {
+            AuthorizationSessionProxy authorizationSessionProxy = (AuthorizationSessionProxy)Facade.RetrieveProxy(AuthorizationSessionProxy.Name);
+            RemoteFileSystemProxy remoteFileSystem = (RemoteFileSystemProxy)Facade.RetrieveProxy(RemoteFileSystemProxy.Name);
+
+            remoteFileSystem.DeleteAllFiles(authorizationSessionProxy.AuthorizationSession);
         }
+        #endregion
     }
 }

@@ -19,15 +19,28 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+using PureMVC.Interfaces;
+using PureMVC.Patterns.Facade;
+
 namespace B2BackupUtility
 {
     /// <summary>
-    /// The entry point for this utility program
+    /// The concrete application facade
     /// </summary>
-    public static class Driver
+    public sealed class ApplicationFacade : Facade, IFacade
     {
-        public static void Main(string[] args)
+        #region protected methods
+        protected override void InitializeController()
         {
         }
+
+        protected override void InitializeModel()
+        {
+        }
+
+        protected override void InitializeView()
+        {
+        }
+        #endregion
     }
 }

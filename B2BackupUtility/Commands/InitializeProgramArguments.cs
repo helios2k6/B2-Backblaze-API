@@ -19,15 +19,27 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-namespace B2BackupUtility
+using B2BackupUtility.Proxies;
+using PureMVC.Interfaces;
+using PureMVC.Patterns.Command;
+using System.Collections.Generic;
+
+namespace B2BackupUtility.Commands
 {
     /// <summary>
-    /// The entry point for this utility program
+    /// Initializes the program arguments 
     /// </summary>
-    public static class Driver
+    public sealed class InitializeProgramArguments : SimpleCommand
     {
-        public static void Main(string[] args)
+        #region public properties
+        public static string CommandNotification => "Initialize Program Arguments";
+        #endregion
+
+        #region public methods
+        public override void Execute(INotification notification)
         {
+            Facade.RegisterProxy(new ProgramArgumentsProxy((IEnumerable<string>)notification.Body));
         }
+        #endregion
     }
 }

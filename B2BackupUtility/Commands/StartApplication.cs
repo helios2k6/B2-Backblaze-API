@@ -19,15 +19,25 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-namespace B2BackupUtility
+using PureMVC.Patterns.Command;
+
+namespace B2BackupUtility.Commands
 {
     /// <summary>
-    /// The entry point for this utility program
+    /// Starts the application and kicks off the entire program
     /// </summary>
-    public static class Driver
+    public sealed class StartApplication : MacroCommand
     {
-        public static void Main(string[] args)
+        #region public properties
+        public static string CommandNotification => "Start Application";
+        #endregion
+
+        #region protected methods
+        protected override void InitializeMacroCommand()
         {
+            AddSubCommand(() => new InitializeProgramArguments());
+            AddSubCommand(() => new StartSelectedProgramCommand());
         }
+        #endregion
     }
 }

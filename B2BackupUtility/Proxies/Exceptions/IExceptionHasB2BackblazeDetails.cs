@@ -19,15 +19,13 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-namespace B2BackupUtility
+using B2BackblazeBridge.Core;
+using System.Collections.Generic;
+
+namespace B2BackupUtility.Proxies.Exceptions
 {
-    /// <summary>
-    /// The entry point for this utility program
-    /// </summary>
-    public static class Driver
+    interface IExceptionHasB2BackblazeDetails
     {
-        public static void Main(string[] args)
-        {
-        }
+        IEnumerable<BackblazeB2ActionErrorDetails> BackblazeErrorDetails { get; set; }
     }
 }

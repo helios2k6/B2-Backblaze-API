@@ -19,15 +19,41 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-namespace B2BackupUtility
+using B2BackupUtility.Proxies;
+using PureMVC.Interfaces;
+using PureMVC.Patterns.Command;
+using System;
+
+namespace B2BackupUtility.Commands
 {
     /// <summary>
-    /// The entry point for this utility program
+    /// Initializes the authorization session
     /// </summary>
-    public static class Driver
+    public sealed class InitializeAuthorizationSession : SimpleCommand
     {
-        public static void Main(string[] args)
+        #region private static properties
+        private static TimeSpan OneHour => TimeSpan.FromMinutes(60);
+        #endregion
+
+        #region public properties
+        public static string CommandNotification => "Initialize Authorization Session";
+
+        public static string FailedCommandNotification => "Failed To Authorize Session";
+        #endregion
+
+        #region public methods
+        public override void Execute(INotification notification)
         {
+            try
+            {
+                ConfigProxy configProxy = (ConfigProxy)Facade.RetrieveProxy(ConfigProxy.Name);
+                Facade.RegisterProxy(new AuthorizationSessionProxy(configProxy.Config));
+            }
+            catch (Exception ex)
+            {
+                SendNotification(FailedCommandNotification, ex, null);
+            }
         }
+        #endregion
     }
 }

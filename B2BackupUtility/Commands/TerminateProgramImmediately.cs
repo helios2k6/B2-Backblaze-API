@@ -19,15 +19,34 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-namespace B2BackupUtility
+using PureMVC.Interfaces;
+using PureMVC.Patterns.Command;
+using System;
+
+namespace B2BackupUtility.Commands
 {
     /// <summary>
-    /// The entry point for this utility program
+    /// Forcably terminates this application after sending a notification to log the reason why
     /// </summary>
-    public static class Driver
+    public sealed class TerminateProgramImmediately : SimpleCommand
     {
-        public static void Main(string[] args)
+        #region public properties
+        public static string CommandNotification => "Terminate Program Immediately";
+
+        public static string LogProgramTerminationMessage => "Termination Reason Message";
+
+        public static int ExitCode => -1;
+        #endregion
+
+        #region public methods
+        public override void Execute(INotification notification)
         {
+            // Assume that the body of the notification contains the reason why this was terminated
+            SendNotification(LogProgramTerminationMessage, notification, null);
+
+            // Exit this process immediately and cease processing other notifications
+            Environment.Exit(ExitCode);
         }
+        #endregion
     }
 }

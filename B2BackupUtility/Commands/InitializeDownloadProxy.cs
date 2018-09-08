@@ -1,4 +1,4 @@
-﻿/* 
+/* 
  * Copyright (c) 2015 Andrew Johnson
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy of 
@@ -19,15 +19,27 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-namespace B2BackupUtility
+using B2BackupUtility.Proxies;
+using PureMVC.Interfaces;
+using PureMVC.Patterns.Command;
+
+namespace B2BackupUtility.Commands
 {
     /// <summary>
-    /// The entry point for this utility program
+    /// Initializes the the download proxy
     /// </summary>
-    public static class Driver
+    public sealed class InitializeDownloadProxy : SimpleCommand
     {
-        public static void Main(string[] args)
+        #region public properties
+        public static string CommandNotification => "Initialize Download Arguments";
+        #endregion
+
+        #region public methods
+        public override void Execute(INotification notification)
         {
+            ConfigProxy configProxy = (ConfigProxy)Facade.RetrieveProxy(ConfigProxy.Name);
+            Facade.RegisterProxy(new DownloadFileProxy(configProxy.Config));
         }
+        #endregion
     }
 }

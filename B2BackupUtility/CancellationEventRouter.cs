@@ -19,7 +19,6 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-using B2BackupUtility.Logging;
 using System;
 using System.Threading;
 
@@ -30,22 +29,25 @@ namespace B2BackupUtility
     /// </summary>
     public static class CancellationEventRouter
     {
+        public static string CancellationEvent => "Cancellation Event";
+
+        public static string ImmediateCancellationEvent => "Immediate Cancellation Event";
+
         private static readonly CancellationTokenSource CancellationTokenSource = new CancellationTokenSource();
         private static int CancellationRequestCounter = 0;
 
         public static void HandleCancel(object sender, ConsoleCancelEventArgs e)
         {
-            Loggers.Logger.Log(LogLevel.CRITICAL, "Cancellation requested");
             int incrementedValue = Interlocked.Increment(ref CancellationRequestCounter);
             if (incrementedValue == 1)
             {
-                Loggers.Logger.Log(LogLevel.CRITICAL, "Attempting to cancel gracefully");
                 // Prevent the console from shutting down the first time
                 e.Cancel = true;
+                PureMVC.Patterns.Facade.Facade.GetInstance(() => new ApplicationFacade()).SendNotification(CancellationEvent, null, null);
             }
             else
             {
-                Loggers.Logger.Log(LogLevel.CRITICAL, "Shutting down immediately!");
+                PureMVC.Patterns.Facade.Facade.GetInstance(() => new ApplicationFacade()).SendNotification(ImmediateCancellationEvent, null, null);
             }
             
             CancellationTokenSource.Cancel();

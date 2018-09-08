@@ -19,49 +19,43 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+using B2BackupUtility.Proxies;
+using PureMVC.Interfaces;
+using PureMVC.Patterns.Command;
+using System;
+
 namespace B2BackupUtility.Commands
 {
     /// <summary>
-    /// List of different program commands
+    /// This command initializes the config proxy
     /// </summary>
-    public enum CommandType
+    public sealed class InitializeConfig : SimpleCommand
     {
-        /// <summary>
-        /// Download file command
-        /// </summary>
-        DOWNLOAD,
-        /// <summary>
-        /// Delete file command
-        /// </summary>
-        DELETE,
-        /// <summary>
-        /// Delete all files in the Bucket
-        /// </summary>
-        DELETE_ALL_FILES,
-        /// <summary>
-        /// Generate the encryption key and 
-        /// initialization vector
-        /// </summary>
-        GENERATE_ENCRYPTION_KEY,
-        /// <summary>
-        /// Get the file info command
-        /// </summary>
-        GET_FILE_INFO,
-        /// <summary>
-        /// List file command
-        /// </summary>
-        LIST,
-        /// <summary>
-        /// Upload file command
-        /// </summary>
-        UPLOAD,
-        /// <summary>
-        /// Upload a folder of files
-        /// </summary>
-        UPLOAD_FOLDER,
-        /// <summary>
-        /// Unknown command
-        /// </summary>
-        UNKNOWN,
+        #region public properties
+        public static string CommandNotification => "Initialize Config";
+
+        public static string FailedCommandNotification => "Failed To Initialize Config";
+
+        public static string CommandOption = "--config";
+        #endregion
+
+        #region public methods
+        public override void Execute(INotification notification)
+        {
+            try
+            {
+                ProgramArgumentsProxy argProxy = (ProgramArgumentsProxy)Facade.RetrieveProxy(ProgramArgumentsProxy.Name);
+                if (argProxy.TryGetArgument(CommandOption, out string configArgument))
+                {
+                    Facade.RegisterProxy(new ConfigProxy(configArgument));
+                }
+            }
+            catch (Exception e)
+            {
+                SendNotification(FailedCommandNotification, e, null);
+                SendNotification(TerminateProgramImmediately.CommandNotification, e, null);
+            }
+        }
+        #endregion
     }
 }

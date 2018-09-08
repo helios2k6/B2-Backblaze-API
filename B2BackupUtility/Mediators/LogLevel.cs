@@ -19,15 +19,17 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-namespace B2BackupUtility
+namespace B2BackupUtility.Mediators
 {
     /// <summary>
-    /// The entry point for this utility program
+    /// Log levels
     /// </summary>
-    public static class Driver
+    public enum LogLevel : int
     {
-        public static void Main(string[] args)
-        {
-        }
+        DEBUG = 0,
+        VERBOSE = 1,
+        INFO = 2,
+        WARNING = 3,
+        CRITICAL = 4,
     }
 }
