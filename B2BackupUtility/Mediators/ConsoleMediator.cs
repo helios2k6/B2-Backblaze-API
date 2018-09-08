@@ -111,21 +111,9 @@ namespace B2BackupUtility.Mediators
         /// <summary>
         /// Default constructor
         /// </summary>
-        public ConsoleMediator() : base(Name, null)
+        public ConsoleMediator(LogLevel logLevel) : base(Name, null)
         {
-            ProgramArgumentsProxy argumentsProxy = (ProgramArgumentsProxy)Facade.RetrieveProxy(ProgramArgumentsProxy.Name);
-            if (argumentsProxy.DoesOptionExist(DebugLevelSwitch))
-            {
-                _logLevel = LogLevel.DEBUG;
-            }
-            else if (argumentsProxy.DoesOptionExist(VerboseLevelSwitch))
-            {
-                _logLevel = LogLevel.VERBOSE;
-            }
-            else
-            {
-                _logLevel = LogLevel.INFO;
-            }
+            _logLevel = logLevel;
         }
 
         #endregion
