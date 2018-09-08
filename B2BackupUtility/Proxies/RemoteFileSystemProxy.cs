@@ -241,18 +241,18 @@ namespace B2BackupUtility.Proxies
         /// files on the B2 server, including those that aren't on the file database manifest and
         /// the file database manifest itself!
         /// </summary>
-        /// <param name="authorizationSession">The authorization session</param>
-        public void DeleteAllFiles(BackblazeB2AuthorizationSession authorizationSession)
+        /// <param name="authorizationSessionGenerator">A generator function for the authorization session</param>
+        public void DeleteAllFiles(Func<BackblazeB2AuthorizationSession> authorizationSessionGenerator)
         {
             FileDatabaseManifest.Files = new Database.File[0];
-            IEnumerable<FileResult> rawB2FileList = GetRawB2Files(authorizationSession);
+            IEnumerable<FileResult> rawB2FileList = GetRawB2Files(authorizationSessionGenerator());
             foreach (FileResult rawB2File in rawB2FileList)
             {
                 CancellationEventRouter.GlobalCancellationToken.ThrowIfCancellationRequested();
 
                 SendNotification(BeginDeletingFile, rawB2File.FileName, null);
                 DeleteFileAction deleteFileAction =
-                    new DeleteFileAction(authorizationSession, rawB2File.FileID, rawB2File.FileName);
+                    new DeleteFileAction(authorizationSessionGenerator(), rawB2File.FileID, rawB2File.FileName);
                 BackblazeB2ActionResult<BackblazeB2DeleteFileResult> deletionResult = deleteFileAction.Execute();
                 if (deletionResult.HasErrors)
                 {

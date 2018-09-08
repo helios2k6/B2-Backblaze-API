@@ -44,7 +44,7 @@ namespace B2BackupUtility.Commands
             AuthorizationSessionProxy authorizationSessionProxy = (AuthorizationSessionProxy)Facade.RetrieveProxy(AuthorizationSessionProxy.Name);
             RemoteFileSystemProxy remoteFileSystem = (RemoteFileSystemProxy)Facade.RetrieveProxy(RemoteFileSystemProxy.Name);
 
-            remoteFileSystem.DeleteAllFiles(authorizationSessionProxy.AuthorizationSession);
+            remoteFileSystem.DeleteAllFiles(() => authorizationSessionProxy.AuthorizationSession);
         }
         #endregion
     }
