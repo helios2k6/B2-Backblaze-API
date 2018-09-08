@@ -43,10 +43,13 @@ namespace B2BackupUtility
             {
                 // Prevent the console from shutting down the first time
                 e.Cancel = true;
+                Driver.ApplicationFacade.SendNotification(CancellationEvent, "Cancellation Requested", null);
             }
             else
             {
                 // Immediately shutdown this application
+                Driver.ApplicationFacade.SendNotification(ImmediateCancellationEvent, "Immediate Cancellation Requested", null);
+                Environment.Exit(-1);
             }
             
             CancellationTokenSource.Cancel();

@@ -48,6 +48,8 @@ namespace B2BackupUtility.Mediators
             { UploadFile.FailedCommandNotification, LogLevel.CRITICAL },
             { UploadFolder.FailedCommandNotification, LogLevel.CRITICAL },
             { DownloadFile.FailedCommandNotification, LogLevel.CRITICAL },
+            { CancellationEventRouter.CancellationEvent, LogLevel.CRITICAL },
+            { CancellationEventRouter.ImmediateCancellationEvent, LogLevel.CRITICAL },
 
             // Warning messages
             { RemoteFileSystemProxy.FailedToDeleteFile, LogLevel.WARNING},

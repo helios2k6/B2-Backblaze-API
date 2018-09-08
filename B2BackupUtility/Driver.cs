@@ -20,6 +20,7 @@
  */
 
 using B2BackupUtility.Commands;
+using PureMVC.Interfaces;
 using PureMVC.Patterns.Facade;
 
 namespace B2BackupUtility
@@ -29,11 +30,19 @@ namespace B2BackupUtility
     /// </summary>
     public static class Driver
     {
+        /// <summary>
+        /// The facade instance for this application
+        /// </summary>
+        public static IFacade ApplicationFacade
+        {
+            get;
+            private set;
+        }
+
         public static void Main(string[] args)
         {
-            Facade
-                .GetInstance(() => new ApplicationFacade(args))
-                .SendNotification(StartSelectedProgramCommand.CommandNotification, null, null);
+            ApplicationFacade = Facade.GetInstance(() => new ApplicationFacade());
+            ApplicationFacade.SendNotification(StartApplication.CommandNotification, null, null);
         }
     }
 }
