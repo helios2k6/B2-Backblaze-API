@@ -42,7 +42,7 @@ namespace B2BackupUtility
         public static void Main(string[] args)
         {
             ApplicationFacade = Facade.GetInstance(() => new ApplicationFacade());
-            ApplicationFacade.SendNotification(StartApplication.CommandNotification, null, null);
+            ApplicationFacade.SendNotification(StartApplication.CommandNotification, args, null);
         }
     }
 }

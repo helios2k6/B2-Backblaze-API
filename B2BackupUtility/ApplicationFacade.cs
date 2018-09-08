@@ -33,6 +33,7 @@ namespace B2BackupUtility
         #region protected methods
         protected override void InitializeController()
         {
+            base.InitializeController();
             RegisterCommand(DeleteAllFiles.CommandNotification, () => new DeleteAllFiles());
             RegisterCommand(DeleteFile.CommandNotification, () => new DeleteFile());
             RegisterCommand(DownloadFile.CommandNotification, () => new DownloadFile());

@@ -2,7 +2,7 @@
   "profiles": {
     "B2BackupUtility": {
       "commandName": "Project",
-      "commandLineArgs": "--config \"D:\\DOCKING\\b2_backup_config.txt\" --log-level debug --generate-encryption-key"
+      "commandLineArgs": "--config \"D:\\DOCKING\\b2_backup_config.txt\" --debug --delete-all-files"
     }
   }
 }

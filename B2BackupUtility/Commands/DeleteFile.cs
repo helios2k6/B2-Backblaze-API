@@ -33,8 +33,6 @@ namespace B2BackupUtility.Commands
         #region public properties
         public static string CommandNotification => "Delete File";
 
-        public static string FailedCommandNotification => "Failed To Delete File";
-
         public static string CommandSwitch => "--delete-file";
 
         public static string FileNameOption => "--file-name";
@@ -55,14 +53,6 @@ namespace B2BackupUtility.Commands
                 {
                     remoteFileSystem.DeleteFile(authorizationSessionProxy.AuthorizationSession, fileToDelete);
                 }
-                else
-                {
-                    SendNotification(FailedCommandNotification, $"Could not find file {fileName} to delete", null);
-                }
-            }
-            else
-            {
-                SendNotification(FailedCommandNotification, "You must provided a file name to delete", null);
             }
         }
         #endregion
