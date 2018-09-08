@@ -122,7 +122,7 @@ namespace B2BackupUtility.Mediators
         #region public methods
         public override void HandleNotification(INotification notification)
         {
-            if (NotifLogLevels.TryGetValue(notification.Name, out LogLevel logLevel) && _logLevel < logLevel)
+            if (NotifLogLevels.TryGetValue(notification.Name, out LogLevel logLevel) && _logLevel <= logLevel)
             {
                 Console.Error.WriteLine($"{LogLevelToPrefix[logLevel]}[{DateTime.Now}] - {GetLogMessageFromNotification(notification)}");
             }

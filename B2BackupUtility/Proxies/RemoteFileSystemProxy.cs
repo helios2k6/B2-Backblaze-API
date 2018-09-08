@@ -49,6 +49,9 @@ namespace B2BackupUtility.Proxies
         private static int DefaultUploadChunkSize => 5242880; // 5 mebibytes
 
         private FileDatabaseManifest FileDatabaseManifest => Data as FileDatabaseManifest;
+        private IEnumerable<FileResult> _rawB2FilesOnServer;
+        private bool _rawB2FileListNeedsRefresh;
+
         private readonly Config _config;
         #endregion
 
@@ -85,6 +88,7 @@ namespace B2BackupUtility.Proxies
         ) : base(Name, null)
         {
             _config = config;
+            _rawB2FileListNeedsRefresh = true;
             Data = GetOrCreateFileDatabaseManifest(authorizationSession);
         }
         #endregion
@@ -233,6 +237,8 @@ namespace B2BackupUtility.Proxies
             // Update manifest
             FileDatabaseManifest.Files = FileDatabaseManifest.Files.Append(file).ToArray();
             UploadFileDatabaseManifest(authorizationSession);
+
+            _rawB2FileListNeedsRefresh = true;
         }
         #endregion
         #region deleting files
@@ -263,6 +269,8 @@ namespace B2BackupUtility.Proxies
                     SendNotification(FinishedDeletingFile, rawB2File.FileName, null);
                 }
             }
+
+            _rawB2FileListNeedsRefresh = true;
         }
 
         /// <summary>
@@ -300,6 +308,8 @@ namespace B2BackupUtility.Proxies
             SendNotification(FinishedDeletingFile, file.FileName, null);
 
             UploadFileDatabaseManifest(authorizationSession);
+
+            _rawB2FileListNeedsRefresh = true;
         }
         #endregion
         /// <summary>
@@ -459,17 +469,23 @@ namespace B2BackupUtility.Proxies
             BackblazeB2AuthorizationSession authorizationSession
         )
         {
-            ListFilesAction listFilesAction = ListFilesAction.CreateListFileActionForFileVersions(authorizationSession, _config.BucketID, true);
-            BackblazeB2ActionResult<BackblazeB2ListFilesResult> listFilesActionResult = listFilesAction.Execute();
-            if (listFilesActionResult.HasErrors)
+            if (_rawB2FileListNeedsRefresh || _rawB2FilesOnServer == null)
             {
-                throw new FailedToGetListOfFilesOnB2Exception
+                ListFilesAction listFilesAction = ListFilesAction.CreateListFileActionForFileVersions(authorizationSession, _config.BucketID, true);
+                BackblazeB2ActionResult<BackblazeB2ListFilesResult> listFilesActionResult = listFilesAction.Execute();
+                if (listFilesActionResult.HasErrors)
                 {
-                    BackblazeErrorDetails = listFilesActionResult.Errors,
-                };
+                    throw new FailedToGetListOfFilesOnB2Exception
+                    {
+                        BackblazeErrorDetails = listFilesActionResult.Errors,
+                    };
+                }
+
+                _rawB2FileListNeedsRefresh = false;
+                _rawB2FilesOnServer = listFilesActionResult.Result.Files;
             }
 
-            return listFilesActionResult.Result.Files;
+            return _rawB2FilesOnServer;
         }
 
         private static byte[] SerializeManifest(FileDatabaseManifest fileDatabaseManifest, Config config)
