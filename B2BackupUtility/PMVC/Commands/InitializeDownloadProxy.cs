@@ -1,4 +1,4 @@
-﻿/* 
+/* 
  * Copyright (c) 2015 Andrew Johnson
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy of 
@@ -19,23 +19,28 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+using B2BackupUtility.PMVC.Proxies;
+using PureMVC.Interfaces;
 using PureMVC.Patterns.Command;
+using System.Collections.Generic;
 
 namespace B2BackupUtility.PMVC.Commands
 {
     /// <summary>
-    /// Initializes the model
+    /// Initializes the the download proxy
     /// </summary>
-    public sealed class InitializeModel : MacroCommand
+    public sealed class InitializeDownloadProxy : SimpleCommand
     {
-        public static string CommandNotification => "Initialize All Program State";
+        #region public properties
+        public static string CommandNotification => "Initialize Download Arguments";
+        #endregion
 
-        protected override void InitializeMacroCommand()
+        #region public methods
+        public override void Execute(INotification notification)
         {
-            AddSubCommand(() => new InitializeConfig());
-            AddSubCommand(() => new InitializeAuthorizationSession());
-            AddSubCommand(() => new InitializeRemoteFileSystem());
-            AddSubCommand(() => new InitializeDownloadProxy());
+            ConfigProxy configProxy = (ConfigProxy)Facade.RetrieveProxy(ConfigProxy.Name);
+            Facade.RegisterProxy(new DownloadFileProxy(configProxy.Config));
         }
+        #endregion
     }
 }
