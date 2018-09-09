@@ -211,6 +211,8 @@ namespace B2BackupUtility.Proxies
                     throw new FailedToUploadFileException
                     {
                         BackblazeErrorDetails = uploadResult.Errors,
+                        File = absoluteFilePath,
+                        FileShardID = fileShard.ID,
                     };
                 }
             }

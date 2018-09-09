@@ -33,6 +33,10 @@ namespace B2BackupUtility.Proxies.Exceptions
     {
         #region public properties
         public IEnumerable<BackblazeB2ActionErrorDetails> BackblazeErrorDetails { get; set; }
+
+        public string File { get; set; }
+
+        public string FileShardID { get; set; }
         #endregion
 
         #region ctor
@@ -54,6 +58,7 @@ namespace B2BackupUtility.Proxies.Exceptions
         {
             StringBuilder builder = new StringBuilder();
             builder.AppendLine(base.ToString());
+            builder.AppendLine($"Failed: {File} | {FileShardID}");
             foreach (BackblazeB2ActionErrorDetails errorDetails in BackblazeErrorDetails)
             {
                 builder.AppendLine(errorDetails.ToString()).AppendLine();
