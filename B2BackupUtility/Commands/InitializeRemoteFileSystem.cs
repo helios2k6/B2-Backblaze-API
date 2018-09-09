@@ -50,6 +50,7 @@ namespace B2BackupUtility.Commands
             catch (Exception ex)
             {
                 SendNotification(FailedCommandNotification, ex, null);
+                SendNotification(TerminateProgramImmediately.CommandNotification, null, null);
             }
         }
         #endregion
