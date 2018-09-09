@@ -182,7 +182,6 @@ namespace B2BackupUtility.Proxies
 
             IList<FileShard> fileShards = new List<FileShard>();
             SendNotification(BeginUploadFile, absoluteFilePath, null);
-            IEnumerable<BackblazeB2ActionResult<IBackblazeB2UploadResult>> results = Enumerable.Empty<BackblazeB2ActionResult<IBackblazeB2UploadResult>>();
             foreach (FileShard fileShard in FileFactory.CreateFileShards(new FileStream(absoluteFilePath, FileMode.Open, FileAccess.Read, FileShare.Read), true))
             {
                 // Update Database.File
@@ -210,8 +209,6 @@ namespace B2BackupUtility.Proxies
                             DefaultUploadConnections,
                             CancellationEventRouter.GlobalCancellationToken
                         ));
-
-                results = results.Append(uploadResult);
 
                 if (uploadResult.HasErrors)
                 {

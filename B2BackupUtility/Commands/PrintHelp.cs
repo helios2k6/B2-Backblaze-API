@@ -76,6 +76,7 @@ namespace B2BackupUtility.Commands
         {
             StringBuilder builder = new StringBuilder();
             builder
+                .AppendLine()
                 .AppendLine(HeaderText)
                 .AppendLine(InstructionText)
                 .AppendLine();
