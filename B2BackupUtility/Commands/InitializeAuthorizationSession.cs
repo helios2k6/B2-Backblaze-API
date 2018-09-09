@@ -37,22 +37,13 @@ namespace B2BackupUtility.Commands
 
         #region public properties
         public static string CommandNotification => "Initialize Authorization Session";
-
-        public static string FailedCommandNotification => "Failed To Authorize Session";
         #endregion
 
         #region public methods
         public override void Execute(INotification notification)
         {
-            try
-            {
-                ConfigProxy configProxy = (ConfigProxy)Facade.RetrieveProxy(ConfigProxy.Name);
-                Facade.RegisterProxy(new AuthorizationSessionProxy(configProxy.Config));
-            }
-            catch (Exception ex)
-            {
-                SendNotification(FailedCommandNotification, ex, null);
-            }
+            ConfigProxy configProxy = (ConfigProxy)Facade.RetrieveProxy(ConfigProxy.Name);
+            Facade.RegisterProxy(new AuthorizationSessionProxy(configProxy.Config));
         }
         #endregion
     }

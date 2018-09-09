@@ -62,7 +62,7 @@ namespace B2BackupUtility.Database
                     ID = Guid.NewGuid().ToString(),
                     Length = bytesRead,
                     Payload = payload,
-                    PieceNumber = pieceNumber,
+                    PieceNumber = pieceNumber++,
                     SHA1 = SHA1FileHashStore.Instance.ComputeSHA1Hash(payload),
                 };
             }

@@ -471,7 +471,7 @@ namespace B2BackupUtility.Proxies
         {
             if (_rawB2FileListNeedsRefresh || _rawB2FilesOnServer == null)
             {
-                ListFilesAction listFilesAction = ListFilesAction.CreateListFileActionForFileVersions(authorizationSession, _config.BucketID, true);
+                ListFilesAction listFilesAction = ListFilesAction.CreateListFileActionForFileNames(authorizationSession, _config.BucketID, true);
                 BackblazeB2ActionResult<BackblazeB2ListFilesResult> listFilesActionResult = listFilesAction.Execute();
                 if (listFilesActionResult.HasErrors)
                 {

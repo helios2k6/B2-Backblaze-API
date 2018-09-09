@@ -75,6 +75,7 @@ namespace B2BackupUtility.Commands
             else
             {
                 SendNotification(FailedCommandNotification, $"Could not find command", null);
+                SendNotification(PrintHelp.CommandNotification, null, null);
             }
         }
         #endregion

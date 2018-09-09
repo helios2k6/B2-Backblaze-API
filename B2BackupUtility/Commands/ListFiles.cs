@@ -60,6 +60,7 @@ namespace B2BackupUtility.Commands
                 return "No files";
             }
 
+            builder.AppendLine("All Files");
             foreach (Database.File file in files)
             {
                 builder.AppendLine(file.ToString());

@@ -29,7 +29,9 @@ using PureMVC.Patterns.Proxy;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text;
+using static B2BackblazeBridge.Core.BackblazeB2ListFilesResult;
 
 namespace B2BackupUtility.Proxies
 {
@@ -77,24 +79,42 @@ namespace B2BackupUtility.Proxies
                 throw new InvalidOperationException($"Cannot override file {destination}.");
             }
 
+            ListFilesAction listFilesAction = ListFilesAction.CreateListFileActionForFileNames(authorizationSession, _config.BucketID, true);
+            BackblazeB2ActionResult<BackblazeB2ListFilesResult> listFilesActionResult = listFilesAction.Execute();
+            if (listFilesActionResult.HasErrors)
+            {
+                throw new FailedToGetListOfFilesOnB2Exception
+                {
+                    BackblazeErrorDetails = listFilesActionResult.Errors,
+                };
+            }
+
+            IDictionary<string, FileResult> fileNameToFileResultMap = listFilesActionResult.Result.Files.ToDictionary(k => k.FileName, v => v);
             IList<string> localFileShardIDPaths = new List<string>();
             // Download all file shards first
             foreach (string fileShardID in file.FileShardIDs)
             {
                 string shardFilePath = Path.Combine(Directory.GetCurrentDirectory(), fileShardID);
                 localFileShardIDPaths.Add(shardFilePath);
-                DownloadFileAction fileShardDownload =
-                    new DownloadFileAction(authorizationSession, shardFilePath, _config.BucketID);
 
-                BackblazeB2ActionResult<BackblazeB2DownloadFileResult> downloadResult =
-                    fileShardDownload.Execute();
-
-                if (downloadResult.HasErrors)
+                if (fileNameToFileResultMap.TryGetValue(fileShardID, out FileResult b2FileShard))
                 {
-                    throw new FailedToDownloadFileException
+                    using (DownloadFileAction fileShardDownload =
+                        new DownloadFileAction(authorizationSession, shardFilePath, b2FileShard.FileID))
                     {
-                        BackblazeErrorDetails = downloadResult.Errors,
-                    };
+                        BackblazeB2ActionResult<BackblazeB2DownloadFileResult> downloadResult = fileShardDownload.Execute();
+                        if (downloadResult.HasErrors)
+                        {
+                            throw new FailedToDownloadFileException
+                            {
+                                BackblazeErrorDetails = downloadResult.Errors,
+                            };
+                        }
+                    }
+                }
+                else
+                {
+                    throw new FailedToDownloadFileException("Could not find the B2 File for file shard");
                 }
             }
 
@@ -126,6 +146,8 @@ namespace B2BackupUtility.Proxies
 
                     outputFileStream.Write(deserializedFileShard.Payload, 0, deserializedFileShard.Payload.Length);
                     currentShard++;
+
+                    System.IO.File.Delete(fileShardPath);
                 }
             }
         }
