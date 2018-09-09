@@ -124,7 +124,7 @@ namespace B2BackupUtility.Mediators
         {
             if (NotifLogLevels.TryGetValue(notification.Name, out LogLevel logLevel) && _logLevel <= logLevel)
             {
-                Console.Error.WriteLine($"{LogLevelToPrefix[logLevel]}[{DateTime.Now}] - {GetLogMessageFromNotification(notification)}");
+                Console.Error.WriteLine($"{LogLevelToPrefix[logLevel]}[{DateTime.Now}][{notification.Name}] - {GetLogMessageFromNotification(notification)}");
             }
         }
 
@@ -141,21 +141,21 @@ namespace B2BackupUtility.Mediators
             {
                 if (e is IExceptionHasB2BackblazeDetails d)
                 {
-                    return $"{notification.Name} - {PrintErrorDetails(d)}";
+                    return $"{PrintErrorDetails(d)}";
                 }
 
-                return $"{notification.Name} - {e.Message}";
+                return $"{e.Message}";
             }
             else if (notification.Body is string s)
             {
-                return $"{notification.Name} - {s}";
+                return $"{s}";
             }
             else if (notification.Body != null)
             {
-                return $"{notification.Name} - {notification.Body.ToString()}";
+                return $"{notification.Body.ToString()}";
             }
 
-            return notification.Name;
+            return string.Empty;
         }
 
         private static string PrintErrorDetails(IExceptionHasB2BackblazeDetails errorDetails)

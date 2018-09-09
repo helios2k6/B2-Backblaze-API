@@ -23,6 +23,7 @@ using B2BackupUtility.Proxies;
 using PureMVC.Interfaces;
 using PureMVC.Patterns.Command;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 
 namespace B2BackupUtility.Commands
@@ -54,6 +55,11 @@ namespace B2BackupUtility.Commands
         private static string BuildStringFromFiles(IEnumerable<Database.File> files)
         {
             StringBuilder builder = new StringBuilder();
+            if (files.Any() == false)
+            {
+                return "No files";
+            }
+
             foreach (Database.File file in files)
             {
                 builder.AppendLine(file.ToString());

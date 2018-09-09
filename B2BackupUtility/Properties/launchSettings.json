@@ -2,7 +2,7 @@
   "profiles": {
     "B2BackupUtility": {
       "commandName": "Project",
-      "commandLineArgs": "--config \"D:\\DOCKING\\b2_backup_config.txt\" --delete-all-files"
+      "commandLineArgs": "--config \"D:\\DOCKING\\b2_backup_config.txt\" --list-files"
     }
   }
 }
