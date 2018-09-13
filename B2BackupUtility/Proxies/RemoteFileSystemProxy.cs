@@ -136,11 +136,6 @@ namespace B2BackupUtility.Proxies
                     // Just send a notification and move on
                     SendNotification(FailedToUploadFile, ex, null);
                 }
-                catch (FailedToUploadFileDatabaseManifestException ex)
-                {
-                    // Just send a notification here as well. Continue uploading
-                    SendNotification(FailedToUploadFileManifest, ex, null);
-                }
             }
         }
 
