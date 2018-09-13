@@ -41,7 +41,6 @@ namespace B2BackupUtility.Mediators
         private static readonly IDictionary<string, LogLevel> NotifLogLevels = new Dictionary<string, LogLevel>
         {
             // Critical messsages
-            { TerminateProgramImmediately.LogProgramTerminationMessage, LogLevel.CRITICAL },
             { InitializeConfig.FailedCommandNotification, LogLevel.CRITICAL },
             { StartSelectedProgramCommand.FailedCommandNotification, LogLevel.CRITICAL },
             { UploadFile.FailedCommandNotification, LogLevel.CRITICAL },
@@ -84,7 +83,6 @@ namespace B2BackupUtility.Mediators
             { ListFiles.CommandNotification, LogLevel.DEBUG },
             { PrintHelp.CommandNotification, LogLevel.DEBUG },
             { StartSelectedProgramCommand.CommandNotification, LogLevel.DEBUG },
-            { TerminateProgramImmediately.CommandNotification, LogLevel.DEBUG },
             { UploadFile.CommandNotification, LogLevel.DEBUG },
             { UploadFolder.CommandNotification, LogLevel.DEBUG },
         };

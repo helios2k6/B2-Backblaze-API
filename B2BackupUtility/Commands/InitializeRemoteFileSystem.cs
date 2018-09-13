@@ -40,18 +40,10 @@ namespace B2BackupUtility.Commands
         #region public methods
         public override void Execute(INotification notification)
         {
-            try
-            {
-                AuthorizationSessionProxy authorizationSessionProxy = (AuthorizationSessionProxy)Facade.RetrieveProxy(AuthorizationSessionProxy.Name);
-                ConfigProxy configProxy = (ConfigProxy)Facade.RetrieveProxy(ConfigProxy.Name);
+            AuthorizationSessionProxy authorizationSessionProxy = (AuthorizationSessionProxy)Facade.RetrieveProxy(AuthorizationSessionProxy.Name);
+            ConfigProxy configProxy = (ConfigProxy)Facade.RetrieveProxy(ConfigProxy.Name);
 
-                Facade.RegisterProxy(new RemoteFileSystemProxy(authorizationSessionProxy.AuthorizationSession, configProxy.Config));
-            }
-            catch (Exception ex)
-            {
-                SendNotification(FailedCommandNotification, ex, null);
-                SendNotification(TerminateProgramImmediately.CommandNotification, null, null);
-            }
+            Facade.RegisterProxy(new RemoteFileSystemProxy(authorizationSessionProxy.AuthorizationSession, configProxy.Config));
         }
         #endregion
     }

@@ -49,7 +49,6 @@ namespace B2BackupUtility
             RegisterCommand(PrintHelp.CommandNotification, () => new PrintHelp());
             RegisterCommand(StartApplication.CommandNotification, () => new StartApplication());
             RegisterCommand(StartSelectedProgramCommand.CommandNotification, () => new StartSelectedProgramCommand());
-            RegisterCommand(TerminateProgramImmediately.CommandNotification, () => new TerminateProgramImmediately());
             RegisterCommand(UploadFile.CommandNotification, () => new UploadFile());
             RegisterCommand(UploadFolder.CommandNotification, () => new UploadFolder());
         }

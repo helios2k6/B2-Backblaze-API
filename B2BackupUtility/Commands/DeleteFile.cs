@@ -53,6 +53,14 @@ namespace B2BackupUtility.Commands
                 {
                     remoteFileSystem.DeleteFile(authorizationSessionProxy.AuthorizationSession, fileToDelete);
                 }
+                else
+                {
+                    throw new TerminateProgramException($"File {fileName} could not be found on the server");
+                }
+            }
+            else
+            {
+                throw new TerminateProgramException("No file name provided to delete");
             }
         }
         #endregion

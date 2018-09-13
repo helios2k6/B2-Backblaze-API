@@ -57,22 +57,15 @@ namespace B2BackupUtility.Commands
             RemoteFileSystemProxy fileSystemProxy = (RemoteFileSystemProxy)Facade.RetrieveProxy(RemoteFileSystemProxy.Name);
             if (programArgProxy.TryGetArgument(FolderOption, out string folderToUpload))
             {
-                try
-                {
-                    fileSystemProxy.AddFolder(
-                        () => authorizationSessionProxy.AuthorizationSession,
-                        folderToUpload,
-                        programArgProxy.DoesOptionExist(OverrideOption)
-                    );
-                }
-                catch (DirectoryNotFoundException ex)
-                {
-                    SendNotification(FailedCommandNotification, ex, null);
-                }
+                fileSystemProxy.AddFolder(
+                    () => authorizationSessionProxy.AuthorizationSession,
+                    folderToUpload,
+                    programArgProxy.DoesOptionExist(OverrideOption)
+                );
             }
             else
             {
-                SendNotification(FailedCommandNotification, "No folder provided", null);
+                throw new TerminateProgramException("No folder path provided to upload");
             }
         }
         #endregion

@@ -55,26 +55,15 @@ namespace B2BackupUtility.Commands
             RemoteFileSystemProxy fileSystemProxy = (RemoteFileSystemProxy)Facade.RetrieveProxy(RemoteFileSystemProxy.Name);
             if (programArgProxy.TryGetArgument(FileOption, out string fileToUpload))
             {
-                try
-                {
-                    fileSystemProxy.AddLocalFile(
-                        authorizationSessionProxy.AuthorizationSession,
-                        fileToUpload,
-                        programArgProxy.DoesOptionExist(OverrideOption)
-                    );
-                }
-                catch (FailedToUploadFileException ex)
-                {
-                    SendNotification(FailedCommandNotification, ex, null);
-                }
-                catch (FileNotFoundException)
-                {
-                    SendNotification(FailedCommandNotification, "Could not find file to upload", null);
-                }
+                fileSystemProxy.AddLocalFile(
+                    authorizationSessionProxy.AuthorizationSession,
+                    fileToUpload,
+                    programArgProxy.DoesOptionExist(OverrideOption)
+                );
             }
             else
             {
-                SendNotification(FailedCommandNotification, "No file provided", null);
+                throw new TerminateProgramException("File to upload not provided");
             }
         }
         #endregion

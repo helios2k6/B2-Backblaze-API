@@ -42,18 +42,10 @@ namespace B2BackupUtility.Commands
         #region public methods
         public override void Execute(INotification notification)
         {
-            try
+            ProgramArgumentsProxy argProxy = (ProgramArgumentsProxy)Facade.RetrieveProxy(ProgramArgumentsProxy.Name);
+            if (argProxy.TryGetArgument(CommandOption, out string configArgument))
             {
-                ProgramArgumentsProxy argProxy = (ProgramArgumentsProxy)Facade.RetrieveProxy(ProgramArgumentsProxy.Name);
-                if (argProxy.TryGetArgument(CommandOption, out string configArgument))
-                {
-                    Facade.RegisterProxy(new ConfigProxy(configArgument));
-                }
-            }
-            catch (Exception e)
-            {
-                SendNotification(FailedCommandNotification, e, null);
-                SendNotification(TerminateProgramImmediately.CommandNotification, e, null);
+                Facade.RegisterProxy(new ConfigProxy(configArgument));
             }
         }
         #endregion

@@ -52,36 +52,29 @@ namespace B2BackupUtility.Commands
             ProgramArgumentsProxy programArgsProxy = (ProgramArgumentsProxy)Facade.RetrieveProxy(ProgramArgumentsProxy.Name);
             if (programArgsProxy.TryGetArgument(FileOption, out string fileToDownload))
             {
-                try
+                RemoteFileSystemProxy remoteFileSystemProxy = (RemoteFileSystemProxy)Facade.RetrieveProxy(RemoteFileSystemProxy.Name);
+                if (remoteFileSystemProxy.TryGetFileByName(fileToDownload, out Database.File remoteFileToDownload))
                 {
-                    RemoteFileSystemProxy remoteFileSystemProxy = (RemoteFileSystemProxy)Facade.RetrieveProxy(RemoteFileSystemProxy.Name);
-                    if (remoteFileSystemProxy.TryGetFileByName(fileToDownload, out Database.File remoteFileToDownload))
+                    if (programArgsProxy.TryGetArgument(DestinationOption, out string localFileDestination) == false)
                     {
-                        if (programArgsProxy.TryGetArgument(DestinationOption, out string localFileDestination) == false)
-                        {
-                            localFileDestination = Path.Combine(
-                                Directory.GetCurrentDirectory(),
-                                Path.GetFileName(remoteFileToDownload.FileName)
-                            );
-                        }
+                        localFileDestination = Path.Combine(
+                            Directory.GetCurrentDirectory(),
+                            Path.GetFileName(remoteFileToDownload.FileName)
+                        );
+                    }
 
-                        DownloadFileProxy downloadFileProxy = (DownloadFileProxy)Facade.RetrieveProxy(DownloadFileProxy.Name);
-                        downloadFileProxy.DownloadFile(authorizationProxy.AuthorizationSession, remoteFileToDownload, localFileDestination);
-                        SendNotification(FinishedCommandNotification, $"Finished downloading file {fileToDownload}", null);
-                    }
-                    else
-                    {
-                        SendNotification(FailedCommandNotification, $"The file {fileToDownload} could not be found in the manifest", null);
-                    }
+                    DownloadFileProxy downloadFileProxy = (DownloadFileProxy)Facade.RetrieveProxy(DownloadFileProxy.Name);
+                    downloadFileProxy.DownloadFile(authorizationProxy.AuthorizationSession, remoteFileToDownload, localFileDestination);
+                    SendNotification(FinishedCommandNotification, $"Finished downloading file {fileToDownload}", null);
                 }
-                catch (FailedToDownloadFileException ex)
+                else
                 {
-                    SendNotification(FailedCommandNotification, ex, null);
+                    throw new TerminateProgramException($"The file {fileToDownload} could not be found in the manifest");
                 }
             }
             else
             {
-                SendNotification(FailedCommandNotification, "No file specified for download", null);
+                throw new TerminateProgramException("No file specified for download");
             }
         }
         #endregion
