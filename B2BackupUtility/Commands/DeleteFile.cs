@@ -35,7 +35,7 @@ namespace B2BackupUtility.Commands
 
         public static string CommandSwitch => "--delete-file";
 
-        public static string FileNameOption => "--file-name";
+        public static string FileOption => "--file";
 
         public static CommandType CommandType => CommandType.DELETE;
         #endregion
@@ -44,7 +44,7 @@ namespace B2BackupUtility.Commands
         public override void Execute(INotification notification)
         {
             ProgramArgumentsProxy programArgsProxy = (ProgramArgumentsProxy)Facade.RetrieveProxy(ProgramArgumentsProxy.Name);
-            if (programArgsProxy.TryGetArgument(FileNameOption, out string fileName))
+            if (programArgsProxy.TryGetArgument(FileOption, out string fileName))
             {
                 AuthorizationSessionProxy authorizationSessionProxy = (AuthorizationSessionProxy)Facade.RetrieveProxy(AuthorizationSessionProxy.Name);
                 RemoteFileSystemProxy remoteFileSystem = (RemoteFileSystemProxy)Facade.RetrieveProxy(RemoteFileSystemProxy.Name);
