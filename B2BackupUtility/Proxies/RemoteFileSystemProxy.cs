@@ -220,7 +220,7 @@ namespace B2BackupUtility.Proxies
                 FileLength = info.Length,
                 FileName = absoluteFilePath,
                 FileShardIDs = fileShards.OrderBy(s => s.PieceNumber).Select(s => s.ID).ToArray(),
-                LastModified = info.LastWriteTime.ToBinary(),
+                LastModified = info.LastWriteTimeUtc.ToBinary(),
                 SHA1 = SHA1FileHashStore.Instance.ComputeSHA1(absoluteFilePath),
             };
 
