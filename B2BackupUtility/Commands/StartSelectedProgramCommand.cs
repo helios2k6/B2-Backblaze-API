@@ -22,6 +22,7 @@
 using B2BackupUtility.Proxies;
 using PureMVC.Interfaces;
 using PureMVC.Patterns.Command;
+using System;
 using System.Collections.Generic;
 
 namespace B2BackupUtility.Commands
@@ -70,6 +71,7 @@ namespace B2BackupUtility.Commands
             if (TryGetCommand(programArgsProxy.ProgramArguments, out command))
             {
                 InitializeModelIfNecessary(command);
+                HookUpCancellationToken(command);
                 SendNotification(CommandTypeToNotification[command], null, null);
             }
             else
@@ -86,6 +88,18 @@ namespace B2BackupUtility.Commands
             if (commandType != CommandType.GENERATE_ENCRYPTION_KEY)
             {
                 SendNotification(InitializeModel.CommandNotification, null, null);
+            }
+        }
+
+        private void HookUpCancellationToken(CommandType commandType)
+        {
+            switch (commandType)
+            {
+                case CommandType.DELETE_ALL_FILES:
+                case CommandType.UPLOAD_FOLDER:
+                case CommandType.UPLOAD:
+                    Console.CancelKeyPress += CancellationEventRouter.HandleCancel;
+                    break;
             }
         }
 

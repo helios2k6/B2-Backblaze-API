@@ -346,7 +346,7 @@ namespace B2BackupUtility.Proxies
                     BackblazeErrorDetails = listFilesActionResult.Errors,
                 };
             }
-            FileResult fileDatabaseManifestFileResult = GetRawB2FileNames(authorizationSession)
+            FileResult fileDatabaseManifestFileResult = listFilesActionResult.Result.Files
                 .Where(f => f.FileName.Equals(RemoteFileDatabaseManifestName, StringComparison.Ordinal))
                 .SingleOrDefault();
             if (fileDatabaseManifestFileResult == null)
