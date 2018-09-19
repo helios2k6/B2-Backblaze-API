@@ -68,6 +68,11 @@ namespace B2BackupUtility.Proxies
         public static string FailedToDeleteFile => "Failed To Delete File";
         public static string FinishedDeletingFile => "Finished Deleting File";
 
+        // Prune
+        public static string BeginPruneFile => "Begin Prune File";
+        public static string FailedToPruneFile => "Failed To Prune File";
+        public static string FinishedPruningFile => "Finished Pruning File";
+
         public static string RemoteFileDatabaseManifestName => "b2_backup_util_file_database_manifest.txt.aes.gz";
         #endregion
 
@@ -330,13 +335,55 @@ namespace B2BackupUtility.Proxies
         }
 
         /// <summary>
+        /// Prunes any shardes on the server that are not accounted for in the database manifest
+        /// </summary>
+        /// <param name="authorizationSessionGenerator">The generator for an authorization session</param>
+        public void PruneShards(Func<BackblazeB2AuthorizationSession> authorizationSessionGenerator)
+        {
+            // Get just the file names on the server
+            ListFilesAction listFilesAction = ListFilesAction.CreateListFileActionForFileNames(authorizationSessionGenerator(), _config.BucketID, true);
+            BackblazeB2ActionResult<BackblazeB2ListFilesResult> listFilesActionResult = listFilesAction.Execute();
+            if (listFilesActionResult.HasErrors)
+            {
+                throw new FailedToGetListOfFilesOnB2Exception
+                {
+                    BackblazeErrorDetails = listFilesActionResult.Errors,
+                };
+            }
+
+            IDictionary<string, FileResult> fileNameToFileResultMap = listFilesActionResult.Result.Files.ToDictionary(k => k.FileName, v => v);
+            ISet<string> allDatabaseFiles = new HashSet<string>(fileNameToFileResultMap.Keys);
+            ISet<string> allRawFileNamesOnServer = new HashSet<string>(listFilesActionResult.Result.Files.Select(t => t.FileName));
+            ISet<string> allFilesNotAccountedFor = new HashSet<string>(allRawFileNamesOnServer.Except(allDatabaseFiles));
+            foreach (string fileNameNotAccountedFor in allFilesNotAccountedFor)
+            {
+                SendNotification(BeginPruneFile, fileNameNotAccountedFor, null);
+                FileResult fileNotAccountedFor = fileNameToFileResultMap[fileNameNotAccountedFor];
+                DeleteFileAction deleteFileAction =
+                    new DeleteFileAction(authorizationSessionGenerator(), fileNotAccountedFor.FileID, fileNotAccountedFor.FileName);
+
+                BackblazeB2ActionResult<BackblazeB2DeleteFileResult> deletionResult = deleteFileAction.Execute();
+                if (deletionResult.HasErrors)
+                {
+                    SendNotification(FailedToPruneFile, deletionResult, null);
+                }
+                else
+                {
+                    SendNotification(FinishedPruningFile, fileNotAccountedFor, null);
+                }
+            }
+        }
+        #endregion
+
+        #region private methods
+        /// <summary>
         /// Initializes this file database manifest
         /// </summary>
-        public FileDatabaseManifest GetOrCreateFileDatabaseManifest(
+        private FileDatabaseManifest GetOrCreateFileDatabaseManifest(
             BackblazeB2AuthorizationSession authorizationSession
         )
         {
-            // Get the raw B2 File List
+            // Get just the file names on the server
             ListFilesAction listFilesAction = ListFilesAction.CreateListFileActionForFileNames(authorizationSession, _config.BucketID, true);
             BackblazeB2ActionResult<BackblazeB2ListFilesResult> listFilesActionResult = listFilesAction.Execute();
             if (listFilesActionResult.HasErrors)
@@ -374,9 +421,7 @@ namespace B2BackupUtility.Proxies
                 }
             }
         }
-        #endregion
 
-        #region private methods
         private IEnumerable<FileResult> GetRawB2FileNames(BackblazeB2AuthorizationSession authorizationSession)
         {
             ListFilesAction listFilesAction =

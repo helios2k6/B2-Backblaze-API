@@ -41,6 +41,7 @@ namespace B2BackupUtility.Commands
             { DownloadFile.CommandSwitch, CommandType.DOWNLOAD },
             { GenerateEncryptionKey.CommandSwitch, CommandType.GENERATE_ENCRYPTION_KEY },
             { ListFiles.CommandSwitch, CommandType.LIST },
+            { PruneShards.CommandSwitch, CommandType.PRUNE },
             { UploadFile.CommandSwitch, CommandType.UPLOAD },
             { UploadFolder.CommandSwitch, CommandType.UPLOAD_FOLDER }
         };
@@ -52,6 +53,7 @@ namespace B2BackupUtility.Commands
             { DownloadFile.CommandType, DownloadFile.CommandNotification },
             { GenerateEncryptionKey.CommandType, GenerateEncryptionKey.CommandNotification },
             { ListFiles.CommandType, ListFiles.CommandNotification },
+            { PruneShards.CommandType, PruneShards.CommandNotification },
             { UploadFile.CommandType, UploadFile.CommandNotification },
             { UploadFolder.CommandType, UploadFolder.CommandNotification },
         };
@@ -96,6 +98,7 @@ namespace B2BackupUtility.Commands
             switch (commandType)
             {
                 case CommandType.DELETE_ALL_FILES:
+                case CommandType.PRUNE:
                 case CommandType.UPLOAD_FOLDER:
                 case CommandType.UPLOAD:
                     Console.CancelKeyPress += CancellationEventRouter.HandleCancel;

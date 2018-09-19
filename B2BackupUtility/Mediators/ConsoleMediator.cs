@@ -55,6 +55,7 @@ namespace B2BackupUtility.Mediators
             { RemoteFileSystemProxy.FailedToUploadFile, LogLevel.WARNING },
             { RemoteFileSystemProxy.FailedToUploadFileManifest, LogLevel.WARNING },
             { RemoteFileSystemProxy.ExponentialBackoffInitiated, LogLevel.WARNING },
+            { RemoteFileSystemProxy.FailedToPruneFile, LogLevel.WARNING },
 
             // Info level messages
             { GenerateEncryptionKey.EncryptionKeyNotification, LogLevel.INFO },
@@ -64,6 +65,7 @@ namespace B2BackupUtility.Mediators
             { RemoteFileSystemProxy.FinishUploadFile, LogLevel.INFO },
             { RemoteFileSystemProxy.FinishedDeletingFile, LogLevel.INFO },
             { RemoteFileSystemProxy.SkippedUploadFile, LogLevel.INFO },
+            { RemoteFileSystemProxy.FinishedPruningFile, LogLevel.INFO },
             { UploadFolder.FinishedCommandNotification, LogLevel.INFO },
             { DownloadFile.FinishedCommandNotification, LogLevel.INFO },
 
@@ -86,6 +88,7 @@ namespace B2BackupUtility.Mediators
             { StartSelectedProgramCommand.CommandNotification, LogLevel.DEBUG },
             { UploadFile.CommandNotification, LogLevel.DEBUG },
             { UploadFolder.CommandNotification, LogLevel.DEBUG },
+            { RemoteFileSystemProxy.BeginPruneFile, LogLevel.DEBUG },
         };
 
         private static readonly IDictionary<LogLevel, string> LogLevelToPrefix = new Dictionary<LogLevel, string>

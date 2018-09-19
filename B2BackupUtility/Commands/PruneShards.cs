@@ -19,53 +19,31 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+
+using B2BackupUtility.Proxies;
+using PureMVC.Interfaces;
+using PureMVC.Patterns.Command;
+
 namespace B2BackupUtility.Commands
 {
-    /// <summary>
-    /// List of different program commands
-    /// </summary>
-    public enum CommandType
+    public sealed class PruneShards : SimpleCommand
     {
-        /// <summary>
-        /// Download file command
-        /// </summary>
-        DOWNLOAD,
-        /// <summary>
-        /// Delete file command
-        /// </summary>
-        DELETE,
-        /// <summary>
-        /// Delete all files in the Bucket
-        /// </summary>
-        DELETE_ALL_FILES,
-        /// <summary>
-        /// Generate the encryption key and 
-        /// initialization vector
-        /// </summary>
-        GENERATE_ENCRYPTION_KEY,
-        /// <summary>
-        /// Get the file info command
-        /// </summary>
-        GET_FILE_INFO,
-        /// <summary>
-        /// List file command
-        /// </summary>
-        LIST,
-        /// <summary>
-        /// Prune file shards that are not accounted for
-        /// </summary>
-        PRUNE,
-        /// <summary>
-        /// Upload file command
-        /// </summary>
-        UPLOAD,
-        /// <summary>
-        /// Upload a folder of files
-        /// </summary>
-        UPLOAD_FOLDER,
-        /// <summary>
-        /// Unknown command
-        /// </summary>
-        UNKNOWN,
+        #region public properties
+        public static string CommandNotification => "Prune Files";
+
+        public static string CommandSwitch => "--prune-files";
+
+        public static CommandType CommandType => CommandType.PRUNE;
+        #endregion
+
+        #region public methods
+        public override void Execute(INotification notification)
+        {
+            AuthorizationSessionProxy authorizationSessionProxy = (AuthorizationSessionProxy)Facade.RetrieveProxy(AuthorizationSessionProxy.Name);
+            RemoteFileSystemProxy remoteFileSystem = (RemoteFileSystemProxy)Facade.RetrieveProxy(RemoteFileSystemProxy.Name);
+
+            remoteFileSystem.PruneShards(() => authorizationSessionProxy.AuthorizationSession);
+        }
+        #endregion
     }
 }

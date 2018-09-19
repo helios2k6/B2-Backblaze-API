@@ -65,6 +65,7 @@ namespace B2BackupUtility.Commands
             { DownloadFile.CommandSwitch, new[] { DownloadFile.FileOption } },
             { GenerateEncryptionKey.CommandSwitch, Enumerable.Empty<string>() },
             { ListFiles.CommandSwitch, Enumerable.Empty<string>() },
+            { PruneShards.CommandSwitch, Enumerable.Empty<string>() },
             { CommandSwitch, Enumerable.Empty<string>() },
             { UploadFile.CommandSwitch, new[] { UploadFile.FileOption, UploadFile.OverrideOption } },
             { UploadFolder.CommandSwitch, new[] { UploadFolder.FolderOption, UploadFolder.OverrideOption } },
