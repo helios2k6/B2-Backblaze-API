@@ -61,6 +61,7 @@ namespace B2BackupUtility.Proxies
         public static string FailedToUploadFileManifest => "Failed To Upload File Manifest";
         public static string SkippedUploadFile => "Skip Uploading File";
         public static string FinishUploadFile => "Finished Uploading File";
+        public static string ExponentialBackoffInitiated => "Exponential Backoff Initiated";
 
         // Deletions
         public static string BeginDeletingFile => "Begin Deleting File";
@@ -188,7 +189,8 @@ namespace B2BackupUtility.Proxies
                             _config.BucketID,
                             EncryptionHelpers.EncryptBytes(serializedFileShard, _config.EncryptionKey, _config.InitializationVector),
                             fileShard.ID,
-                            CancellationEventRouter.GlobalCancellationToken
+                            CancellationEventRouter.GlobalCancellationToken,
+                            t => SendNotificationAboutExponentialBackoff(t, absoluteFilePath, fileShard.ID)
                         ))
                     : ExecuteUploadAction(
                         new UploadWithMultipleConnectionsAction(
@@ -198,7 +200,8 @@ namespace B2BackupUtility.Proxies
                             _config.BucketID,
                             DefaultUploadChunkSize,
                             DefaultUploadConnections,
-                            CancellationEventRouter.GlobalCancellationToken
+                            CancellationEventRouter.GlobalCancellationToken,
+                            t => SendNotificationAboutExponentialBackoff(t, absoluteFilePath, fileShard.ID)
                         ));
 
                 if (uploadResult.HasErrors)
@@ -472,7 +475,8 @@ namespace B2BackupUtility.Proxies
                 _config.BucketID,
                 SerializeManifest(FileDatabaseManifest, _config),
                 RemoteFileDatabaseManifestName,
-                CancellationToken.None
+                CancellationToken.None,
+                _ => { } // NoOp for exponential backoff callback
             );
 
             BackblazeB2ActionResult<BackblazeB2UploadFileResult> result = uploadAction.Execute();
@@ -483,6 +487,11 @@ namespace B2BackupUtility.Proxies
                     BackblazeErrorDetails = result.Errors,
                 };
             }
+        }
+
+        private void SendNotificationAboutExponentialBackoff(TimeSpan backoff, string fileName, string fileShardID)
+        {
+            SendNotification(ExponentialBackoffInitiated, $"Exponential backoff initiated for file {fileName} shard {fileShardID} for {backoff}", null);
         }
 
         private static byte[] SerializeManifest(FileDatabaseManifest fileDatabaseManifest, Config config)

@@ -40,6 +40,7 @@ namespace B2BackblazeBridge.Actions.InternalActions
         private readonly GetUploadPartURLResponse _getUploadPartUrl;
         private readonly byte[] _rawBytes;
         private readonly string _sha1;
+        private readonly Action<TimeSpan> _exponentialBackoffCallback;
         #endregion
 
         #region ctor
@@ -50,7 +51,8 @@ namespace B2BackblazeBridge.Actions.InternalActions
             long filePart,
             GetUploadPartURLResponse getUploadPartUrl,
             byte[] rawBytes,
-            string sha1
+            string sha1,
+            Action<TimeSpan> exponentialBackoffCallback
         ) : base(cancellationToken)
         {
             _authorizationSession = authorizationSession;
@@ -59,6 +61,7 @@ namespace B2BackblazeBridge.Actions.InternalActions
             _getUploadPartUrl = getUploadPartUrl;
             _rawBytes = rawBytes;
             _sha1 = sha1;
+            _exponentialBackoffCallback = exponentialBackoffCallback;
         }
         #endregion
 
@@ -78,6 +81,7 @@ namespace B2BackblazeBridge.Actions.InternalActions
                 if (attemptNumber > 0)
                 {
                     TimeSpan backoffSleepTime = CalculateExponentialBackoffSleepTime(attemptNumber);
+                    _exponentialBackoffCallback(backoffSleepTime);
                     Thread.Sleep(backoffSleepTime);
                 }
 

@@ -54,11 +54,13 @@ namespace B2BackupUtility.Mediators
             { RemoteFileSystemProxy.FailedToDeleteFile, LogLevel.WARNING},
             { RemoteFileSystemProxy.FailedToUploadFile, LogLevel.WARNING },
             { RemoteFileSystemProxy.FailedToUploadFileManifest, LogLevel.WARNING },
+            { RemoteFileSystemProxy.ExponentialBackoffInitiated, LogLevel.WARNING },
 
             // Info level messages
             { GenerateEncryptionKey.EncryptionKeyNotification, LogLevel.INFO },
             { GenerateEncryptionKey.InitializationVectorNotification, LogLevel.INFO },
             { ListFiles.AllFilesListNotification, LogLevel.INFO },
+            { RemoteFileSystemProxy.BeginUploadFile, LogLevel.INFO },
             { RemoteFileSystemProxy.FinishUploadFile, LogLevel.INFO },
             { RemoteFileSystemProxy.FinishedDeletingFile, LogLevel.INFO },
             { RemoteFileSystemProxy.SkippedUploadFile, LogLevel.INFO },
@@ -66,7 +68,6 @@ namespace B2BackupUtility.Mediators
             { DownloadFile.FinishedCommandNotification, LogLevel.INFO },
 
             // Verbose messages
-            { RemoteFileSystemProxy.BeginUploadFile, LogLevel.VERBOSE },
             { RemoteFileSystemProxy.BeginDeletingFile, LogLevel.VERBOSE },
             { UploadFolder.BeginUploadingFolderNotification, LogLevel.VERBOSE },
 

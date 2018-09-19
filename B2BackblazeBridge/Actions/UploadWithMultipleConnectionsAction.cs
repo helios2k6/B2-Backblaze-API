@@ -53,6 +53,7 @@ namespace B2BackblazeBridge.Actions
         private readonly int _fileChunkSizesInBytes;
         private readonly Stream _dataStream;
         private readonly BlockingCollection<ProducerUploadJob> _jobStream;
+        private readonly Action<TimeSpan> _exponentialBackoffCallback;
 
         private bool disposedValue = false;
         #endregion
@@ -68,6 +69,7 @@ namespace B2BackblazeBridge.Actions
         /// <param name="fileChunkSizesInBytes">The size (in bytes) of the file chunks you want to use when uploading</param>
         /// <param name="numberOfConnections">The number of connections to use when uploading</param>
         /// <param name="cancellationToken">The cancellation token to pass in when this upload needs to be cancelled</param>
+        /// <param name="exponentialBackoffCallback">A callback to invoke when this upload uses exponential backoff</param>
         public UploadWithMultipleConnectionsAction(
             BackblazeB2AuthorizationSession authorizationSession,
             Stream dataStream,
@@ -75,7 +77,8 @@ namespace B2BackblazeBridge.Actions
             string bucketID,
             int fileChunkSizesInBytes,
             int numberOfConnections,
-            CancellationToken cancellationToken
+            CancellationToken cancellationToken,
+            Action<TimeSpan> exponentialBackoffCallback
         ) : base(cancellationToken)
         {
             if (fileChunkSizesInBytes < MinimumFileChunkSize)
@@ -97,6 +100,7 @@ namespace B2BackblazeBridge.Actions
             _fileChunkSizesInBytes = fileChunkSizesInBytes;
             _numberOfConnections = numberOfConnections;
             _jobStream = new BlockingCollection<ProducerUploadJob>(MaxMemoryAllowed / _fileChunkSizesInBytes);
+            _exponentialBackoffCallback = exponentialBackoffCallback;
         }
 
         /// <summary>
@@ -109,6 +113,7 @@ namespace B2BackblazeBridge.Actions
         /// <param name="fileChunkSizesInBytes">The size (in bytes) of the file chunks you want to use when uploading</param>
         /// <param name="numberOfConnections">The number of connections to use when uploading</param>
         /// <param name="cancellationToken">The cancellation token to pass in when this upload needs to be cancelled</param>
+        /// <param name="exponentialBackoffCallback">A callback to invoke when this upload uses exponential backoff</param>
         public UploadWithMultipleConnectionsAction(
             BackblazeB2AuthorizationSession authorizationSession,
             string localFilePath,
@@ -116,7 +121,8 @@ namespace B2BackblazeBridge.Actions
             string bucketID,
             int fileChunkSizesInBytes,
             int numberOfConnections,
-            CancellationToken cancellationToken
+            CancellationToken cancellationToken,
+            Action<TimeSpan> exponentialBackoffCallback
         ) : this(
             authorizationSession,
             new FileStream(localFilePath, FileMode.Open, FileAccess.Read, FileShare.Read),
@@ -124,7 +130,8 @@ namespace B2BackblazeBridge.Actions
             bucketID,
             fileChunkSizesInBytes,
             numberOfConnections,
-            cancellationToken
+            cancellationToken,
+            exponentialBackoffCallback
         )
         {
         }
@@ -280,7 +287,8 @@ namespace B2BackblazeBridge.Actions
                     job.FilePartNumber,
                     uploadPartURLResponse.Result,
                     job.Buffer,
-                    job.SHA1
+                    job.SHA1,
+                    _exponentialBackoffCallback
                 ).Execute());
             }
         }

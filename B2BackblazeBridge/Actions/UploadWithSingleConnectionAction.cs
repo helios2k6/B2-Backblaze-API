@@ -43,6 +43,7 @@ namespace B2BackblazeBridge.Actions
         private readonly string _bucketID;
         private readonly byte[] _bytesToUpload;
         private readonly string _fileDestination;
+        private readonly Action<TimeSpan> _exponentialBackoffCallback;
         #endregion
 
         #region ctor
@@ -54,12 +55,14 @@ namespace B2BackblazeBridge.Actions
         /// <param name="fileDestination">The remote file path to upload to</param>
         /// <param name="bucketID">The Bucket ID to upload to</param>
         /// <param name="cancellationToken">The cancellation token</param>
+        /// <param name="exponentialBackoffCallback">A callback to invoke when this upload uses exponential backoff</param>
         public UploadWithSingleConnectionAction(
             BackblazeB2AuthorizationSession authorizationSession,
             string bucketID,
             byte[] bytesToUpload,
             string fileDestination,
-            CancellationToken cancellationToken
+            CancellationToken cancellationToken,
+            Action<TimeSpan> exponentialBackoffCallback
         ) : base(cancellationToken)
         {
             ValidateRawPath(fileDestination);
@@ -78,13 +81,22 @@ namespace B2BackblazeBridge.Actions
         /// <param name="fileDestination">The remote file path to upload to</param>
         /// <param name="bucketID">The Bucket ID to upload to</param>
         /// <param name="cancellationToken">The cancellation token</param>
+        /// <param name="exponentialBackoffCallback">A callback to invoke when this upload uses exponential backoff</param>
         public UploadWithSingleConnectionAction(
             BackblazeB2AuthorizationSession authorizationSession,
             string filePath,
             string fileDestination,
             string bucketID,
-            CancellationToken cancellationToken
-        ) : this(authorizationSession, bucketID, File.ReadAllBytes(filePath), fileDestination, cancellationToken)
+            CancellationToken cancellationToken,
+            Action<TimeSpan> exponentialBackoffCallback
+        ) : this(
+            authorizationSession,
+            bucketID,
+            File.ReadAllBytes(filePath),
+            fileDestination,
+            cancellationToken,
+            exponentialBackoffCallback
+        )
         {
         }
         #endregion
@@ -119,6 +131,7 @@ namespace B2BackblazeBridge.Actions
                     if (attemptNumber > 0)
                     {
                         TimeSpan backoffSleepTime = CalculateExponentialBackoffSleepTime(attemptNumber);
+                        _exponentialBackoffCallback(backoffSleepTime);
                         Thread.Sleep(backoffSleepTime);
                     }
 
