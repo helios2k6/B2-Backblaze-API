@@ -71,6 +71,7 @@ namespace B2BackblazeBridge.Actions
             _bucketID = bucketID;
             _bytesToUpload = bytesToUpload;
             _fileDestination = fileDestination;
+            _exponentialBackoffCallback = exponentialBackoffCallback;
         }
 
         /// <summary>

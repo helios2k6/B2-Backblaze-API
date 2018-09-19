@@ -2,7 +2,7 @@
   "profiles": {
     "B2BackupUtility": {
       "commandName": "Project",
-      "commandLineArgs": "--config \"D:\\B2Backup\\b2_backup_config.txt\" --delete-all-files"
+      "commandLineArgs": "--config \"D:\\B2Backup\\b2_backup_config.txt\" --upload-folder --folder \"D:\\Anime\""
     }
   }
 }
