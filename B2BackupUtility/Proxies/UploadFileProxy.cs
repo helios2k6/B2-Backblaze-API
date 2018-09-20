@@ -41,7 +41,6 @@ namespace B2BackupUtility.Proxies
     {
         #region private fields
         private static int DefaultUploadConnections => 20;
-        private static int MinimumFileLengthForMultipleConnections => 1048576;
         private static int DefaultUploadChunkSize => 5242880; // 5 mebibytes
         private static int MaxConsecutiveFileManifestUploadFailures => 3;
         #endregion
@@ -167,7 +166,7 @@ namespace B2BackupUtility.Proxies
                 // Serialized file shard
                 byte[] serializedFileShard = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(fileShard));
 
-                BackblazeB2ActionResult<IBackblazeB2UploadResult> uploadResult = fileShard.Length < MinimumFileLengthForMultipleConnections
+                BackblazeB2ActionResult<IBackblazeB2UploadResult> uploadResult = fileShard.Length < DefaultUploadChunkSize
                     ? ExecuteUploadAction(
                         new UploadWithSingleConnectionAction(
                             authorizationSession,
@@ -180,7 +179,13 @@ namespace B2BackupUtility.Proxies
                     : ExecuteUploadAction(
                         new UploadWithMultipleConnectionsAction(
                             authorizationSession,
-                            new MemoryStream(EncryptionHelpers.EncryptBytes(serializedFileShard, Config.EncryptionKey, Config.InitializationVector)),
+                            new MemoryStream(
+                                EncryptionHelpers.EncryptBytes(
+                                    serializedFileShard,
+                                    Config.EncryptionKey,
+                                    Config.InitializationVector
+                                )
+                            ),
                             fileShard.ID,
                             Config.BucketID,
                             DefaultUploadChunkSize,
@@ -274,10 +279,16 @@ namespace B2BackupUtility.Proxies
 
         private void SendNotificationAboutExponentialBackoff(TimeSpan backoff, string fileName, string fileShardID)
         {
-            SendNotification(ExponentialBackoffInitiated, $"Exponential backoff initiated for file {fileName} shard {fileShardID} for {backoff}", null);
+            SendNotification(
+                ExponentialBackoffInitiated,
+                $"Exponential backoff initiated for file {fileName} shard {fileShardID} for {backoff}",
+                null
+            );
         }
 
-        private static BackblazeB2ActionResult<IBackblazeB2UploadResult> ExecuteUploadAction<T>(BaseAction<T> action) where T : IBackblazeB2UploadResult
+        private static BackblazeB2ActionResult<IBackblazeB2UploadResult> ExecuteUploadAction<T>(
+            BaseAction<T> action
+        ) where T : IBackblazeB2UploadResult
         {
             BackblazeB2ActionResult<T> uploadResult = action.Execute();
             BackblazeB2ActionResult<IBackblazeB2UploadResult> castedResult;
