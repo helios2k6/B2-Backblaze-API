@@ -47,11 +47,11 @@ namespace B2BackupUtility.Commands
             if (programArgsProxy.TryGetArgument(FileOption, out string fileName))
             {
                 AuthorizationSessionProxy authorizationSessionProxy = (AuthorizationSessionProxy)Facade.RetrieveProxy(AuthorizationSessionProxy.Name);
-                RemoteFileSystemProxy remoteFileSystem = (RemoteFileSystemProxy)Facade.RetrieveProxy(RemoteFileSystemProxy.Name);
+                DeleteFileProxy deleteFileProxy = (DeleteFileProxy)Facade.RetrieveProxy(DeleteFileProxy.Name);
 
-                if (remoteFileSystem.TryGetFileByName(fileName, out Database.File fileToDelete))
+                if (deleteFileProxy.TryGetFileByName(fileName, out Database.File fileToDelete))
                 {
-                    remoteFileSystem.DeleteFile(authorizationSessionProxy.AuthorizationSession, fileToDelete);
+                    deleteFileProxy.DeleteFile(authorizationSessionProxy.AuthorizationSession, fileToDelete);
                 }
                 else
                 {

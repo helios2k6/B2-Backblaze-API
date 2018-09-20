@@ -47,7 +47,7 @@ namespace B2BackupUtility.Commands
         public override void Execute(INotification notification)
         {
             RemoteFileSystemProxy remoteFileSystemProxy = (RemoteFileSystemProxy)Facade.RetrieveProxy(RemoteFileSystemProxy.Name);
-            SendNotification(AllFilesListNotification, BuildStringFromFiles(remoteFileSystemProxy.GetAllFiles()), null);
+            SendNotification(AllFilesListNotification, BuildStringFromFiles(remoteFileSystemProxy.AllFiles), null);
         }
         #endregion
 

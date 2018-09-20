@@ -19,6 +19,7 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+using B2BackblazeBridge.Core;
 using B2BackupUtility.Proxies;
 using PureMVC.Interfaces;
 using PureMVC.Patterns.Command;
@@ -27,7 +28,7 @@ using System;
 namespace B2BackupUtility.Commands
 {
     /// <summary>
-    /// Initializes the Remote File System
+    /// Initializes all remote file system proxies
     /// </summary>
     public sealed class InitializeRemoteFileSystem : SimpleCommand
     {
@@ -43,7 +44,13 @@ namespace B2BackupUtility.Commands
             AuthorizationSessionProxy authorizationSessionProxy = (AuthorizationSessionProxy)Facade.RetrieveProxy(AuthorizationSessionProxy.Name);
             ConfigProxy configProxy = (ConfigProxy)Facade.RetrieveProxy(ConfigProxy.Name);
 
-            Facade.RegisterProxy(new RemoteFileSystemProxy(authorizationSessionProxy.AuthorizationSession, configProxy.Config));
+            BackblazeB2AuthorizationSession authorizationSession = authorizationSessionProxy.AuthorizationSession;
+            Config config = configProxy.Config;
+
+            Facade.RegisterProxy(new RemoteFileSystemProxy(authorizationSession, config));
+            Facade.RegisterProxy(new UploadFileProxy(authorizationSession, config));
+            Facade.RegisterProxy(new DeleteFileProxy(authorizationSession, config));
+            Facade.RegisterProxy(new PruneFileShardProxy(authorizationSession, config));
         }
         #endregion
     }

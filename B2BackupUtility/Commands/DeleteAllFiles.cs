@@ -42,9 +42,9 @@ namespace B2BackupUtility.Commands
         public override void Execute(INotification notification)
         {
             AuthorizationSessionProxy authorizationSessionProxy = (AuthorizationSessionProxy)Facade.RetrieveProxy(AuthorizationSessionProxy.Name);
-            RemoteFileSystemProxy remoteFileSystem = (RemoteFileSystemProxy)Facade.RetrieveProxy(RemoteFileSystemProxy.Name);
+            DeleteFileProxy deleteFileProxy = (DeleteFileProxy)Facade.RetrieveProxy(DeleteFileProxy.Name);
 
-            remoteFileSystem.DeleteAllFiles(() => authorizationSessionProxy.AuthorizationSession);
+            deleteFileProxy.DeleteAllFiles(() => authorizationSessionProxy.AuthorizationSession);
         }
         #endregion
     }

@@ -29,9 +29,9 @@ namespace B2BackupUtility.Commands
     public sealed class PruneShards : SimpleCommand
     {
         #region public properties
-        public static string CommandNotification => "Prune Files";
+        public static string CommandNotification => "Prune Shards";
 
-        public static string CommandSwitch => "--prune-files";
+        public static string CommandSwitch => "--prune-shards";
 
         public static CommandType CommandType => CommandType.PRUNE;
         #endregion
@@ -40,9 +40,9 @@ namespace B2BackupUtility.Commands
         public override void Execute(INotification notification)
         {
             AuthorizationSessionProxy authorizationSessionProxy = (AuthorizationSessionProxy)Facade.RetrieveProxy(AuthorizationSessionProxy.Name);
-            RemoteFileSystemProxy remoteFileSystem = (RemoteFileSystemProxy)Facade.RetrieveProxy(RemoteFileSystemProxy.Name);
+            PruneFileShardProxy pruneFileShardProxy = (PruneFileShardProxy)Facade.RetrieveProxy(PruneFileShardProxy.Name);
 
-            remoteFileSystem.PruneShards(() => authorizationSessionProxy.AuthorizationSession);
+            pruneFileShardProxy.PruneShards(() => authorizationSessionProxy.AuthorizationSession);
         }
         #endregion
     }

@@ -51,26 +51,26 @@ namespace B2BackupUtility.Mediators
             { PrintHelp.HelpStringNotification, LogLevel.CRITICAL },
 
             // Warning messages
-            { RemoteFileSystemProxy.FailedToDeleteFile, LogLevel.WARNING},
-            { RemoteFileSystemProxy.FailedToUploadFile, LogLevel.WARNING },
-            { RemoteFileSystemProxy.FailedToUploadFileManifest, LogLevel.WARNING },
-            { RemoteFileSystemProxy.ExponentialBackoffInitiated, LogLevel.WARNING },
-            { RemoteFileSystemProxy.FailedToPruneFile, LogLevel.WARNING },
+            { DeleteFileProxy.FailedToDeleteFile, LogLevel.WARNING},
+            { UploadFileProxy.FailedToUploadFile, LogLevel.WARNING },
+            { UploadFileProxy.FailedToUploadFileManifest, LogLevel.WARNING },
+            { UploadFileProxy.ExponentialBackoffInitiated, LogLevel.WARNING },
+            { PruneFileShardProxy.FailedToPruneFile, LogLevel.WARNING },
 
             // Info level messages
             { GenerateEncryptionKey.EncryptionKeyNotification, LogLevel.INFO },
             { GenerateEncryptionKey.InitializationVectorNotification, LogLevel.INFO },
             { ListFiles.AllFilesListNotification, LogLevel.INFO },
-            { RemoteFileSystemProxy.BeginUploadFile, LogLevel.INFO },
-            { RemoteFileSystemProxy.FinishUploadFile, LogLevel.INFO },
-            { RemoteFileSystemProxy.FinishedDeletingFile, LogLevel.INFO },
-            { RemoteFileSystemProxy.SkippedUploadFile, LogLevel.INFO },
-            { RemoteFileSystemProxy.FinishedPruningFile, LogLevel.INFO },
+            { UploadFileProxy.BeginUploadFile, LogLevel.INFO },
+            { UploadFileProxy.FinishUploadFile, LogLevel.INFO },
+            { DeleteFileProxy.FinishedDeletingFile, LogLevel.INFO },
+            { UploadFileProxy.SkippedUploadFile, LogLevel.INFO },
+            { PruneFileShardProxy.FinishedPruningFile, LogLevel.INFO },
             { UploadFolder.FinishedCommandNotification, LogLevel.INFO },
             { DownloadFile.FinishedCommandNotification, LogLevel.INFO },
 
             // Verbose messages
-            { RemoteFileSystemProxy.BeginDeletingFile, LogLevel.VERBOSE },
+            { DeleteFileProxy.BeginDeletingFile, LogLevel.VERBOSE },
             { UploadFolder.BeginUploadingFolderNotification, LogLevel.VERBOSE },
 
             // Debug messages
@@ -88,7 +88,7 @@ namespace B2BackupUtility.Mediators
             { StartSelectedProgramCommand.CommandNotification, LogLevel.DEBUG },
             { UploadFile.CommandNotification, LogLevel.DEBUG },
             { UploadFolder.CommandNotification, LogLevel.DEBUG },
-            { RemoteFileSystemProxy.BeginPruneFile, LogLevel.DEBUG },
+            { PruneFileShardProxy.BeginPruneFile, LogLevel.DEBUG },
         };
 
         private static readonly IDictionary<LogLevel, string> LogLevelToPrefix = new Dictionary<LogLevel, string>

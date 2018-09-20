@@ -52,10 +52,10 @@ namespace B2BackupUtility.Commands
             AuthorizationSessionProxy authorizationSessionProxy = (AuthorizationSessionProxy)Facade.RetrieveProxy(AuthorizationSessionProxy.Name);
             ConfigProxy configProxy = (ConfigProxy)Facade.RetrieveProxy(ConfigProxy.Name);
             ProgramArgumentsProxy programArgProxy = (ProgramArgumentsProxy)Facade.RetrieveProxy(ProgramArgumentsProxy.Name);
-            RemoteFileSystemProxy fileSystemProxy = (RemoteFileSystemProxy)Facade.RetrieveProxy(RemoteFileSystemProxy.Name);
+            UploadFileProxy uploadFileProxy = (UploadFileProxy)Facade.RetrieveProxy(UploadFileProxy.Name);
             if (programArgProxy.TryGetArgument(FileOption, out string fileToUpload))
             {
-                fileSystemProxy.AddLocalFile(
+                uploadFileProxy.AddLocalFile(
                     authorizationSessionProxy.AuthorizationSession,
                     fileToUpload,
                     programArgProxy.DoesOptionExist(OverrideOption)
