@@ -335,7 +335,7 @@ namespace B2BackupUtility.Proxies
         }
 
         /// <summary>
-        /// Prunes any shardes on the server that are not accounted for in the database manifest
+        /// Prunes any shards on the server that are not accounted for in the database manifest
         /// </summary>
         /// <param name="authorizationSessionGenerator">The generator for an authorization session</param>
         public void PruneShards(Func<BackblazeB2AuthorizationSession> authorizationSessionGenerator)
@@ -352,11 +352,13 @@ namespace B2BackupUtility.Proxies
             }
 
             IDictionary<string, FileResult> fileNameToFileResultMap = listFilesActionResult.Result.Files.ToDictionary(k => k.FileName, v => v);
-            ISet<string> allDatabaseFiles = new HashSet<string>(fileNameToFileResultMap.Keys);
-            ISet<string> allRawFileNamesOnServer = new HashSet<string>(listFilesActionResult.Result.Files.Select(t => t.FileName));
-            ISet<string> allFilesNotAccountedFor = new HashSet<string>(allRawFileNamesOnServer.Except(allDatabaseFiles));
+            ISet<string> allDatabaseFileShardIds = FileDatabaseManifest.Files.SelectMany(t => t.FileShardIDs).ToHashSet();
+            ISet<string> allRawFileNamesOnServer = fileNameToFileResultMap.Keys.ToHashSet();
+            ISet<string> allFilesNotAccountedFor = allRawFileNamesOnServer.Except(allDatabaseFileShardIds).Where(t => t.Equals(RemoteFileDatabaseManifestName, StringComparison.OrdinalIgnoreCase) == false).ToHashSet();
             foreach (string fileNameNotAccountedFor in allFilesNotAccountedFor)
             {
+                CancellationEventRouter.GlobalCancellationToken.ThrowIfCancellationRequested();
+
                 SendNotification(BeginPruneFile, fileNameNotAccountedFor, null);
                 FileResult fileNotAccountedFor = fileNameToFileResultMap[fileNameNotAccountedFor];
                 DeleteFileAction deleteFileAction =
@@ -369,7 +371,7 @@ namespace B2BackupUtility.Proxies
                 }
                 else
                 {
-                    SendNotification(FinishedPruningFile, fileNotAccountedFor, null);
+                    SendNotification(FinishedPruningFile, fileNameNotAccountedFor, null);
                 }
             }
         }
