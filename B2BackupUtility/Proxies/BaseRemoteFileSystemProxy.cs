@@ -49,7 +49,7 @@ namespace B2BackupUtility.Proxies
         #region private fields
         // This field must be handled with care since it's statically shared between
         // all instances. Do not reference directly
-        private static object SharedFileDatabaseManifestLock = new object();
+        private static readonly object SharedFileDatabaseManifestLock = new object();
         private static FileDatabaseManifest SharedFileDatabaseManifest = null;
         #endregion
 
@@ -180,29 +180,31 @@ namespace B2BackupUtility.Proxies
                         {
                             SharedFileDatabaseManifest = new FileDatabaseManifest { Files = new Database.File[0] };
                         }
-
-                        using (MemoryStream outputStream = new MemoryStream())
-                        using (DownloadFileAction manifestFileDownloadAction = new DownloadFileAction(
-                            authorizationSession,
-                            outputStream,
-                            fileDatabaseManifestFileResult.FileID
-                        ))
+                        else
                         {
-                            BackblazeB2ActionResult<BackblazeB2DownloadFileResult> manifestResultOption =
-                                manifestFileDownloadAction.Execute();
-                            if (manifestResultOption.HasResult)
+                            using (MemoryStream outputStream = new MemoryStream())
+                            using (DownloadFileAction manifestFileDownloadAction = new DownloadFileAction(
+                                authorizationSession,
+                                outputStream,
+                                fileDatabaseManifestFileResult.FileID
+                            ))
                             {
-                                // Now, read string from manifest
-                                outputStream.Flush();
-                                SharedFileDatabaseManifest = DeserializeManifest(
-                                    outputStream.ToArray(),
-                                    config.EncryptionKey,
-                                    config.InitializationVector
-                                );
-                            }
-                            else
-                            {
-                                SharedFileDatabaseManifest = new FileDatabaseManifest { Files = new Database.File[0] };
+                                BackblazeB2ActionResult<BackblazeB2DownloadFileResult> manifestResultOption =
+                                    manifestFileDownloadAction.Execute();
+                                if (manifestResultOption.HasResult)
+                                {
+                                    // Now, read string from manifest
+                                    outputStream.Flush();
+                                    SharedFileDatabaseManifest = DeserializeManifest(
+                                        outputStream.ToArray(),
+                                        config.EncryptionKey,
+                                        config.InitializationVector
+                                    );
+                                }
+                                else
+                                {
+                                    SharedFileDatabaseManifest = new FileDatabaseManifest { Files = new Database.File[0] };
+                                }
                             }
                         }
                     }
