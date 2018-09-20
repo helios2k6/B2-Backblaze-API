@@ -122,7 +122,7 @@ namespace B2BackupUtility.Proxies
             using (FileStream outputFileStream = System.IO.File.Create(destination))
             {
                 // Then reconstruct the original file. The ordering of the file shards
-                // is assumed to be the order we should reconstruct the 
+                // is assumed to be the order we should use to reconstruct the original file
                 foreach (string fileShardPath in localFileShardIDPaths)
                 {
                     // Load the bytes into memory
