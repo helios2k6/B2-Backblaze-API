@@ -49,6 +49,7 @@ namespace B2BackupUtility.Proxies
         #region private fields
         // This field must be handled with care since it's statically shared between
         // all instances. Do not reference directly
+        private static object SharedFileDatabaseManifestLock = new object();
         private static FileDatabaseManifest SharedFileDatabaseManifest = null;
         #endregion
 
@@ -154,7 +155,7 @@ namespace B2BackupUtility.Proxies
         {
             if (SharedFileDatabaseManifest == null)
             {
-                lock (SharedFileDatabaseManifest)
+                lock (SharedFileDatabaseManifestLock)
                 {
                     if (SharedFileDatabaseManifest == null)
                     {
