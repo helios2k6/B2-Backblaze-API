@@ -31,7 +31,7 @@ namespace B2BackblazeBridge.Core
     /// </summary>
     [Serializable]
     [JsonObject(MemberSerialization.OptIn)]
-    public sealed class BackblazeB2ActionErrorDetails : IEquatable<BackblazeB2ActionErrorDetails>
+    public sealed class BackblazeB2ActionErrorDetails
     {
         #region public properties
         /// <summary>
@@ -51,57 +51,23 @@ namespace B2BackblazeBridge.Core
         /// </summary>
         [JsonProperty(PropertyName = "message")]
         public string Message { get; set; }
+
+        /// <summary>
+        /// The inner exception associated with this 
+        /// error detail
+        /// </summary>
+        public Exception InnerException { get; set; }
         #endregion
 
         #region public methods
         public override string ToString()
         {
             return (new StringBuilder())
-                .AppendFormat("Status: {0}", Status).AppendLine()
-                .AppendFormat("Code: {0}", Code).AppendLine()
-                .AppendFormat("Message: {0}", Message).AppendLine()
+                .AppendLine($"Status: {Status}")
+                .AppendLine($"Code: {Code}")
+                .AppendLine($"Message: {Message}")
+                .AppendLine($"Inner Exception: {InnerException}")
                 .ToString();
-        }
-
-        public bool Equals(BackblazeB2ActionErrorDetails other)
-        {
-            return Status == other.Status &&
-                string.Equals(Code, other.Code, StringComparison.Ordinal) &&
-                string.Equals(Message, other.Message, StringComparison.Ordinal);
-        }
-
-        public override bool Equals(object obj)
-        {
-            return Equals(obj as BackblazeB2ActionErrorDetails);
-        }
-
-        public override int GetHashCode()
-        {
-            int hashCode = Status.GetHashCode();
-
-            if (Code != null)
-            {
-                hashCode ^= Code.GetHashCode();
-            }
-
-            if (Message != null)
-            {
-                hashCode ^= Message.GetHashCode();
-            }
-
-            return hashCode;
-        }
-        #endregion
-
-        #region private methods
-
-        private bool EqualsPreamble(object other)
-        {
-            if (ReferenceEquals(null, other)) return false;
-            if (ReferenceEquals(this, other)) return true;
-            if (GetType() != other.GetType()) return false;
-
-            return true;
         }
         #endregion
     }

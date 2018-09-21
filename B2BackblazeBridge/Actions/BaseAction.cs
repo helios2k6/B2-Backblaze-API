@@ -263,6 +263,7 @@ namespace B2BackblazeBridge.Actions
                     Status = (int)ex.Status,
                     Code = "Unknown B2 Error",
                     Message = ex.Message,
+                    InnerException = ex,
                 };
             }
         }
