@@ -196,7 +196,7 @@ namespace B2BackupUtility.Proxies
 
                 if (uploadResult.HasErrors)
                 {
-                    throw new FailedToUploadFileException
+                    throw new FailedToUploadFileException(uploadResult.ToString())
                     {
                         BackblazeErrorDetails = uploadResult.Errors,
                         File = absoluteFilePath,
