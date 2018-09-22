@@ -62,7 +62,7 @@ namespace B2BackupUtility.Commands
         {
             { DeleteAllFiles.CommandSwitch, Enumerable.Empty<string>() },
             { DeleteFile.CommandSwitch, new[] { DeleteFile.FileOption } },
-            { DownloadFile.CommandSwitch, new[] { DownloadFile.FileOption } },
+            { DownloadFile.CommandSwitch, new[] { DownloadFile.FileNameOption, DownloadFile.FileIDOption } },
             { GenerateEncryptionKey.CommandSwitch, Enumerable.Empty<string>() },
             { ListFiles.CommandSwitch, Enumerable.Empty<string>() },
             { PruneShards.CommandSwitch, Enumerable.Empty<string>() },

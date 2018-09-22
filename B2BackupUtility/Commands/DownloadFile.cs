@@ -23,6 +23,7 @@ using B2BackupUtility.Proxies;
 using B2BackupUtility.Proxies.Exceptions;
 using PureMVC.Interfaces;
 using PureMVC.Patterns.Command;
+using System;
 using System.IO;
 
 namespace B2BackupUtility.Commands
@@ -38,7 +39,9 @@ namespace B2BackupUtility.Commands
 
         public static string CommandSwitch => "--download-file";
 
-        public static string FileOption => "--file";
+        public static string FileNameOption => "--file-name";
+
+        public static string FileIDOption => "--file-id";
 
         public static string DestinationOption => "--destination";
 
@@ -49,33 +52,62 @@ namespace B2BackupUtility.Commands
         public override void Execute(INotification notification)
         {
             AuthorizationSessionProxy authorizationProxy = (AuthorizationSessionProxy)Facade.RetrieveProxy(AuthorizationSessionProxy.Name);
-            ProgramArgumentsProxy programArgsProxy = (ProgramArgumentsProxy)Facade.RetrieveProxy(ProgramArgumentsProxy.Name);
-            if (programArgsProxy.TryGetArgument(FileOption, out string fileToDownload))
-            {
-                RemoteFileSystemProxy remoteFileSystemProxy = (RemoteFileSystemProxy)Facade.RetrieveProxy(RemoteFileSystemProxy.Name);
-                if (remoteFileSystemProxy.TryGetFileByName(fileToDownload, out Database.File remoteFileToDownload))
-                {
-                    if (programArgsProxy.TryGetArgument(DestinationOption, out string localFileDestination) == false)
-                    {
-                        localFileDestination = Path.Combine(
-                            Directory.GetCurrentDirectory(),
-                            Path.GetFileName(remoteFileToDownload.FileName)
-                        );
-                    }
+            Database.File fileToDownload = GetFile();
+            string localFileDestination = GetDestinationOfFile(fileToDownload);
 
-                    DownloadFileProxy downloadFileProxy = (DownloadFileProxy)Facade.RetrieveProxy(DownloadFileProxy.Name);
-                    downloadFileProxy.DownloadFile(authorizationProxy.AuthorizationSession, remoteFileToDownload, localFileDestination);
-                    SendNotification(FinishedCommandNotification, $"Finished downloading file {fileToDownload}", null);
-                }
-                else
-                {
-                    throw new TerminateProgramException($"The file {fileToDownload} could not be found in the manifest");
-                }
-            }
-            else
+            DownloadFileProxy downloadFileProxy = (DownloadFileProxy)Facade.RetrieveProxy(DownloadFileProxy.Name);
+            downloadFileProxy.DownloadFile(authorizationProxy.AuthorizationSession, fileToDownload, localFileDestination);
+            SendNotification(FinishedCommandNotification, $"Finished downloading file {fileToDownload}", null);
+        }
+        #endregion
+
+        #region private methods
+        private string GetDestinationOfFile(Database.File remoteFileToDownload)
+        {
+            ProgramArgumentsProxy programArgsProxy = (ProgramArgumentsProxy)Facade.RetrieveProxy(ProgramArgumentsProxy.Name);
+            if (programArgsProxy.TryGetArgument(DestinationOption, out string localFileDestination) == false)
             {
-                throw new TerminateProgramException("No file specified for download");
+                localFileDestination = Path.Combine(
+                    Directory.GetCurrentDirectory(),
+                    Path.GetFileName(remoteFileToDownload.FileName)
+                );
             }
+
+            return localFileDestination;
+        }
+
+        private Database.File GetFile()
+        {
+            ProgramArgumentsProxy programArgsProxy = (ProgramArgumentsProxy)Facade.RetrieveProxy(ProgramArgumentsProxy.Name);
+            bool hasFileID = programArgsProxy.TryGetArgument(FileIDOption, out string fileToDownloadByID);
+            bool hasFileName = programArgsProxy.TryGetArgument(FileNameOption, out string fileToDownloadByName);
+            if (hasFileID && hasFileName)
+            {
+                throw new TerminateProgramException("Specific either a file name or a file ID; not both");
+            }
+            
+            RemoteFileSystemProxy remoteFileSystemProxy = (RemoteFileSystemProxy)Facade.RetrieveProxy(RemoteFileSystemProxy.Name);
+            if (hasFileID)
+            {
+                if (remoteFileSystemProxy.TryGetFileByID(fileToDownloadByID, out Database.File file))
+                {
+                    return file;
+                }
+
+                throw new TerminateProgramException($"Could not find file ID {fileToDownloadByID}");
+            }
+
+            if (hasFileName)
+            {
+                if (remoteFileSystemProxy.TryGetFileByName(fileToDownloadByName, out Database.File file))
+                {
+                    return file;
+                }
+
+                throw new TerminateProgramException($"Could not find file name {fileToDownloadByName}");
+            }
+
+            throw new InvalidOperationException("No file ID or file name provided to download");
         }
         #endregion
     }

@@ -34,6 +34,14 @@ namespace B2BackupUtility.Database
     {
         #region public properties
         /// <summary>
+        /// The unique file ID of this particular file. This does
+        /// not pertain to the B2 file ID
+        /// </summary>
+        /// <value></value>
+        [JsonProperty(PropertyName = "FileID")]
+        public string FileID { get; set; }
+
+        /// <summary>
         /// The length of the file
         /// </summary>
         [JsonProperty(PropertyName = "FileLength")]

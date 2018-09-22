@@ -100,6 +100,26 @@ namespace B2BackupUtility.Proxies
 
             return file != null;
         }
+
+        /// <summary>
+        /// Tries to get a file by its ID
+        /// </summary>
+        /// <param name="fileID">The file ID to retrieve</param>
+        /// <param name="file">The reference to write to</param>
+        /// <returns>True if the result was found. False otherwise</returns>
+        public bool TryGetFileByID(
+            string fileID,
+            out Database.File file
+        )
+        {
+            // Linear search since this doesn't happen often
+            file = FileDatabaseManifest
+                .Files
+                .Where(f => f.FileID.Equals(fileID, StringComparison.OrdinalIgnoreCase))
+                .SingleOrDefault();
+
+            return file != null;
+        }
         #endregion
 
         #region protected methods

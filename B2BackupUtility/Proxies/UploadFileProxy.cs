@@ -210,6 +210,7 @@ namespace B2BackupUtility.Proxies
             FileInfo info = new FileInfo(absoluteFilePath);
             Database.File file = new Database.File
             {
+                FileID = Guid.NewGuid().ToString(),
                 FileLength = info.Length,
                 FileName = absoluteFilePath,
                 FileShardIDs = fileShards.OrderBy(s => s.PieceNumber).Select(s => s.ID).ToArray(),
