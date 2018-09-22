@@ -77,7 +77,7 @@ namespace B2BackupUtility.Database
         #region public methods
         public override string ToString()
         {
-            return $"{FileName} - [{SHA1}]";
+            return $"{FileName} - [{FileID}]";
         }
 
         public override bool Equals(object obj)
@@ -87,7 +87,9 @@ namespace B2BackupUtility.Database
 
         public override int GetHashCode()
         {
-            return FileLength.GetHashCode() ^
+            return
+                FileID?.GetHashCode() ?? 0 ^
+                FileLength.GetHashCode() ^
                 FileName?.GetHashCode() ?? 0 ^
                 FileShardIDs?.GetHashCodeEnumerable() ?? 0 ^
                 LastModified.GetHashCode() ^
@@ -101,7 +103,9 @@ namespace B2BackupUtility.Database
                 return false;
             }
 
-            return FileLength == other.FileLength &&
+            return
+                string.Equals(FileID, other.FileID, StringComparison.OrdinalIgnoreCase) &&
+                FileLength == other.FileLength &&
                 string.Equals(FileName, other.FileName, StringComparison.Ordinal) &&
                 FileShardIDs.ScrambledEquals(other.FileShardIDs) &&
                 LastModified == other.LastModified &&
