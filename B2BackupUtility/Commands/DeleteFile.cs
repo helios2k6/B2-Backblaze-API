@@ -19,6 +19,7 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+using System;
 using B2BackupUtility.Proxies;
 using PureMVC.Interfaces;
 using PureMVC.Patterns.Command;
@@ -35,7 +36,9 @@ namespace B2BackupUtility.Commands
 
         public static string CommandSwitch => "--delete-file";
 
-        public static string FileOption => "--file";
+        public static string FileNameOption => "--file-name";
+
+        public static string FileIDOption => "--file-id";
 
         public static CommandType CommandType => CommandType.DELETE;
         #endregion
@@ -43,25 +46,46 @@ namespace B2BackupUtility.Commands
         #region public methods
         public override void Execute(INotification notification)
         {
-            ProgramArgumentsProxy programArgsProxy = (ProgramArgumentsProxy)Facade.RetrieveProxy(ProgramArgumentsProxy.Name);
-            if (programArgsProxy.TryGetArgument(FileOption, out string fileName))
-            {
-                AuthorizationSessionProxy authorizationSessionProxy = (AuthorizationSessionProxy)Facade.RetrieveProxy(AuthorizationSessionProxy.Name);
-                DeleteFileProxy deleteFileProxy = (DeleteFileProxy)Facade.RetrieveProxy(DeleteFileProxy.Name);
+            AuthorizationSessionProxy authorizationSessionProxy = (AuthorizationSessionProxy)Facade.RetrieveProxy(AuthorizationSessionProxy.Name);
+            DeleteFileProxy deleteFileProxy = (DeleteFileProxy)Facade.RetrieveProxy(DeleteFileProxy.Name);
 
-                if (deleteFileProxy.TryGetFileByName(fileName, out Database.File fileToDelete))
-                {
-                    deleteFileProxy.DeleteFile(authorizationSessionProxy.AuthorizationSession, fileToDelete);
-                }
-                else
-                {
-                    throw new TerminateProgramException($"File {fileName} could not be found on the server");
-                }
-            }
-            else
+            deleteFileProxy.DeleteFile(authorizationSessionProxy.AuthorizationSession, GetFileToDelete());
+        }
+        #endregion
+
+        #region private methods
+        private Database.File GetFileToDelete()
+        {
+            ProgramArgumentsProxy programArgsProxy = (ProgramArgumentsProxy)Facade.RetrieveProxy(ProgramArgumentsProxy.Name);
+            bool hasFileID = programArgsProxy.TryGetArgument(FileIDOption, out string fileToDeleteByID);
+            bool hasFileName = programArgsProxy.TryGetArgument(FileNameOption, out string fileToDeleteByName);
+            if (hasFileID && hasFileName)
             {
-                throw new TerminateProgramException("No file name provided to delete");
+                throw new TerminateProgramException("Specific either a file name or a file ID; not both");
             }
+            
+            RemoteFileSystemProxy remoteFileSystemProxy = (RemoteFileSystemProxy)Facade.RetrieveProxy(RemoteFileSystemProxy.Name);
+            if (hasFileID)
+            {
+                if (remoteFileSystemProxy.TryGetFileByID(fileToDeleteByID, out Database.File file))
+                {
+                    return file;
+                }
+
+                throw new TerminateProgramException($"Could not find file ID {fileToDeleteByID}");
+            }
+
+            if (hasFileName)
+            {
+                if (remoteFileSystemProxy.TryGetFileByName(fileToDeleteByName, out Database.File file))
+                {
+                    return file;
+                }
+
+                throw new TerminateProgramException($"Could not find file name {fileToDeleteByName}");
+            }
+
+            throw new InvalidOperationException("No file ID or file name provided to download");
         }
         #endregion
     }
