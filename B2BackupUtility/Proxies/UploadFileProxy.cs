@@ -40,7 +40,9 @@ namespace B2BackupUtility.Proxies
     public sealed class UploadFileProxy : BaseRemoteFileSystemProxy
     {
         #region private fields
-        private static int DefaultUploadAttempts => 1;
+        private const int DefaultUploadAttempts = 1;
+
+        private static int DefaultReuploadAttempts => 3;
         private static int DefaultUploadConnections => 20;
         private static int DefaultUploadChunkSize => 5242880; // 5 mebibytes
         private static int MaxConsecutiveFileManifestUploadFailures => 3;
@@ -91,6 +93,7 @@ namespace B2BackupUtility.Proxies
                 throw new DirectoryNotFoundException($"Could not find directory {localFolderPath}");
             }
 
+            IList<string> filesFailedToUpload = new List<string>();
             int consecuitiveFileManifestFailures = 0;
             foreach (string localFilePath in GetFilesToUpload(localFolderPath, shouldOverride))
             {
@@ -104,7 +107,7 @@ namespace B2BackupUtility.Proxies
                 }
                 catch (FailedToUploadFileException ex)
                 {
-                    // Just send a notification and move on
+                    filesFailedToUpload.Add(localFilePath);
                     SendNotification(FailedToUploadFile, ex, null);
                 }
                 catch (FailedToUploadFileDatabaseManifestException ex)
@@ -121,6 +124,24 @@ namespace B2BackupUtility.Proxies
                     SendNotification(FailedToUploadFileManifest, ex, null);
                 }
             }
+
+            // Attempt to upload files that we couldn't do before. Since this is a second chance, we are going
+            // to be very stringent on the requirements. The file manifest must upload every single time and any
+            // failure to upload a given file will just be passed over
+            if (filesFailedToUpload.Any())
+            {
+                foreach (string localFilePath in filesFailedToUpload)
+                {
+                    try
+                    {
+                        AddLocalFile(authorizationSessionGenerator(), localFilePath, shouldOverride, DefaultReuploadAttempts);
+                    }
+                    catch (FailedToUploadFileException ex)
+                    {
+                        SendNotification(FailedToUploadFile, ex, null);
+                    }
+                }
+            }
         }
 
         /// <summary>
@@ -129,10 +150,12 @@ namespace B2BackupUtility.Proxies
         /// <param name="authorizationSession">The authorization session</param>
         /// <param name="localFilePath">The local path to the </param>
         /// <param name="shouldOverride">Whether to overide old files</param>
+        /// <param name="maxUploadAttempts">Max upload attempts</param>
         public void AddLocalFile(
             BackblazeB2AuthorizationSession authorizationSession,
             string localFilePath,
-            bool shouldOverride
+            bool shouldOverride,
+            int maxUploadAttempts = DefaultUploadAttempts
         )
         {
             string absoluteFilePath = Path.GetFullPath(localFilePath);
