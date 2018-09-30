@@ -29,7 +29,7 @@ namespace B2BackblazeBridge.Processing
     internal sealed class StartLargeFileRequest
     {
         [JsonProperty(PropertyName = "bucketId")]
-        public string BucketID { get; set;  }
+        public string BucketID { get; set; }
 
         [JsonProperty(PropertyName = "fileName")]
         public string FileName { get; set; }

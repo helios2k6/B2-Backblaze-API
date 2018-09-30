@@ -51,13 +51,10 @@ namespace B2BackupUtility
                 Driver.ApplicationFacade.SendNotification(ImmediateCancellationEvent, "Immediate Cancellation Requested", null);
                 Environment.Exit(-1);
             }
-            
+
             CancellationTokenSource.Cancel();
         }
 
-        public static CancellationToken GlobalCancellationToken
-        {
-            get { return CancellationTokenSource.Token; }
-        }
+        public static CancellationToken GlobalCancellationToken => CancellationTokenSource.Token;
     }
 }

@@ -19,12 +19,12 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-using System.Net;
-using System.Text;
-using System.Threading;
 using B2BackblazeBridge.Core;
 using B2BackblazeBridge.Processing;
 using Newtonsoft.Json;
+using System.Net;
+using System.Text;
+using System.Threading;
 
 namespace B2BackblazeBridge.Actions.InternalActions
 {
@@ -37,7 +37,7 @@ namespace B2BackblazeBridge.Actions.InternalActions
         private readonly string _bucketID;
         private readonly string _remoteFilePath;
         #endregion
-        
+
         public StartLargeFileAction(
             BackblazeB2AuthorizationSession authorizationSession,
             string bucketID,

@@ -19,11 +19,6 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Text;
 using B2BackblazeBridge.Actions;
 using B2BackblazeBridge.Core;
 using B2BackupUtility.Database;
@@ -31,6 +26,11 @@ using B2BackupUtility.Encryption;
 using B2BackupUtility.Proxies.Exceptions;
 using Functional.Maybe;
 using Newtonsoft.Json;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Text;
 
 namespace B2BackupUtility.Proxies
 {
@@ -40,6 +40,7 @@ namespace B2BackupUtility.Proxies
     public sealed class UploadFileProxy : BaseRemoteFileSystemProxy
     {
         #region private fields
+        private static int DefaultUploadAttempts => 1;
         private static int DefaultUploadConnections => 20;
         private static int DefaultUploadChunkSize => 5242880; // 5 mebibytes
         private static int MaxConsecutiveFileManifestUploadFailures => 3;
@@ -173,6 +174,7 @@ namespace B2BackupUtility.Proxies
                             Config.BucketID,
                             EncryptionHelpers.EncryptBytes(serializedFileShard, Config.EncryptionKey, Config.InitializationVector),
                             fileShard.ID,
+                            DefaultUploadAttempts,
                             CancellationEventRouter.GlobalCancellationToken,
                             t => SendNotificationAboutExponentialBackoff(t, absoluteFilePath, fileShard.ID)
                         ))
@@ -190,6 +192,7 @@ namespace B2BackupUtility.Proxies
                             Config.BucketID,
                             DefaultUploadChunkSize,
                             DefaultUploadConnections,
+                            DefaultUploadAttempts,
                             CancellationEventRouter.GlobalCancellationToken,
                             t => SendNotificationAboutExponentialBackoff(t, absoluteFilePath, fileShard.ID)
                         ));

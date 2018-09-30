@@ -22,7 +22,6 @@
 using B2BackupUtility.Proxies;
 using PureMVC.Interfaces;
 using PureMVC.Patterns.Command;
-using System;
 
 namespace B2BackupUtility.Commands
 {

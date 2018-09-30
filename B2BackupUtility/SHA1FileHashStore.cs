@@ -40,10 +40,7 @@ namespace B2BackupUtility
         #endregion
 
         #region public properties
-        public static SHA1FileHashStore Instance
-        {
-            get { return _instance.Value; }
-        }
+        public static SHA1FileHashStore Instance => _instance.Value;
         #endregion
 
         #region public methods

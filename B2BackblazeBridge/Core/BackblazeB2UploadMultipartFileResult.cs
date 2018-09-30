@@ -44,7 +44,7 @@ namespace B2BackblazeBridge.Core
         /// The Bucket ID the file is being uploaded to
         /// </summary>
         [JsonProperty(PropertyName = "bucketId")]
-        public string BucketID { get; set;}
+        public string BucketID { get; set; }
 
         /// <summary>
         /// The total length, in bytes, of this file

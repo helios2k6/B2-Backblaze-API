@@ -32,11 +32,10 @@ namespace B2BackblazeBridge.Actions.InternalActions
     internal sealed class UploadFilePartAction : BaseAction<UploadFilePartResponse>
     {
         #region private fields
-        private static readonly int MaxUploadAttempts = 10;
-
         private readonly BackblazeB2AuthorizationSession _authorizationSession;
         private readonly string _bucketID;
         private readonly long _filePartNumber;
+        private readonly int _maxUploadAttempts;
         private readonly GetUploadPartURLResponse _getUploadPartUrl;
         private readonly byte[] _rawBytes;
         private readonly string _sha1;
@@ -49,6 +48,7 @@ namespace B2BackblazeBridge.Actions.InternalActions
             CancellationToken cancellationToken,
             string bucketID,
             long filePart,
+            int maxUploadAttempts,
             GetUploadPartURLResponse getUploadPartUrl,
             byte[] rawBytes,
             string sha1,
@@ -58,6 +58,7 @@ namespace B2BackblazeBridge.Actions.InternalActions
             _authorizationSession = authorizationSession;
             _bucketID = bucketID;
             _filePartNumber = filePart;
+            _maxUploadAttempts = maxUploadAttempts;
             _getUploadPartUrl = getUploadPartUrl;
             _rawBytes = rawBytes;
             _sha1 = sha1;
@@ -92,6 +93,8 @@ namespace B2BackblazeBridge.Actions.InternalActions
                 webRequest.Headers.Add("X-Bz-Content-Sha1", _sha1);
                 webRequest.ContentLength = _rawBytes.Length;
 
+                attemptNumber++;
+
                 BackblazeB2ActionResult<UploadFilePartResponse> uploadResponse = SendWebRequestAndDeserialize(webRequest, _rawBytes);
                 if (uploadResponse.HasResult)
                 {
@@ -118,10 +121,9 @@ namespace B2BackblazeBridge.Actions.InternalActions
                         return uploadResponse;
                     }
                 }
-                else if (uploadResponse.Errors.Any(e => e.Status >= 500 && e.Status < 600) && attemptNumber < MaxUploadAttempts)
+                else if (uploadResponse.Errors.Any(e => e.Status >= 500 && e.Status < 600) && attemptNumber < _maxUploadAttempts)
                 {
-                    // Internal error. We need to do exponential backoff
-                    attemptNumber++;
+                    continue;
                 }
                 else
                 {

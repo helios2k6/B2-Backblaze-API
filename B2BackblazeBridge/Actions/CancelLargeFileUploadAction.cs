@@ -20,7 +20,6 @@
  */
 
 using B2BackblazeBridge.Core;
-using System;
 using System.Net;
 using System.Text;
 using System.Threading;
@@ -59,7 +58,7 @@ namespace B2BackblazeBridge.Actions
         #region public methods
         public override BackblazeB2ActionResult<BackblazeB2CancelLargeFileUploadResult> Execute()
         {
-            String getUploadUrlJsonStr = "{\"fileId\":\"" + _fileId + "\"}";
+            string getUploadUrlJsonStr = "{\"fileId\":\"" + _fileId + "\"}";
             byte[] payload = Encoding.UTF8.GetBytes(getUploadUrlJsonStr);
 
             HttpWebRequest webRequest = GetHttpWebRequest(_authorizationSession.APIURL + APIURL);

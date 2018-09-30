@@ -20,10 +20,8 @@
  */
 
 using B2BackupUtility.Proxies;
-using B2BackupUtility.Proxies.Exceptions;
 using PureMVC.Interfaces;
 using PureMVC.Patterns.Command;
-using System.IO;
 
 namespace B2BackupUtility.Commands
 {

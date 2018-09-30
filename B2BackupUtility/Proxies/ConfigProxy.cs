@@ -38,10 +38,7 @@ namespace B2BackupUtility.Proxies
         /// <summary>
         /// Gets the Config of this Proxy
         /// </summary>
-        public Config Config
-        {
-            get { return Data as Config; }
-        }
+        public Config Config => Data as Config;
         #endregion
 
         #region ctor

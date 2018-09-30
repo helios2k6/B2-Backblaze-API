@@ -62,7 +62,8 @@ namespace B2BackblazeBridge.Actions
             );
             webRequest.Headers.Add("Authorization", "Basic " + credentialsHeader);
             BackblazeB2ActionResult<BackblazeB2AuthorizationSession> response = SendWebRequestAndDeserialize(webRequest, null);
-            response.MaybeResult.Do(r => {
+            response.MaybeResult.Do(r =>
+            {
                 r.ApplicationKey = _applicationKey;
                 r.SessionExpirationDate = DateTime.Now + TimeSpan.FromHours(24);
             });

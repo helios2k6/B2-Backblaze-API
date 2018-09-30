@@ -19,13 +19,6 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.IO.Compression;
-using System.Linq;
-using System.Text;
-using System.Threading;
 using B2BackblazeBridge.Actions;
 using B2BackblazeBridge.Core;
 using B2BackupUtility.Database;
@@ -33,6 +26,13 @@ using B2BackupUtility.Encryption;
 using B2BackupUtility.Proxies.Exceptions;
 using Newtonsoft.Json;
 using PureMVC.Patterns.Proxy;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.IO.Compression;
+using System.Linq;
+using System.Text;
+using System.Threading;
 using static B2BackblazeBridge.Core.BackblazeB2ListFilesResult;
 
 namespace B2BackupUtility.Proxies
@@ -47,6 +47,8 @@ namespace B2BackupUtility.Proxies
         #endregion
 
         #region private fields
+        private static int MaxAttemptsToUploadFileManifest => 3;
+
         // This field must be handled with care since it's statically shared between
         // all instances. Do not reference directly
         private static readonly object SharedFileDatabaseManifestLock = new object();
@@ -149,6 +151,7 @@ namespace B2BackupUtility.Proxies
                 Config.BucketID,
                 SerializeManifest(FileDatabaseManifest, Config),
                 RemoteFileDatabaseManifestName,
+                MaxAttemptsToUploadFileManifest,
                 CancellationToken.None,
                 _ => { } // NoOp for exponential backoff callback
             );

@@ -19,22 +19,9 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-using B2BackblazeBridge.Actions;
 using B2BackblazeBridge.Core;
 using B2BackupUtility.Database;
-using B2BackupUtility.Encryption;
-using B2BackupUtility.Proxies.Exceptions;
-using Functional.Maybe;
-using Newtonsoft.Json;
-using PureMVC.Patterns.Proxy;
-using System;
 using System.Collections.Generic;
-using System.IO;
-using System.IO.Compression;
-using System.Linq;
-using System.Text;
-using System.Threading;
-using static B2BackblazeBridge.Core.BackblazeB2ListFilesResult;
 
 namespace B2BackupUtility.Proxies
 {
@@ -49,10 +36,7 @@ namespace B2BackupUtility.Proxies
         /// <summary>
         /// Gets all files in the file database manifest
         /// </summary>
-        public IEnumerable<Database.File> AllFiles
-        {
-            get { return FileDatabaseManifest.Files; }
-        }
+        public IEnumerable<File> AllFiles => FileDatabaseManifest.Files;
         #endregion
 
         #region ctor

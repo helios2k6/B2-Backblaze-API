@@ -37,7 +37,7 @@ namespace B2BackblazeBridge.Core
         /// </summary>
         [JsonProperty(PropertyName = "accountId")]
         public string AccountID { get; set; }
-        
+
         /// <summary>
         /// The current action of the file. "Upload" for files, "folder" for folders,
         /// "start" for large files that have been started, and "hide" for files that
@@ -50,7 +50,7 @@ namespace B2BackblazeBridge.Core
         /// The Bucket ID the file is being uploaded to
         /// </summary>
         [JsonProperty(PropertyName = "bucketId")]
-        public string BucketID { get; set;}
+        public string BucketID { get; set; }
 
         /// <summary>
         /// The length of the file provided during upload.

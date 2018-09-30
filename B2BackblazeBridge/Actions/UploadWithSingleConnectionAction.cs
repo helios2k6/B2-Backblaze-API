@@ -24,7 +24,6 @@ using B2BackblazeBridge.Core;
 using B2BackblazeBridge.Processing;
 using Functional.Maybe;
 using System;
-using System.IO;
 using System.Linq;
 using System.Net;
 using System.Threading;
@@ -37,12 +36,11 @@ namespace B2BackblazeBridge.Actions
     public sealed class UploadWithSingleConnectionAction : BaseAction<BackblazeB2UploadFileResult>
     {
         #region private fields
-        private static int MaxUploadAttempts => 10;
-
         private readonly BackblazeB2AuthorizationSession _authorizationSession;
         private readonly string _bucketID;
         private readonly byte[] _bytesToUpload;
         private readonly string _fileDestination;
+        private readonly int _maxUploadAttempts;
         private readonly Action<TimeSpan> _exponentialBackoffCallback;
         #endregion
 
@@ -54,6 +52,7 @@ namespace B2BackblazeBridge.Actions
         /// <param name="bytesToUpload">The bytes to upload</param>
         /// <param name="fileDestination">The remote file path to upload to</param>
         /// <param name="bucketID">The Bucket ID to upload to</param>
+        /// <param name="maxUploadAttempts">The maximum number of times to try to upload this file</param>
         /// <param name="cancellationToken">The cancellation token</param>
         /// <param name="exponentialBackoffCallback">A callback to invoke when this upload uses exponential backoff</param>
         public UploadWithSingleConnectionAction(
@@ -61,6 +60,7 @@ namespace B2BackblazeBridge.Actions
             string bucketID,
             byte[] bytesToUpload,
             string fileDestination,
+            int maxUploadAttempts,
             CancellationToken cancellationToken,
             Action<TimeSpan> exponentialBackoffCallback
         ) : base(cancellationToken)
@@ -71,34 +71,8 @@ namespace B2BackblazeBridge.Actions
             _bucketID = bucketID;
             _bytesToUpload = bytesToUpload;
             _fileDestination = fileDestination;
+            _maxUploadAttempts = maxUploadAttempts;
             _exponentialBackoffCallback = exponentialBackoffCallback;
-        }
-
-        /// <summary>
-        /// Construct an UploadWithSingleConnectionAction
-        /// </summary>
-        /// <param name="authorizationSession">The authorization session</param>
-        /// <param name="filePath">The path to the file to upload</param>
-        /// <param name="fileDestination">The remote file path to upload to</param>
-        /// <param name="bucketID">The Bucket ID to upload to</param>
-        /// <param name="cancellationToken">The cancellation token</param>
-        /// <param name="exponentialBackoffCallback">A callback to invoke when this upload uses exponential backoff</param>
-        public UploadWithSingleConnectionAction(
-            BackblazeB2AuthorizationSession authorizationSession,
-            string filePath,
-            string fileDestination,
-            string bucketID,
-            CancellationToken cancellationToken,
-            Action<TimeSpan> exponentialBackoffCallback
-        ) : this(
-            authorizationSession,
-            bucketID,
-            File.ReadAllBytes(filePath),
-            fileDestination,
-            cancellationToken,
-            exponentialBackoffCallback
-        )
-        {
         }
         #endregion
 
@@ -144,15 +118,16 @@ namespace B2BackblazeBridge.Actions
                     webRequest.ContentType = "b2/x-auto";
                     webRequest.ContentLength = _bytesToUpload.Length;
 
+                    attemptNumber++;
+
                     BackblazeB2ActionResult<BackblazeB2UploadFileResult> response = SendWebRequestAndDeserialize(webRequest, _bytesToUpload);
                     if (response.HasResult)
                     {
                         return response;
                     }
-                    else if (response.Errors.Any(e => e.Status >= 500 && e.Status < 600) && attemptNumber < MaxUploadAttempts)
+                    else if (response.Errors.Any(e => e.Status >= 500 && e.Status < 600) && attemptNumber < _maxUploadAttempts)
                     {
-                        // Internal error. We need to do exponential backoff
-                        attemptNumber++;
+                        continue;
                     }
                     else
                     {

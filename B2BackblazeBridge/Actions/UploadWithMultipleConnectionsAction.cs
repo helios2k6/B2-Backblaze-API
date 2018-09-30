@@ -51,6 +51,7 @@ namespace B2BackblazeBridge.Actions
         private readonly string _remoteFilePath;
         private readonly int _numberOfConnections;
         private readonly int _fileChunkSizesInBytes;
+        private readonly int _maxUploadAttempts;
         private readonly Stream _dataStream;
         private readonly BlockingCollection<ProducerUploadJob> _jobStream;
         private readonly Action<TimeSpan> _exponentialBackoffCallback;
@@ -68,6 +69,7 @@ namespace B2BackblazeBridge.Actions
         /// <param name="bucketID">The B2 bucket you want to upload to</param>
         /// <param name="fileChunkSizesInBytes">The size (in bytes) of the file chunks you want to use when uploading</param>
         /// <param name="numberOfConnections">The number of connections to use when uploading</param>
+        /// <param name="maxUploadAttempts">The maximum number of times to attempt to upload a file chunk</param>
         /// <param name="cancellationToken">The cancellation token to pass in when this upload needs to be cancelled</param>
         /// <param name="exponentialBackoffCallback">A callback to invoke when this upload uses exponential backoff</param>
         public UploadWithMultipleConnectionsAction(
@@ -77,6 +79,7 @@ namespace B2BackblazeBridge.Actions
             string bucketID,
             int fileChunkSizesInBytes,
             int numberOfConnections,
+            int maxUploadAttempts,
             CancellationToken cancellationToken,
             Action<TimeSpan> exponentialBackoffCallback
         ) : base(cancellationToken)
@@ -99,41 +102,9 @@ namespace B2BackblazeBridge.Actions
             _remoteFilePath = remoteFilePath;
             _fileChunkSizesInBytes = fileChunkSizesInBytes;
             _numberOfConnections = numberOfConnections;
+            _maxUploadAttempts = maxUploadAttempts;
             _jobStream = new BlockingCollection<ProducerUploadJob>(MaxMemoryAllowed / _fileChunkSizesInBytes);
             _exponentialBackoffCallback = exponentialBackoffCallback;
-        }
-
-        /// <summary>
-        /// Constructs a new UploadFileUsingMultipleConnectionsActions
-        /// </summary>
-        /// <param name="authorizationSession">The authorization session</param>
-        /// <param name="localFilePath">The (local) path to the file you want to upload</param>
-        /// <param name="fileDestination">The remote path you want to upload to</param>
-        /// <param name="bucketID">The B2 bucket you want to upload to</param>
-        /// <param name="fileChunkSizesInBytes">The size (in bytes) of the file chunks you want to use when uploading</param>
-        /// <param name="numberOfConnections">The number of connections to use when uploading</param>
-        /// <param name="cancellationToken">The cancellation token to pass in when this upload needs to be cancelled</param>
-        /// <param name="exponentialBackoffCallback">A callback to invoke when this upload uses exponential backoff</param>
-        public UploadWithMultipleConnectionsAction(
-            BackblazeB2AuthorizationSession authorizationSession,
-            string localFilePath,
-            string fileDestination,
-            string bucketID,
-            int fileChunkSizesInBytes,
-            int numberOfConnections,
-            CancellationToken cancellationToken,
-            Action<TimeSpan> exponentialBackoffCallback
-        ) : this(
-            authorizationSession,
-            new FileStream(localFilePath, FileMode.Open, FileAccess.Read, FileShare.Read),
-            fileDestination,
-            bucketID,
-            fileChunkSizesInBytes,
-            numberOfConnections,
-            cancellationToken,
-            exponentialBackoffCallback
-        )
-        {
         }
         #endregion
 
@@ -285,6 +256,7 @@ namespace B2BackblazeBridge.Actions
                     _cancellationToken,
                     _bucketID,
                     job.FilePartNumber,
+                    _maxUploadAttempts,
                     uploadPartURLResponse.Result,
                     job.Buffer,
                     job.SHA1,

@@ -19,10 +19,10 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-using System;
 using B2BackupUtility.Proxies;
 using PureMVC.Interfaces;
 using PureMVC.Patterns.Command;
+using System;
 
 namespace B2BackupUtility.Commands
 {
@@ -63,7 +63,7 @@ namespace B2BackupUtility.Commands
             {
                 throw new TerminateProgramException("Specific either a file name or a file ID; not both");
             }
-            
+
             RemoteFileSystemProxy remoteFileSystemProxy = (RemoteFileSystemProxy)Facade.RetrieveProxy(RemoteFileSystemProxy.Name);
             if (hasFileID)
             {

@@ -42,7 +42,7 @@ namespace B2BackblazeBridge.Core
         /// <summary>
         /// The actual result; throws on a Nothing option value
         /// </summary>
-        public TResult Result { get { return MaybeResult.Value; } }
+        public TResult Result => MaybeResult.Value;
 
         /// <summary>
         /// The errors that occurred during this action
@@ -52,18 +52,12 @@ namespace B2BackblazeBridge.Core
         /// <summary>
         /// Gets whether this result has an actual result
         /// </summary>
-        public bool HasResult
-        {
-            get { return MaybeResult.IsSomething() && Errors.Any() == false; }
-        }
+        public bool HasResult => MaybeResult.IsSomething() && Errors.Any() == false;
 
         /// <summary>
         /// Gets whether this result has any errors
         /// </summary>
-        public bool HasErrors
-        {
-            get { return Errors.Any(); }
-        }
+        public bool HasErrors => Errors.Any();
         #endregion
 
         #region ctor
@@ -123,7 +117,7 @@ namespace B2BackblazeBridge.Core
             builder.AppendFormat("Action Result").AppendLine()
                 .AppendFormat("Has Result? {0}", HasResult).AppendLine()
                 .AppendFormat("Has Errors? {0}", HasErrors).AppendLine();
-            
+
             if (HasResult)
             {
                 builder.AppendFormat("Result is: {0}", Result.ToString()).AppendLine();

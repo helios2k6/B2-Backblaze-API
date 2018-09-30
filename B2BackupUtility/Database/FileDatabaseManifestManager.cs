@@ -88,7 +88,7 @@ namespace B2BackupUtility.Database
         public void DeleteFile(string fileName)
         {
             // 1. Remove from mapping
-            if(_fileNameToFileMapping.Remove(fileName))
+            if (_fileNameToFileMapping.Remove(fileName))
             {
                 // 2. If we found the mapping, remove it from the database manifest
                 _manifest.Files = _manifest.Files.Where(t => string.Equals(t.FileName, fileName, StringComparison.Ordinal) == false).ToArray();
