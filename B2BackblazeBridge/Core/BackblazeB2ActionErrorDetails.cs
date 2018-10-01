@@ -57,6 +57,11 @@ namespace B2BackblazeBridge.Core
         /// error detail
         /// </summary>
         public Exception InnerException { get; set; }
+
+        /// <summary>
+        /// The request URI that was hit
+        /// </summary>
+        public Uri RequestURI { get; set; }
         #endregion
 
         #region public methods
@@ -66,6 +71,7 @@ namespace B2BackblazeBridge.Core
                 .AppendLine($"Status: {Status}")
                 .AppendLine($"Code: {Code}")
                 .AppendLine($"Message: {Message}")
+                .AppendLine($"Request URI: {RequestURI.ToString()}")
                 .AppendLine($"Inner Exception: {InnerException}")
                 .ToString();
         }

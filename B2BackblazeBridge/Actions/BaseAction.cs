@@ -215,7 +215,7 @@ namespace B2BackblazeBridge.Actions
             }
             catch (WebException ex)
             {
-                return new BackblazeB2ActionResult<T>(HandleErrorWebRequest(ex));
+                return new BackblazeB2ActionResult<T>(HandleErrorWebRequest(webRequest, ex));
             }
             catch (Exception ex)
             {
@@ -244,9 +244,10 @@ namespace B2BackblazeBridge.Actions
         /// <summary>
         /// An overridable method that handles web requests that fail
         /// </summary>
+        /// <param name="originalRequest">The original request</param>
         /// <param name="ex">The WebException that occurs during the request</param>
         /// <returns>A BackblazeB2ActionErrorDetails Request</returns>
-        protected virtual BackblazeB2ActionErrorDetails HandleErrorWebRequest(WebException ex)
+        protected virtual BackblazeB2ActionErrorDetails HandleErrorWebRequest(HttpWebRequest originalRequest, WebException ex)
         {
             HttpWebResponse response = (HttpWebResponse)ex.Response;
             if (response != null)
@@ -264,6 +265,7 @@ namespace B2BackblazeBridge.Actions
                     Code = "Unknown B2 Error",
                     Message = ex.Message,
                     InnerException = ex,
+                    RequestURI = originalRequest.RequestUri,
                 };
             }
         }
