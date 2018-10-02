@@ -71,7 +71,7 @@ namespace B2BackblazeBridge.Core
                 .AppendLine($"Status: {Status}")
                 .AppendLine($"Code: {Code}")
                 .AppendLine($"Message: {Message}")
-                .AppendLine($"Request URI: {RequestURI.ToString()}")
+                .AppendLine($"Request URI: {RequestURI}")
                 .AppendLine($"Inner Exception: {InnerException}")
                 .ToString();
         }

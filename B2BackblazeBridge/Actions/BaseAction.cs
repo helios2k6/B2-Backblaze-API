@@ -224,6 +224,7 @@ namespace B2BackblazeBridge.Actions
                     Status = -1,
                     Code = "Unknown exception",
                     Message = ex.Message,
+                    RequestURI = webRequest.RequestUri,
                 });
             }
         }
