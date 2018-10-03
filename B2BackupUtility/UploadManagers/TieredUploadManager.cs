@@ -83,7 +83,7 @@ namespace B2BackupUtility.UploadManagers
         /// <returns></returns>
         public string AddUploadJob(FileShard fileShard)
         {
-
+            throw new NotImplementedException();
         }
         #endregion
 
