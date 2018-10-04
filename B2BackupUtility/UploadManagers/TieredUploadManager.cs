@@ -36,7 +36,7 @@ namespace B2BackupUtility.UploadManagers
         #region private classes
         private sealed class UploadJob
         {
-            public string LocalFilePath { get; set; }
+            public FileShard Shard { get; set; }
         }
         #endregion
 
