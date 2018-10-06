@@ -31,7 +31,6 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
-using System.Threading;
 using System.Threading.Tasks;
 
 namespace B2BackupUtility.UploadManagers
@@ -60,11 +59,12 @@ namespace B2BackupUtility.UploadManagers
 
         private const int SlowLandUploadAttempts = 10;
 
-        private readonly Func<BackblazeB2AuthorizationSession> _authorizationSessionGenerator;
+        private const long MaxSize = 536870912; // 512 mebibytes
+
+        private readonly UploadManagerAuthorizationSessionTicketCounter _ticketCounter;
         private readonly BlockingCollection<UploadJob> _fastLane;
         private readonly BlockingCollection<UploadJob> _midLane;
         private readonly BlockingCollection<UploadJob> _slowLane;
-        private readonly CancellationToken _cancellationToken;
         private readonly List<Task> _taskList;
         private readonly Config _config;
 
@@ -82,15 +82,13 @@ namespace B2BackupUtility.UploadManagers
         #region ctor
         public TieredUploadManager(
             Func<BackblazeB2AuthorizationSession> authorizationSessionGenerator,
-            CancellationToken cancellationToken,
             Config config
         )
         {
-            _authorizationSessionGenerator = authorizationSessionGenerator;
+            _ticketCounter = new UploadManagerAuthorizationSessionTicketCounter(authorizationSessionGenerator);
             _fastLane = new BlockingCollection<UploadJob>();
             _midLane = new BlockingCollection<UploadJob>();
             _slowLane = new BlockingCollection<UploadJob>();
-            _cancellationToken = cancellationToken;
             _taskList = new List<Task>();
             _isSealed = false;
             _config = config;
@@ -105,7 +103,8 @@ namespace B2BackupUtility.UploadManagers
         /// <returns></returns>
         public string AddUploadJob(FileShard fileShard)
         {
-            if (_isSealed) {
+            if (_isSealed)
+            {
                 throw new InvalidOperationException(
                     "The upload manager has been sealed. You can no longer add new upload jobs"
                 );
@@ -151,53 +150,135 @@ namespace B2BackupUtility.UploadManagers
         {
             foreach (UploadJob job in _fastLane.GetConsumingEnumerable())
             {
-                FileShard fileShard = job.Shard;
-                
-                // Serialized file shard
-                byte[] serializedFileShard = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(fileShard));
+                BackblazeB2ActionResult<IBackblazeB2UploadResult> uploadResult = ExecuteLaneImpl(
+                    _config,
+                    _ticketCounter,
+                    job.Shard,
+                    true,
+                    FastLaneUploadConnections,
+                    FastLaneUploadAttempts
+                );
 
-                BackblazeB2ActionResult<IBackblazeB2UploadResult> uploadResult = fileShard.Length < DefaultUploadChunkSize
-                    ? ExecuteUploadAction(
-                        new UploadWithSingleConnectionAction(
-                            authorizationSession,
-                            _config.BucketID,
-                            EncryptionHelpers.EncryptBytes(serializedFileShard, _config.EncryptionKey, _config.InitializationVector),
-                            fileShard.ID,
-                            FastLaneUploadAttempts,
-                            CancellationEventRouter.GlobalCancellationToken,
-                            _ => { } // There is no backoff, so we can just NoOp here
-                        ))
-                    : ExecuteUploadAction(
-                        new UploadWithMultipleConnectionsAction(
-                            authorizationSession,
-                            new MemoryStream(
-                                EncryptionHelpers.EncryptBytes(
-                                    serializedFileShard,
-                                    _config.EncryptionKey,
-                                    _config.InitializationVector
-                                )
-                            ),
-                            fileShard.ID,
-                            _config.BucketID,
-                            DefaultUploadChunkSize,
-                            FastLaneUploadConnections,
-                            FastLaneUploadAttempts,
-                            CancellationEventRouter.GlobalCancellationToken,
-                            _ => { } // There is no backoff, so we can just NoOp here
-                        ));
+                PostProcessJob(job, uploadResult, _midLane, "Mid Tier");
             }
         }
 
         private void ExecuteMidLane()
         {
+            foreach (UploadJob job in _midLane.GetConsumingEnumerable())
+            {
+                BackblazeB2ActionResult<IBackblazeB2UploadResult> uploadResult = ExecuteLaneImpl(
+                    _config,
+                    _ticketCounter,
+                    job.Shard,
+                    true,
+                    MidLaneUploadConnections,
+                    MidLaneUploadAttempts
+                );
+
+                PostProcessJob(job, uploadResult, _slowLane, "Slow Tier");
+            }
+        }
+
+        private void PostProcessJob(
+            UploadJob job,
+            BackblazeB2ActionResult<IBackblazeB2UploadResult> uploadResult,
+            BlockingCollection<UploadJob> failureDestinationQueue,
+            string failureDestinationQueueName
+        )
+        {
+            if (uploadResult.HasErrors)
+            {
+                OnUploadTierChanged(this, new UploadManagerEventArgs
+                {
+                    UploadID = job.UploadID,
+                    NewUploadTier = failureDestinationQueueName,
+                });
+
+                failureDestinationQueue.Add(job);
+            }
+            else
+            {
+                OnUploadFinished(this, new UploadManagerEventArgs
+                {
+                    UploadID = job.UploadID,
+                });
+            }
         }
 
         private void ExecuteSlowLane()
         {
+            foreach (UploadJob job in _slowLane.GetConsumingEnumerable())
+            {
+                BackblazeB2ActionResult<IBackblazeB2UploadResult> uploadResult = ExecuteLaneImpl(
+                    _config,
+                    _ticketCounter,
+                    job.Shard,
+                    false,
+                    -1,
+                    -1
+                );
+
+                if (uploadResult.HasErrors)
+                {
+                    OnUploadFailed(this, new UploadManagerEventArgs
+                    {
+                        UploadID = job.UploadID,
+                    });
+                }
+                else
+                {
+                    OnUploadFinished(this, new UploadManagerEventArgs
+                    {
+                        UploadID = job.UploadID,
+                    });
+                }
+            }
         }
 
-        private void ExecuteLaneImpl()
+        private static BackblazeB2ActionResult<IBackblazeB2UploadResult> ExecuteLaneImpl(
+            Config config,
+            UploadManagerAuthorizationSessionTicketCounter ticketCounter,
+            FileShard fileShard,
+            bool canUseMultipleConnections,
+            int uploadConnections,
+            int uploadAttempts
+        )
         {
+            // Serialized file shard
+            byte[] serializedFileShard = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(fileShard));
+            using (UploadManagerAuthorizationSessionTicket authorizationTicket = ticketCounter.GetAuthorizationSessionTicket())
+            {
+                return fileShard.Length > DefaultUploadChunkSize && canUseMultipleConnections
+                   ? ExecuteUploadAction(
+                       new UploadWithSingleConnectionAction(
+                           authorizationTicket.AuthorizationSession,
+                           config.BucketID,
+                           EncryptionHelpers.EncryptBytes(serializedFileShard, config.EncryptionKey, config.InitializationVector),
+                           fileShard.ID,
+                           uploadAttempts,
+                           CancellationEventRouter.GlobalCancellationToken,
+                           _ => { } // There is no backoff, so we can just NoOp here
+                       ))
+                   : ExecuteUploadAction(
+                       new UploadWithMultipleConnectionsAction(
+                           authorizationTicket.AuthorizationSession,
+                           new MemoryStream(
+                               EncryptionHelpers.EncryptBytes(
+                                   serializedFileShard,
+                                   config.EncryptionKey,
+                                   config.InitializationVector
+                               )
+                           ),
+                           fileShard.ID,
+                           config.BucketID,
+                           DefaultUploadChunkSize,
+                           uploadConnections,
+                           uploadAttempts,
+                           CancellationEventRouter.GlobalCancellationToken,
+                           _ => { } // There is no backoff, so we can just NoOp here
+                       ));
+            }
         }
 
         private static BackblazeB2ActionResult<IBackblazeB2UploadResult> ExecuteUploadAction<T>(

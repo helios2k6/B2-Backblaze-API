@@ -37,5 +37,10 @@ namespace B2BackupUtility.UploadManagers
         /// The upload result, if there is on
         /// </summary>
         BackblazeB2ActionResult<IBackblazeB2UploadResult> UploadResult { get; set; }
+
+        /// <summary>
+        /// A print-friendly name that describes which tier this upload is moving to
+        /// </summary>
+        public string NewUploadTier { get; set; }
     }
 }
