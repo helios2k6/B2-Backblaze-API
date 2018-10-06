@@ -245,8 +245,12 @@ namespace B2BackupUtility.UploadManagers
             int uploadAttempts
         )
         {
-            // Serialized file shard
-            byte[] serializedFileShard = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(fileShard));
+            byte[] serializedAndEncryptedBytes = EncryptionHelpers.EncryptBytes(
+                Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(fileShard)),
+                config.EncryptionKey,
+                config.InitializationVector
+            );
+
             using (UploadManagerAuthorizationSessionTicket authorizationTicket = ticketCounter.GetAuthorizationSessionTicket())
             {
                 return fileShard.Length > DefaultUploadChunkSize && canUseMultipleConnections
@@ -254,7 +258,7 @@ namespace B2BackupUtility.UploadManagers
                        new UploadWithSingleConnectionAction(
                            authorizationTicket.AuthorizationSession,
                            config.BucketID,
-                           EncryptionHelpers.EncryptBytes(serializedFileShard, config.EncryptionKey, config.InitializationVector),
+                           serializedAndEncryptedBytes,
                            fileShard.ID,
                            uploadAttempts,
                            CancellationEventRouter.GlobalCancellationToken,
@@ -263,13 +267,7 @@ namespace B2BackupUtility.UploadManagers
                    : ExecuteUploadAction(
                        new UploadWithMultipleConnectionsAction(
                            authorizationTicket.AuthorizationSession,
-                           new MemoryStream(
-                               EncryptionHelpers.EncryptBytes(
-                                   serializedFileShard,
-                                   config.EncryptionKey,
-                                   config.InitializationVector
-                               )
-                           ),
+                           new MemoryStream(serializedAndEncryptedBytes),
                            fileShard.ID,
                            config.BucketID,
                            DefaultUploadChunkSize,
