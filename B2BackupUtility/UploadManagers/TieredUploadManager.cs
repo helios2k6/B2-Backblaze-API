@@ -39,7 +39,7 @@ namespace B2BackupUtility.UploadManagers
     /// An upload manager that breaks the uploading of data to B2 into "lanes." These lanes
     /// are used in the event that an upload fails in a specific lane
     /// </summary>
-    public sealed class TieredUploadManager
+    public sealed class TieredUploadManager : IDisposable
     {
         #region private classes
         private sealed class UploadJob
@@ -69,6 +69,7 @@ namespace B2BackupUtility.UploadManagers
         private readonly Config _config;
 
         private volatile bool _isSealed;
+        private volatile bool _isDisposed;
         #endregion
 
         #region public events
@@ -103,6 +104,11 @@ namespace B2BackupUtility.UploadManagers
         /// <returns></returns>
         public string AddUploadJob(FileShard fileShard)
         {
+            if (_isDisposed)
+            {
+                throw new ObjectDisposedException("This object has been disposed");
+            }
+
             if (_isSealed)
             {
                 throw new InvalidOperationException(
@@ -125,6 +131,11 @@ namespace B2BackupUtility.UploadManagers
         /// </summary>
         public void Execute()
         {
+            if (_isDisposed)
+            {
+                throw new ObjectDisposedException("This object has been disposed");
+            }
+
             _taskList.AddRange(new[]
             {
                 Task.Factory.StartNew(ExecuteFastLane),
@@ -140,8 +151,50 @@ namespace B2BackupUtility.UploadManagers
         /// </summary>
         public void SealUploadManager()
         {
+            if (_isDisposed)
+            {
+                throw new ObjectDisposedException("This object has been disposed");
+            }
+
             _isSealed = true;
             _fastLane.CompleteAdding(); // This is the initial queue, so close it down
+        }
+
+        /// <summary>
+        /// Waits until all uploads are finished
+        /// </summary>
+        public void Wait()
+        {
+            if (_isDisposed)
+            {
+                throw new ObjectDisposedException("This object has been disposed");
+            }
+
+            Task.WaitAll(_taskList.ToArray());
+        }
+
+        /// <summary>
+        /// Disposes of this upload manager
+        /// </summary>
+        public void Dispose()
+        {
+            if (_isDisposed)
+            {
+                return;
+            }
+
+            _isDisposed = true;
+            _isSealed = true;
+            _fastLane.Dispose();
+            _midLane.Dispose();
+            _slowLane.Dispose();
+            
+            foreach (Task t in _taskList)
+            {
+                t.Dispose();
+            }
+
+            _ticketCounter.Dispose();
         }
         #endregion
 
@@ -161,6 +214,9 @@ namespace B2BackupUtility.UploadManagers
 
                 PostProcessJob(job, uploadResult, _midLane, "Mid Tier");
             }
+
+            // We will no longer add to the mid-lane queue
+            _midLane.CompleteAdding();
         }
 
         private void ExecuteMidLane()
@@ -178,6 +234,9 @@ namespace B2BackupUtility.UploadManagers
 
                 PostProcessJob(job, uploadResult, _slowLane, "Slow Tier");
             }
+
+            // We will no longer add to the slow-lane queue
+            _slowLane.CompleteAdding();
         }
 
         private void PostProcessJob(

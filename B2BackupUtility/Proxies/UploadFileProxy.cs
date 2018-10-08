@@ -24,6 +24,7 @@ using B2BackblazeBridge.Core;
 using B2BackupUtility.Database;
 using B2BackupUtility.Encryption;
 using B2BackupUtility.Proxies.Exceptions;
+using B2BackupUtility.UploadManagers;
 using Functional.Maybe;
 using Newtonsoft.Json;
 using System;
@@ -31,6 +32,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading.Tasks;
 
 namespace B2BackupUtility.Proxies
 {
@@ -251,6 +253,56 @@ namespace B2BackupUtility.Proxies
         #endregion
 
         #region private methods
+        private void UploadFiles(
+            Func<BackblazeB2AuthorizationSession> authorizationSessionGenerator,
+            IEnumerable<string> localFilePaths,
+            bool shouldOverride
+        )
+        {
+            // Do all of the sanity checks first, so we don't have to deal with aggregation exceptions
+            IList<string> absoluteLocalFilePaths = new List<string>();
+            foreach (string relativeLocalFilePath in localFilePaths)
+            {
+                string absoluteFilePath = Path.GetFullPath(relativeLocalFilePath);
+                if (System.IO.File.Exists(absoluteFilePath) == false)
+                {
+                    throw new FileNotFoundException("Could not find file to upload", absoluteFilePath);
+                }
+
+                // Check to see if the file exists already
+                if (TryGetFileByName(absoluteFilePath, out Database.File fileThatExists))
+                {
+                    // If we can't override, we need to throw an exception
+                    if (shouldOverride == false)
+                    {
+                        throw new FailedToUploadFileException("File already exists and we are not allowed to override it!")
+                        {
+                            File = absoluteFilePath,
+                        };
+                    }
+                }
+
+                absoluteLocalFilePaths.Add(absoluteFilePath);
+            }
+
+            // TODO: hook up events to upload manager
+            using(TieredUploadManager uploadManager = new TieredUploadManager(authorizationSessionGenerator, Config))
+            {
+                Parallel.ForEach(absoluteLocalFilePaths, (absoluteLocalFilePath, loopState, loopIteration) => {
+                    foreach (FileShard fileShard in FileFactory.CreateFileShards(new FileStream(absoluteLocalFilePath, FileMode.Open, FileAccess.Read, FileShare.Read), true))
+                    {
+                        // TODO: figure out a way to defer file shard reading and cap the memory the upload manager can 
+                        // load into memory
+                        uploadManager.AddUploadJob(fileShard);
+                    }
+                });
+
+                uploadManager.Execute();
+                uploadManager.SealUploadManager();
+                uploadManager.Wait();
+            }
+        }
+
         private IEnumerable<string> GetFilesToUpload(
             string folder,
             bool overrideFiles
