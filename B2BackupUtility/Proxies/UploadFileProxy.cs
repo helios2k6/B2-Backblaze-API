@@ -28,6 +28,7 @@ using B2BackupUtility.UploadManagers;
 using Functional.Maybe;
 using Newtonsoft.Json;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -179,7 +180,7 @@ namespace B2BackupUtility.Proxies
                 }
 
                 // Remove the file from the manifest
-                FileDatabaseManifest.Files = FileDatabaseManifest.Files.Where(t => t.Equals(fileThatExists) == false).ToArray();
+                RemoveFile(fileThatExists);
             }
 
             IList<string> fileShardIDs = new List<string>();
@@ -244,7 +245,7 @@ namespace B2BackupUtility.Proxies
             };
 
             // Update manifest
-            FileDatabaseManifest.Files = FileDatabaseManifest.Files.Append(file).ToArray();
+            AddFile(file);
             UploadFileDatabaseManifest(authorizationSession);
         }
         #endregion
@@ -282,8 +283,39 @@ namespace B2BackupUtility.Proxies
                 absoluteLocalFilePaths.Add(absoluteFilePath);
             }
 
-            // TODO: hook up Tiered upload manager with management for the File Manifest
-            
+            object localLockObject = new object();
+            using (TieredUploadManager uploadManager = new TieredUploadManager(authorizationSessionGenerator, Config, CancellationEventRouter.GlobalCancellationToken))
+            {
+                // Hook up events
+                uploadManager.OnUploadFailed += HandleOnUploadFailed;
+                uploadManager.OnUploadFinished += HandleOnUploadFinished;
+                uploadManager.OnUploadTierChanged += HandleOnUploadTierChanged;
+
+                // TODO: Cycle through and begin adding stuff to 
+
+                // Unsubscribe from events
+                uploadManager.OnUploadFailed -= HandleOnUploadFailed;
+                uploadManager.OnUploadFinished -= HandleOnUploadFinished;
+                uploadManager.OnUploadTierChanged -= HandleOnUploadTierChanged;
+            }
+        }
+
+        private void HandleOnUploadFailed(object sender, UploadManagerEventArgs eventArgs)
+        {
+            // TODO: Notify that a specific local file has failed
+            throw new NotImplementedException();
+        }
+
+        private void HandleOnUploadFinished(object sender, UploadManagerEventArgs eventArgs)
+        {
+            // TODO: Update the staus of an upload of a local file
+            throw new NotImplementedException();
+        }
+
+        private void HandleOnUploadTierChanged(object sender, UploadManagerEventArgs eventArgs)
+        {
+            // TODO: Notify to user that a file has had its tiered changed
+            throw new NotImplementedException();
         }
 
         private IEnumerable<string> GetFilesToUpload(

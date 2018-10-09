@@ -46,20 +46,22 @@ namespace B2BackupUtility.Proxies
         public static string RemoteFileDatabaseManifestName => "b2_backup_util_file_database_manifest.txt.aes.gz";
         #endregion
 
-        #region private fields
+        #region private fields and properties
         private static int MaxAttemptsToUploadFileManifest => 3;
 
         // This field must be handled with care since it's statically shared between
         // all instances. Do not reference directly
         private static readonly object SharedFileDatabaseManifestLock = new object();
         private static FileDatabaseManifest SharedFileDatabaseManifest = null;
+
+        private FileDatabaseManifest FileDatabaseManifest => (Data as FileDatabaseManifest);
         #endregion
 
         #region protected properties
         /// <summary>
-        /// The FileDatabaseManifest for this Proxy
+        /// The files in the FileDatabaseManifest for this proxy
         /// </summary>
-        protected FileDatabaseManifest FileDatabaseManifest => Data as FileDatabaseManifest;
+        protected IEnumerable<Database.File> FileDatabaseManifestFiles => FileDatabaseManifest.Files;
 
         /// <summary>
         /// The Config set on this proxy
@@ -95,8 +97,7 @@ namespace B2BackupUtility.Proxies
         )
         {
             // Do linear search since this doesn't happen often
-            file = FileDatabaseManifest
-                .Files
+            file = FileDatabaseManifestFiles
                 .Where(f => f.FileName.Equals(fileName, StringComparison.Ordinal))
                 .SingleOrDefault();
 
@@ -115,8 +116,7 @@ namespace B2BackupUtility.Proxies
         )
         {
             // Linear search since this doesn't happen often
-            file = FileDatabaseManifest
-                .Files
+            file = FileDatabaseManifestFiles
                 .Where(f => f.FileID.Equals(fileID, StringComparison.OrdinalIgnoreCase))
                 .SingleOrDefault();
 
@@ -125,6 +125,42 @@ namespace B2BackupUtility.Proxies
         #endregion
 
         #region protected methods
+        /// <summary>
+        /// Removes all files from the FileDatabaseManifest
+        /// </summary>
+        protected void RemoveAllFiles()
+        {
+            lock (SharedFileDatabaseManifestLock)
+            {
+                FileDatabaseManifest.Files = new Database.File[0];
+            }
+        }
+
+        /// <summary>
+        /// Removes a file from the FileDatabaseManifest in a thread-safe manner
+        /// </summary>
+        /// <param name="file">The file to remove</param>
+        protected void RemoveFile(Database.File file)
+        {
+            lock (SharedFileDatabaseManifestLock)
+            {
+                FileDatabaseManifest.Files = FileDatabaseManifest.Files.Where(t => t.Equals(file) == false).ToArray();
+            }
+        }
+
+        /// <summary>
+        /// Adds a file to the FileDatabaseManifest in a thread-safe manner. It does not check to see
+        /// if the file already exists
+        /// </summary>
+        /// <param name="file">The file to add</param>
+        protected void AddFile(Database.File file)
+        {
+            lock (SharedFileDatabaseManifestLock)
+            {
+                FileDatabaseManifest.Files = FileDatabaseManifest.Files.Append(file).ToArray();
+            }
+        }
+
         protected IEnumerable<FileResult> GetRawB2FileNames(BackblazeB2AuthorizationSession authorizationSession)
         {
             ListFilesAction listFilesAction =

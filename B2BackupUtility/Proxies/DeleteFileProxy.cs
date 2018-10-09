@@ -57,7 +57,7 @@ namespace B2BackupUtility.Proxies
         /// <param name="authorizationSessionGenerator">A generator function for the authorization session</param>
         public void DeleteAllFiles(Func<BackblazeB2AuthorizationSession> authorizationSessionGenerator)
         {
-            FileDatabaseManifest.Files = new Database.File[0];
+            RemoveAllFiles();
             IEnumerable<FileResult> rawB2FileList = GetRawB2FileNames(authorizationSessionGenerator());
             foreach (FileResult rawB2File in rawB2FileList)
             {
@@ -89,7 +89,7 @@ namespace B2BackupUtility.Proxies
         )
         {
             // Remove entry in the File Manifest
-            FileDatabaseManifest.Files = FileDatabaseManifest.Files.Where(f => f.Equals(file) == false).ToArray();
+            RemoveFile(file);
 
             // Get the raw B2 File List so we can get the B2 file IDs of the file shards
             ListFilesAction listFilesAction = ListFilesAction.CreateListFileActionForFileNames(authorizationSession, Config.BucketID, true);

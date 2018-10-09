@@ -36,7 +36,7 @@ namespace B2BackupUtility.Proxies
         /// <summary>
         /// Gets all files in the file database manifest
         /// </summary>
-        public IEnumerable<File> AllFiles => FileDatabaseManifest.Files;
+        public IEnumerable<File> AllFiles => FileDatabaseManifestFiles;
         #endregion
 
         #region ctor

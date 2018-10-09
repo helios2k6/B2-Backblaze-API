@@ -70,7 +70,7 @@ namespace B2BackupUtility.Proxies
             }
 
             IDictionary<string, FileResult> fileNameToFileResultMap = listFilesActionResult.Result.Files.ToDictionary(k => k.FileName, v => v);
-            ISet<string> allDatabaseFileShardIds = FileDatabaseManifest.Files.SelectMany(t => t.FileShardIDs).ToHashSet();
+            ISet<string> allDatabaseFileShardIds = FileDatabaseManifestFiles.SelectMany(t => t.FileShardIDs).ToHashSet();
             ISet<string> allRawFileNamesOnServer = fileNameToFileResultMap.Keys.ToHashSet();
             ISet<string> allFilesNotAccountedFor = allRawFileNamesOnServer.Except(allDatabaseFileShardIds).Where(t => t.Equals(RemoteFileDatabaseManifestName, StringComparison.OrdinalIgnoreCase) == false).ToHashSet();
             foreach (string fileNameNotAccountedFor in allFilesNotAccountedFor)

@@ -39,6 +39,7 @@ namespace B2BackupUtility.MemoryManagement
         public SharedResourceMemoryGovernor(long ticketCapacity)
         {
             _lockObject = new object();
+            _signal = new ManualResetEventSlim();
             _memoryCapacity = ticketCapacity;
             _isDisposed = false;
         }
