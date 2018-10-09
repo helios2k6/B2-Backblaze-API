@@ -28,7 +28,7 @@ namespace B2BackupUtility.Database
     /// <summary>
     /// Creates Files and FileShards for persistent on the B2 Backblaze server
     /// </summary>
-    public static class FileFactory
+    public static class FileShardFactory
     {
         #region private fields
         private static int DefaultShardLength => 104857600; // 100 Mebibytes

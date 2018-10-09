@@ -24,6 +24,7 @@ using B2BackblazeBridge.Actions;
 using B2BackblazeBridge.Core;
 using B2BackupUtility.Database;
 using B2BackupUtility.Encryption;
+using B2BackupUtility.MemoryManagement;
 using Functional.Maybe;
 using Newtonsoft.Json;
 using System;
@@ -31,6 +32,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace B2BackupUtility.UploadManagers
@@ -50,6 +52,8 @@ namespace B2BackupUtility.UploadManagers
         #endregion
 
         #region private fields
+        private const string MemoryServiceName = "Tiered Upload Manager";
+
         private const int DefaultUploadChunkSize = 5242880; // 5 mebibytes
         private const int FastLaneUploadConnections = 20;
         private const int FastLaneUploadAttempts = 1;
@@ -65,34 +69,37 @@ namespace B2BackupUtility.UploadManagers
         private readonly BlockingCollection<UploadJob> _fastLane;
         private readonly BlockingCollection<UploadJob> _midLane;
         private readonly BlockingCollection<UploadJob> _slowLane;
+        private readonly CancellationToken _cancellationToken;
         private readonly List<Task> _taskList;
         private readonly Config _config;
-
-        private volatile bool _isSealed;
-        private volatile bool _isDisposed;
+        
+        private bool _isSealed;
+        private bool _isDisposed;
         #endregion
 
         #region public events
         public event EventHandler<UploadManagerEventArgs> OnUploadFinished;
-
         public event EventHandler<UploadManagerEventArgs> OnUploadTierChanged;
-
         public event EventHandler<UploadManagerEventArgs> OnUploadFailed;
         #endregion
 
         #region ctor
         public TieredUploadManager(
             Func<BackblazeB2AuthorizationSession> authorizationSessionGenerator,
-            Config config
+            Config config,
+            CancellationToken cancellationToken
         )
         {
             _ticketCounter = new UploadManagerAuthorizationSessionTicketCounter(authorizationSessionGenerator);
             _fastLane = new BlockingCollection<UploadJob>();
             _midLane = new BlockingCollection<UploadJob>();
             _slowLane = new BlockingCollection<UploadJob>();
+            _cancellationToken = cancellationToken;
             _taskList = new List<Task>();
             _isSealed = false;
             _config = config;
+
+            MultinodeMemoryManagementSystem.Instance.AddService(MemoryServiceName, MaxSize);
         }
         #endregion
 
@@ -100,7 +107,7 @@ namespace B2BackupUtility.UploadManagers
         /// <summary>
         /// Add an upload job and return back an ID of the upload job
         /// </summary>
-        /// <param name="fileShard"></param>
+        /// <param name="fileShard">The file shard to upload</param>
         /// <returns></returns>
         public string AddUploadJob(FileShard fileShard)
         {
@@ -115,6 +122,11 @@ namespace B2BackupUtility.UploadManagers
                     "The upload manager has been sealed. You can no longer add new upload jobs"
                 );
             }
+            
+            MultinodeMemoryManagementSystem
+                .Instance
+                .GetMemoryGovernor(MemoryServiceName)
+                .AllocateMemory(fileShard.Length, _cancellationToken);
 
             UploadJob job = new UploadJob
             {
@@ -188,7 +200,7 @@ namespace B2BackupUtility.UploadManagers
             _fastLane.Dispose();
             _midLane.Dispose();
             _slowLane.Dispose();
-            
+
             foreach (Task t in _taskList)
             {
                 t.Dispose();
@@ -207,6 +219,7 @@ namespace B2BackupUtility.UploadManagers
                     _config,
                     _ticketCounter,
                     job.Shard,
+                    _cancellationToken,
                     true,
                     FastLaneUploadConnections,
                     FastLaneUploadAttempts
@@ -227,6 +240,7 @@ namespace B2BackupUtility.UploadManagers
                     _config,
                     _ticketCounter,
                     job.Shard,
+                    _cancellationToken,
                     true,
                     MidLaneUploadConnections,
                     MidLaneUploadAttempts
@@ -258,6 +272,11 @@ namespace B2BackupUtility.UploadManagers
             }
             else
             {
+                MultinodeMemoryManagementSystem
+                    .Instance
+                    .GetMemoryGovernor(MemoryServiceName)
+                    .FreeMemory(job.Shard.Length);
+
                 OnUploadFinished(this, new UploadManagerEventArgs
                 {
                     UploadID = job.UploadID,
@@ -273,6 +292,7 @@ namespace B2BackupUtility.UploadManagers
                     _config,
                     _ticketCounter,
                     job.Shard,
+                    _cancellationToken,
                     false,
                     -1,
                     -1
@@ -292,6 +312,12 @@ namespace B2BackupUtility.UploadManagers
                         UploadID = job.UploadID,
                     });
                 }
+
+                // It doesn't matter if the job succeeds or fails
+                MultinodeMemoryManagementSystem
+                    .Instance
+                    .GetMemoryGovernor(MemoryServiceName)
+                    .FreeMemory(job.Shard.Length);
             }
         }
 
@@ -299,6 +325,7 @@ namespace B2BackupUtility.UploadManagers
             Config config,
             UploadManagerAuthorizationSessionTicketCounter ticketCounter,
             FileShard fileShard,
+            CancellationToken cancellationToken,
             bool canUseMultipleConnections,
             int uploadConnections,
             int uploadAttempts
@@ -320,7 +347,7 @@ namespace B2BackupUtility.UploadManagers
                            serializedAndEncryptedBytes,
                            fileShard.ID,
                            uploadAttempts,
-                           CancellationEventRouter.GlobalCancellationToken,
+                           cancellationToken,
                            _ => { } // There is no backoff, so we can just NoOp here
                        ))
                    : ExecuteUploadAction(
@@ -332,7 +359,7 @@ namespace B2BackupUtility.UploadManagers
                            DefaultUploadChunkSize,
                            uploadConnections,
                            uploadAttempts,
-                           CancellationEventRouter.GlobalCancellationToken,
+                           cancellationToken,
                            _ => { } // There is no backoff, so we can just NoOp here
                        ));
             }

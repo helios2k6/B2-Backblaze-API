@@ -182,22 +182,19 @@ namespace B2BackupUtility.Proxies
                 FileDatabaseManifest.Files = FileDatabaseManifest.Files.Where(t => t.Equals(fileThatExists) == false).ToArray();
             }
 
-            IList<FileShard> fileShards = new List<FileShard>();
+            IList<string> fileShardIDs = new List<string>();
             SendNotification(BeginUploadFile, absoluteFilePath, null);
-            foreach (FileShard fileShard in FileFactory.CreateFileShards(new FileStream(absoluteFilePath, FileMode.Open, FileAccess.Read, FileShare.Read), true))
+            foreach (FileShard fileShard in FileShardFactory.CreateFileShards(new FileStream(absoluteFilePath, FileMode.Open, FileAccess.Read, FileShare.Read), true))
             {
                 // Update Database.File
-                fileShards.Add(fileShard);
-
-                // Serialized file shard
-                byte[] serializedFileShard = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(fileShard));
+                fileShardIDs.Add(fileShard.ID);
 
                 BackblazeB2ActionResult<IBackblazeB2UploadResult> uploadResult = fileShard.Length < DefaultUploadChunkSize
                     ? ExecuteUploadAction(
                         new UploadWithSingleConnectionAction(
                             authorizationSession,
                             Config.BucketID,
-                            EncryptionHelpers.EncryptBytes(serializedFileShard, Config.EncryptionKey, Config.InitializationVector),
+                            EncryptionHelpers.EncryptBytes(Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(fileShard)), Config.EncryptionKey, Config.InitializationVector),
                             fileShard.ID,
                             DefaultUploadAttempts,
                             CancellationEventRouter.GlobalCancellationToken,
@@ -208,7 +205,7 @@ namespace B2BackupUtility.Proxies
                             authorizationSession,
                             new MemoryStream(
                                 EncryptionHelpers.EncryptBytes(
-                                    serializedFileShard,
+                                    Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(fileShard)),
                                     Config.EncryptionKey,
                                     Config.InitializationVector
                                 )
@@ -241,7 +238,7 @@ namespace B2BackupUtility.Proxies
                 FileID = Guid.NewGuid().ToString(),
                 FileLength = info.Length,
                 FileName = absoluteFilePath,
-                FileShardIDs = fileShards.OrderBy(s => s.PieceNumber).Select(s => s.ID).ToArray(),
+                FileShardIDs = fileShardIDs.ToArray(),
                 LastModified = info.LastWriteTimeUtc.ToBinary(),
                 SHA1 = SHA1FileHashStore.Instance.ComputeSHA1(absoluteFilePath),
             };
@@ -285,22 +282,8 @@ namespace B2BackupUtility.Proxies
                 absoluteLocalFilePaths.Add(absoluteFilePath);
             }
 
-            // TODO: hook up events to upload manager
-            using(TieredUploadManager uploadManager = new TieredUploadManager(authorizationSessionGenerator, Config))
-            {
-                Parallel.ForEach(absoluteLocalFilePaths, (absoluteLocalFilePath, loopState, loopIteration) => {
-                    foreach (FileShard fileShard in FileFactory.CreateFileShards(new FileStream(absoluteLocalFilePath, FileMode.Open, FileAccess.Read, FileShare.Read), true))
-                    {
-                        // TODO: figure out a way to defer file shard reading and cap the memory the upload manager can 
-                        // load into memory
-                        uploadManager.AddUploadJob(fileShard);
-                    }
-                });
-
-                uploadManager.Execute();
-                uploadManager.SealUploadManager();
-                uploadManager.Wait();
-            }
+            // TODO: hook up Tiered upload manager with management for the File Manifest
+            
         }
 
         private IEnumerable<string> GetFilesToUpload(

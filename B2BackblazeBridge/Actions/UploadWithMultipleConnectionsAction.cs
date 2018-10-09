@@ -44,7 +44,7 @@ namespace B2BackblazeBridge.Actions
         #region private fields
         private static readonly string FinishLargeFileURL = "/b2api/v1/b2_finish_large_file";
         private static readonly int MinimumFileChunkSize = 1048576; // 1 mebibyte
-        private static readonly int MaxMemoryAllowed = 268435456; // 258 mebibytes
+        private static readonly int MaxMemoryAllowed = 268435456; // 256 mebibytes
 
         private readonly BackblazeB2AuthorizationSession _authorizationSession;
         private readonly string _bucketID;
