@@ -46,7 +46,7 @@ namespace B2BackupUtility.UploadManagers
         #region private classes
         private sealed class UploadJob
         {
-            public FileShard Shard { get; set; }
+            public Lazy<FileShard> LazyShard { get; set; }
             public string UploadID { get; set; }
         }
         #endregion
@@ -107,9 +107,9 @@ namespace B2BackupUtility.UploadManagers
         /// <summary>
         /// Add an upload job and return back an ID of the upload job
         /// </summary>
-        /// <param name="fileShard">The file shard to upload</param>
+        /// <param name="lazyFileShard">The file shard to upload</param>
         /// <returns></returns>
-        public string AddUploadJob(FileShard fileShard)
+        public string AddUploadJob(Lazy<FileShard> lazyFileShard)
         {
             if (_isDisposed)
             {
@@ -122,15 +122,10 @@ namespace B2BackupUtility.UploadManagers
                     "The upload manager has been sealed. You can no longer add new upload jobs"
                 );
             }
-            
-            MultinodeMemoryManagementSystem
-                .Instance
-                .GetMemoryGovernor(MemoryServiceName)
-                .AllocateMemory(fileShard.Length, _cancellationToken);
 
             UploadJob job = new UploadJob
             {
-                Shard = fileShard,
+                LazyShard = lazyFileShard,
                 UploadID = Guid.NewGuid().ToString(),
             };
             _fastLane.Add(job);
@@ -215,10 +210,16 @@ namespace B2BackupUtility.UploadManagers
         {
             foreach (UploadJob job in _fastLane.GetConsumingEnumerable())
             {
+                FileShard fileShard = job.LazyShard.Value;
+                MultinodeMemoryManagementSystem
+                    .Instance
+                    .GetMemoryGovernor(MemoryServiceName)
+                    .AllocateMemory(fileShard.Length, _cancellationToken);
+
                 BackblazeB2ActionResult<IBackblazeB2UploadResult> uploadResult = ExecuteLaneImpl(
                     _config,
                     _ticketCounter,
-                    job.Shard,
+                    fileShard,
                     _cancellationToken,
                     true,
                     FastLaneUploadConnections,
@@ -236,10 +237,16 @@ namespace B2BackupUtility.UploadManagers
         {
             foreach (UploadJob job in _midLane.GetConsumingEnumerable())
             {
+                FileShard fileShard = job.LazyShard.Value;
+                MultinodeMemoryManagementSystem
+                    .Instance
+                    .GetMemoryGovernor(MemoryServiceName)
+                    .AllocateMemory(fileShard.Length, _cancellationToken);
+
                 BackblazeB2ActionResult<IBackblazeB2UploadResult> uploadResult = ExecuteLaneImpl(
                     _config,
                     _ticketCounter,
-                    job.Shard,
+                    fileShard,
                     _cancellationToken,
                     true,
                     MidLaneUploadConnections,
@@ -275,7 +282,7 @@ namespace B2BackupUtility.UploadManagers
                 MultinodeMemoryManagementSystem
                     .Instance
                     .GetMemoryGovernor(MemoryServiceName)
-                    .FreeMemory(job.Shard.Length);
+                    .FreeMemory(job.LazyShard.Value.Length);
 
                 OnUploadFinished(this, new UploadManagerEventArgs
                 {
@@ -288,10 +295,16 @@ namespace B2BackupUtility.UploadManagers
         {
             foreach (UploadJob job in _slowLane.GetConsumingEnumerable())
             {
+                FileShard fileShard = job.LazyShard.Value;
+                MultinodeMemoryManagementSystem
+                    .Instance
+                    .GetMemoryGovernor(MemoryServiceName)
+                    .AllocateMemory(fileShard.Length, _cancellationToken);
+
                 BackblazeB2ActionResult<IBackblazeB2UploadResult> uploadResult = ExecuteLaneImpl(
                     _config,
                     _ticketCounter,
-                    job.Shard,
+                    fileShard,
                     _cancellationToken,
                     false,
                     -1,
@@ -317,7 +330,7 @@ namespace B2BackupUtility.UploadManagers
                 MultinodeMemoryManagementSystem
                     .Instance
                     .GetMemoryGovernor(MemoryServiceName)
-                    .FreeMemory(job.Shard.Length);
+                    .FreeMemory(fileShard.Length);
             }
         }
 
@@ -337,10 +350,44 @@ namespace B2BackupUtility.UploadManagers
                 config.InitializationVector
             );
 
+            MultinodeMemoryManagementSystem
+                .Instance
+                .GetMemoryGovernor(MemoryServiceName)
+                .AllocateMemory(serializedAndEncryptedBytes.Length, cancellationToken);
+            
+            BackblazeB2ActionResult<IBackblazeB2UploadResult> result = null;
             using (UploadManagerAuthorizationSessionTicket authorizationTicket = ticketCounter.GetAuthorizationSessionTicket())
             {
-                return fileShard.Length > DefaultUploadChunkSize && canUseMultipleConnections
-                   ? ExecuteUploadAction(
+                if (fileShard.Length > DefaultUploadChunkSize && canUseMultipleConnections)
+                {
+                    // Reallocate another chunk of memory since the multiconnection action will allocate
+                    // more memory internally
+                    MultinodeMemoryManagementSystem
+                        .Instance
+                        .GetMemoryGovernor(MemoryServiceName)
+                        .AllocateMemory(serializedAndEncryptedBytes.Length, cancellationToken);
+
+                    result = ExecuteUploadAction(
+                        new UploadWithMultipleConnectionsAction(
+                            authorizationTicket.AuthorizationSession,
+                            new MemoryStream(serializedAndEncryptedBytes),
+                            fileShard.ID,
+                            config.BucketID,
+                            DefaultUploadChunkSize,
+                            uploadConnections,
+                            uploadAttempts,
+                            cancellationToken,
+                            _ => { } // There is no backoff, so we can just NoOp here
+                        ));
+
+                    MultinodeMemoryManagementSystem
+                        .Instance
+                        .GetMemoryGovernor(MemoryServiceName)
+                        .FreeMemory(serializedAndEncryptedBytes.Length);
+                }
+                else
+                {
+                    result = ExecuteUploadAction(
                        new UploadWithSingleConnectionAction(
                            authorizationTicket.AuthorizationSession,
                            config.BucketID,
@@ -349,19 +396,15 @@ namespace B2BackupUtility.UploadManagers
                            uploadAttempts,
                            cancellationToken,
                            _ => { } // There is no backoff, so we can just NoOp here
-                       ))
-                   : ExecuteUploadAction(
-                       new UploadWithMultipleConnectionsAction(
-                           authorizationTicket.AuthorizationSession,
-                           new MemoryStream(serializedAndEncryptedBytes),
-                           fileShard.ID,
-                           config.BucketID,
-                           DefaultUploadChunkSize,
-                           uploadConnections,
-                           uploadAttempts,
-                           cancellationToken,
-                           _ => { } // There is no backoff, so we can just NoOp here
                        ));
+                }
+
+                MultinodeMemoryManagementSystem
+                    .Instance
+                    .GetMemoryGovernor(MemoryServiceName)
+                    .FreeMemory(serializedAndEncryptedBytes.Length);
+
+                return result;
             }
         }
 

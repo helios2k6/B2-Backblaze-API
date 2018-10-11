@@ -286,36 +286,36 @@ namespace B2BackupUtility.Proxies
             object localLockObject = new object();
             using (TieredUploadManager uploadManager = new TieredUploadManager(authorizationSessionGenerator, Config, CancellationEventRouter.GlobalCancellationToken))
             {
-                // Hook up events
-                uploadManager.OnUploadFailed += HandleOnUploadFailed;
-                uploadManager.OnUploadFinished += HandleOnUploadFinished;
-                uploadManager.OnUploadTierChanged += HandleOnUploadTierChanged;
+                EventHandler<UploadManagerEventArgs> handleOnUploadFailed = (sender, eventArgs) =>
+                {
 
-                // TODO: Cycle through and begin adding stuff to 
+                };
+
+                EventHandler<UploadManagerEventArgs> handleOnUploadFinished = (sender, eventArgs) =>
+                {
+
+                };
+
+                EventHandler<UploadManagerEventArgs> handleOnUploadTierChanged = (sender, eventArgs) =>
+                {
+
+                };
+
+                // Hook up events
+                uploadManager.OnUploadFailed += handleOnUploadFailed;
+                uploadManager.OnUploadFinished += handleOnUploadFinished;
+                uploadManager.OnUploadTierChanged += handleOnUploadTierChanged;
+
+                Parallel.ForEach(absoluteLocalFilePaths, (absoluteLocalFilePath, _, __) => 
+                {
+                    
+                });
 
                 // Unsubscribe from events
-                uploadManager.OnUploadFailed -= HandleOnUploadFailed;
-                uploadManager.OnUploadFinished -= HandleOnUploadFinished;
-                uploadManager.OnUploadTierChanged -= HandleOnUploadTierChanged;
+                uploadManager.OnUploadFailed -= handleOnUploadFailed;
+                uploadManager.OnUploadFinished -= handleOnUploadFinished;
+                uploadManager.OnUploadTierChanged -= handleOnUploadTierChanged;
             }
-        }
-
-        private void HandleOnUploadFailed(object sender, UploadManagerEventArgs eventArgs)
-        {
-            // TODO: Notify that a specific local file has failed
-            throw new NotImplementedException();
-        }
-
-        private void HandleOnUploadFinished(object sender, UploadManagerEventArgs eventArgs)
-        {
-            // TODO: Update the staus of an upload of a local file
-            throw new NotImplementedException();
-        }
-
-        private void HandleOnUploadTierChanged(object sender, UploadManagerEventArgs eventArgs)
-        {
-            // TODO: Notify to user that a file has had its tiered changed
-            throw new NotImplementedException();
         }
 
         private IEnumerable<string> GetFilesToUpload(

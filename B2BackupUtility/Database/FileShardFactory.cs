@@ -22,6 +22,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 
 namespace B2BackupUtility.Database
 {
@@ -84,6 +85,74 @@ namespace B2BackupUtility.Database
         public static IEnumerable<FileShard> CreateFileShards(Stream byteStream, bool disposeOfStream)
         {
             return CreateFileShards(byteStream, DefaultShardLength, disposeOfStream);
+        }
+
+        /// <summary>
+        /// This will create a stream of Lazy File Shards that defer the generate of the file shard
+        /// </summary>
+        /// <param name="filePath">The local file path to read from</param>
+        /// <param name="shardLength"> The length of each shard</param>
+        /// <returns>An IEnumerable of File Shards that are lazily generated</returns>
+        public static IEnumerable<Lazy<FileShard>> CreateLazyFileShards(string filePath, int shardLength)
+        {
+            long numShards = CalculateNumberOfShards(filePath, shardLength);
+            IEnumerable<Lazy<FileShard>> fileShardEnumerableHead = Enumerable.Empty<Lazy<FileShard>>();
+            for (long i = 0; i < numShards; i++)
+            {
+                fileShardEnumerableHead = fileShardEnumerableHead.Append(CreateLazyFileShard(filePath, i, shardLength));
+            }
+
+            return fileShardEnumerableHead;
+        }
+
+        private static long CalculateNumberOfShards(string filePath, int shardLength)
+        {
+            FileInfo fileInfo = new FileInfo(filePath);
+            if (fileInfo.Length < shardLength)
+            {
+                return 1;
+            }
+
+            bool hasMod = fileInfo.Length % shardLength > 0;
+            long numShards = fileInfo.Length / shardLength;
+
+            if (hasMod)
+            {
+                numShards++;
+            }
+
+            return numShards;
+        }
+
+        private static Lazy<FileShard> CreateLazyFileShard(string filePath, long pieceNumber, int shardLength)
+        {
+            return new Lazy<FileShard>(() => 
+            {
+                using (FileStream fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read))
+                {
+                    // Seek into file
+                    fileStream.Position = pieceNumber * shardLength;
+
+                    byte[] payloadBuffer = new byte[shardLength];
+                    int bytesRead = fileStream.Read(payloadBuffer, 0, shardLength);
+                    if (bytesRead < 1)
+                    {
+                        return null;
+                    }
+
+                    byte[] payload = new byte[bytesRead];
+                    Buffer.BlockCopy(payloadBuffer, 0, payload, 0, bytesRead);
+
+                    return new FileShard
+                    {
+                        ID = Guid.NewGuid().ToString(),
+                        Length = bytesRead,
+                        Payload = payload,
+                        PieceNumber = pieceNumber++,
+                        SHA1 = SHA1FileHashStore.Instance.ComputeSHA1Hash(payload),
+                    };
+                }
+            });
         }
         #endregion
     }
