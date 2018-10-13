@@ -76,7 +76,7 @@ namespace B2BackblazeBridge.Actions.InternalActions
             while (true)
             {
                 // Throw an exception is we are being interrupted
-                _cancellationToken.ThrowIfCancellationRequested();
+                CancellationToken.ThrowIfCancellationRequested();
 
                 // Sleep the current thread so that we can give the server some time to recover
                 if (attemptNumber > 0)

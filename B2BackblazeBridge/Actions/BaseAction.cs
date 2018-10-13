@@ -45,16 +45,19 @@ namespace B2BackblazeBridge.Actions
         }
         #endregion
 
-        #region fields
+        #region fields and properties
         private readonly Random _random;
 
-        protected readonly CancellationToken _cancellationToken;
+        /// <summary>
+        /// The cancellation token for this action
+        /// </summary>
+        protected CancellationToken CancellationToken { get; }
         #endregion
 
         #region protected ctor
         protected BaseAction(CancellationToken cancellationToken)
         {
-            _cancellationToken = cancellationToken;
+            CancellationToken = cancellationToken;
             _random = new Random();
         }
         #endregion

@@ -55,6 +55,8 @@ namespace B2BackblazeBridge.Actions
         private readonly Stream _dataStream;
         private readonly BlockingCollection<ProducerUploadJob> _jobStream;
         private readonly Action<TimeSpan> _exponentialBackoffCallback;
+        private readonly CancellationTokenSource _internalThreadCancellationTokenSource;
+        private readonly Lazy<CancellationToken> _linkedCancellationToken;
 
         private bool disposedValue = false;
         #endregion
@@ -105,6 +107,7 @@ namespace B2BackblazeBridge.Actions
             _maxUploadAttempts = maxUploadAttempts;
             _jobStream = new BlockingCollection<ProducerUploadJob>(MaxMemoryAllowed / _fileChunkSizesInBytes);
             _exponentialBackoffCallback = exponentialBackoffCallback;
+            _internalThreadCancellationTokenSource = new CancellationTokenSource();
         }
         #endregion
 
@@ -170,6 +173,7 @@ namespace B2BackblazeBridge.Actions
             {
                 _dataStream.Dispose();
                 _jobStream.Dispose();
+                _internalThreadCancellationTokenSource.Dispose();
                 disposedValue = true;
             }
         }
@@ -180,49 +184,52 @@ namespace B2BackblazeBridge.Actions
         {
             try
             {
-                long currentChunk = 0;
-                byte[] localBuffer = new byte[_fileChunkSizesInBytes];
-                while (true)
+                using (CancellationTokenSource combinedCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(_internalThreadCancellationTokenSource.Token, CancellationToken))
                 {
-                    _cancellationToken.ThrowIfCancellationRequested();
-
-                    int amountRead = _dataStream.Read(localBuffer, 0, _fileChunkSizesInBytes);
-                    if (amountRead > 0)
+                    long currentChunk = 0;
+                    byte[] localBuffer = new byte[_fileChunkSizesInBytes];
+                    while (true)
                     {
-                        // Truncate buffer as necessary
-                        byte[] truncatedBuffer = new byte[amountRead];
-                        Buffer.BlockCopy(localBuffer, 0, truncatedBuffer, 0, amountRead);
+                        combinedCancellationTokenSource.Token.ThrowIfCancellationRequested();
 
-                        // Inner-try spin loop
-                        while (true)
+                        int amountRead = _dataStream.Read(localBuffer, 0, _fileChunkSizesInBytes);
+                        if (amountRead > 0)
                         {
-                            // Check the cancellation token again. We don't want to spin forever
-                            _cancellationToken.ThrowIfCancellationRequested();
+                            // Truncate buffer as necessary
+                            byte[] truncatedBuffer = new byte[amountRead];
+                            Buffer.BlockCopy(localBuffer, 0, truncatedBuffer, 0, amountRead);
 
-                            bool didAdd = _jobStream.TryAdd(new ProducerUploadJob
+                            // Inner-try spin loop
+                            while (true)
                             {
-                                Buffer = truncatedBuffer,
-                                ContentLength = amountRead,
-                                FilePartNumber = currentChunk + 1L, // File parts are 1-index based...I know, fucking stupid
-                                SHA1 = ComputeSHA1Hash(truncatedBuffer),
-                            }, TimeSpan.FromSeconds(4));
+                                // Check the cancellation token again. We don't want to spin forever
+                                combinedCancellationTokenSource.Token.ThrowIfCancellationRequested();
 
-                            if (didAdd)
-                            {
-                                break;
+                                bool didAdd = _jobStream.TryAdd(new ProducerUploadJob
+                                {
+                                    Buffer = truncatedBuffer,
+                                    ContentLength = amountRead,
+                                    FilePartNumber = currentChunk + 1L, // File parts are 1-index based...I know, fucking stupid
+                                    SHA1 = ComputeSHA1Hash(truncatedBuffer),
+                                }, TimeSpan.FromSeconds(4));
+
+                                if (didAdd)
+                                {
+                                    break;
+                                }
+                                else
+                                {
+                                    // Otherwise, sleep for some amount of time
+                                    Thread.Sleep(TimeSpan.FromSeconds(5));
+                                }
                             }
-                            else
-                            {
-                                // Otherwise, sleep for some amount of time
-                                Thread.Sleep(TimeSpan.FromSeconds(5));
-                            }
+
+                            currentChunk++;
                         }
-
-                        currentChunk++;
-                    }
-                    else
-                    {
-                        return;
+                        else
+                        {
+                            return;
+                        }
                     }
                 }
             }
@@ -244,25 +251,37 @@ namespace B2BackblazeBridge.Actions
 
             if (uploadPartURLResponse.HasErrors)
             {
-                // Could not create the URL endpoint. Don't bother sending back the error since we can't really do anything about it
                 return;
             }
 
-            foreach (ProducerUploadJob job in _jobStream.GetConsumingEnumerable(_cancellationToken))
+            using (CancellationTokenSource combinedCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(_internalThreadCancellationTokenSource.Token, CancellationToken))
             {
-                _cancellationToken.ThrowIfCancellationRequested();
+                foreach (ProducerUploadJob job in _jobStream.GetConsumingEnumerable(CancellationToken))
+                {
+                    combinedCancellationTokenSource.Token.ThrowIfCancellationRequested();
 
-                responses.Add(new UploadFilePartAction(
-                    _authorizationSession,
-                    _cancellationToken,
-                    _bucketID,
-                    job.FilePartNumber,
-                    _maxUploadAttempts,
-                    uploadPartURLResponse.Result,
-                    job.Buffer,
-                    job.SHA1,
-                    _exponentialBackoffCallback
-                ).Execute());
+                    BackblazeB2ActionResult<UploadFilePartResponse> response = new UploadFilePartAction(
+                        _authorizationSession,
+                        combinedCancellationTokenSource.Token,
+                        _bucketID,
+                        job.FilePartNumber,
+                        _maxUploadAttempts,
+                        uploadPartURLResponse.Result,
+                        job.Buffer,
+                        job.SHA1,
+                        _exponentialBackoffCallback
+                    ).Execute();
+
+                    responses.Add(response);
+                    if (response.HasErrors)
+                    {
+                        // Cancel the rest of the uploads since this file can't finish anyways
+                        combinedCancellationTokenSource.Cancel();
+
+                        // Break out of the loop since there's no point in continuing
+                        return;
+                    }
+                }
             }
         }
 
