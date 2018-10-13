@@ -62,6 +62,14 @@ namespace B2BackupUtility.Database
         public string[] FileShardIDs { get; set; }
 
         /// <summary>
+        /// The file shard SHA-1 hash codes. The ordering of the
+        /// SHA-1 hash codes corresponds with the ordering of
+        /// the FileShardIDs property
+        /// </summary>
+        [JsonProperty(PropertyName = "FileShardHashes")]
+        public string[] FileShardHashes { get; set; }
+
+        /// <summary>
         /// The last time this file was modified
         /// </summary>
         [JsonProperty(PropertyName = "LastModified")]
@@ -92,6 +100,7 @@ namespace B2BackupUtility.Database
                 FileLength.GetHashCode() ^
                 FileName?.GetHashCode() ?? 0 ^
                 FileShardIDs?.GetHashCodeEnumerable() ?? 0 ^
+                FileShardHashes?.GetHashCodeEnumerable() ?? 0 ^
                 LastModified.GetHashCode() ^
                 SHA1?.GetHashCode() ?? 0;
         }
@@ -108,6 +117,7 @@ namespace B2BackupUtility.Database
                 FileLength == other.FileLength &&
                 string.Equals(FileName, other.FileName, StringComparison.Ordinal) &&
                 FileShardIDs.ScrambledEquals(other.FileShardIDs) &&
+                FileShardHashes.ScrambledEquals(other.FileShardHashes) &&
                 LastModified == other.LastModified &&
                 string.Equals(SHA1, other.SHA1, StringComparison.OrdinalIgnoreCase);
         }

@@ -41,8 +41,6 @@ namespace B2BackupUtility.Proxies
     public sealed class UploadFileProxy : BaseRemoteFileSystemProxy
     {
         #region private fields
-        private const int DefaultUploadAttempts = 1;
-
         private static int DefaultFilesToUploadBeforeUploadingManifest => 5;
         private static int DefaultReuploadAttempts => 3;
         private static int DefaultUploadConnections => 20;
@@ -95,55 +93,7 @@ namespace B2BackupUtility.Proxies
                 throw new DirectoryNotFoundException($"Could not find directory {localFolderPath}");
             }
 
-            IList<string> filesFailedToUpload = new List<string>();
-            int consecuitiveFileManifestFailures = 0;
-            foreach (string localFilePath in GetFilesToUpload(localFolderPath, shouldOverride))
-            {
-                CancellationEventRouter.GlobalCancellationToken.ThrowIfCancellationRequested();
-
-                try
-                {
-                    AddLocalFile(authorizationSessionGenerator(), localFilePath, shouldOverride);
-                    // If we got here, then we know we uploaded the file manifest successfully
-                    consecuitiveFileManifestFailures = 0;
-                }
-                catch (FailedToUploadFileException ex)
-                {
-                    filesFailedToUpload.Add(localFilePath);
-                    SendNotification(FailedToUploadFile, ex, null);
-                }
-                catch (FailedToUploadFileDatabaseManifestException ex)
-                {
-                    consecuitiveFileManifestFailures++;
-                    if (consecuitiveFileManifestFailures > MaxConsecutiveFileManifestUploadFailures)
-                    {
-                        // We will only tolerate a certain amount of failed consecutive file manifest
-                        // failures to minimize the number of files we would have to reupload
-                        throw ex;
-                    }
-
-                    // We'll try to upload this in the next upload. Worst case
-                    SendNotification(FailedToUploadFileManifest, ex, null);
-                }
-            }
-
-            // Attempt to upload files that we couldn't do before. Since this is a second chance, we are going
-            // to be very stringent on the requirements. The file manifest must upload every single time and any
-            // failure to upload a given file will just be passed over
-            if (filesFailedToUpload.Any())
-            {
-                foreach (string localFilePath in filesFailedToUpload)
-                {
-                    try
-                    {
-                        AddLocalFile(authorizationSessionGenerator(), localFilePath, shouldOverride, DefaultReuploadAttempts);
-                    }
-                    catch (FailedToUploadFileException ex)
-                    {
-                        SendNotification(FailedToUploadFile, ex, null);
-                    }
-                }
-            }
+            UploadFiles(authorizationSessionGenerator, GetFilesToUpload(localFolderPath, shouldOverride), shouldOverride);
         }
 
         /// <summary>
@@ -152,12 +102,10 @@ namespace B2BackupUtility.Proxies
         /// <param name="authorizationSession">The authorization session</param>
         /// <param name="localFilePath">The local path to the </param>
         /// <param name="shouldOverride">Whether to overide old files</param>
-        /// <param name="maxUploadAttempts">Max upload attempts</param>
         public void AddLocalFile(
             BackblazeB2AuthorizationSession authorizationSession,
             string localFilePath,
-            bool shouldOverride,
-            int maxUploadAttempts = DefaultUploadAttempts
+            bool shouldOverride
         )
         {
             string absoluteFilePath = Path.GetFullPath(localFilePath);
@@ -182,76 +130,13 @@ namespace B2BackupUtility.Proxies
                 RemoveFile(fileThatExists);
             }
 
-            IList<string> fileShardIDs = new List<string>();
-            SendNotification(BeginUploadFile, absoluteFilePath, null);
-            foreach (FileShard fileShard in FileShardFactory.CreateFileShards(new FileStream(absoluteFilePath, FileMode.Open, FileAccess.Read, FileShare.Read), true))
-            {
-                // Update Database.File
-                fileShardIDs.Add(fileShard.ID);
-
-                BackblazeB2ActionResult<IBackblazeB2UploadResult> uploadResult = fileShard.Length < DefaultUploadChunkSize
-                    ? ExecuteUploadAction(
-                        new UploadWithSingleConnectionAction(
-                            authorizationSession,
-                            Config.BucketID,
-                            EncryptionHelpers.EncryptBytes(Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(fileShard)), Config.EncryptionKey, Config.InitializationVector),
-                            fileShard.ID,
-                            DefaultUploadAttempts,
-                            CancellationEventRouter.GlobalCancellationToken,
-                            t => SendNotificationAboutExponentialBackoff(t, absoluteFilePath, fileShard.ID)
-                        ))
-                    : ExecuteUploadAction(
-                        new UploadWithMultipleConnectionsAction(
-                            authorizationSession,
-                            new MemoryStream(
-                                EncryptionHelpers.EncryptBytes(
-                                    Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(fileShard)),
-                                    Config.EncryptionKey,
-                                    Config.InitializationVector
-                                )
-                            ),
-                            fileShard.ID,
-                            Config.BucketID,
-                            DefaultUploadChunkSize,
-                            DefaultUploadConnections,
-                            DefaultUploadAttempts,
-                            CancellationEventRouter.GlobalCancellationToken,
-                            t => SendNotificationAboutExponentialBackoff(t, absoluteFilePath, fileShard.ID)
-                        ));
-
-                if (uploadResult.HasErrors)
-                {
-                    throw new FailedToUploadFileException(uploadResult.ToString())
-                    {
-                        BackblazeErrorDetails = uploadResult.Errors,
-                        File = absoluteFilePath,
-                        FileShardID = fileShard.ID,
-                    };
-                }
-            }
-            SendNotification(FinishUploadFile, absoluteFilePath, null);
-
-            // Create file
-            FileInfo info = new FileInfo(absoluteFilePath);
-            Database.File file = new Database.File
-            {
-                FileID = Guid.NewGuid().ToString(),
-                FileLength = info.Length,
-                FileName = absoluteFilePath,
-                FileShardIDs = fileShardIDs.ToArray(),
-                LastModified = info.LastWriteTimeUtc.ToBinary(),
-                SHA1 = SHA1FileHashStore.Instance.ComputeSHA1(absoluteFilePath),
-            };
-
-            // Update manifest
-            AddFile(file);
-            UploadFileDatabaseManifest(authorizationSession);
+            UploadFiles(() => authorizationSession, new[] { absoluteFilePath }, shouldOverride);
         }
         #endregion
 
         #region private methods
         private void UploadFiles(
-            Func<BackblazeB2AuthorizationSession> authorizationSessionGenerator, // TODO: formalize this idea and generalize it cause we need to use it later
+            Func<BackblazeB2AuthorizationSession> authorizationSessionGenerator,
             IEnumerable<string> localFilePaths,
             bool shouldOverride
         )
@@ -303,14 +188,30 @@ namespace B2BackupUtility.Proxies
                 // due to any state changes that occur because of it. We know the main thread is waiting on these background 
                 // threads below because it's called the "Wait()" method
                 object localLockObject = new object();
-                int numberOfFilesUploaded = 0;
-                IDictionary<string, ISet<Tuple<long, string>>> localFileToFileShardIDs = new Dictionary<string, ISet<Tuple<long, string>>>();
+                IDictionary<string, ISet<UploadManagerEventArgs>> localFileToFileShardIDs = new Dictionary<string, ISet<UploadManagerEventArgs>>();
+                ISet<string> localFilesThatHaveAlreadyStarted = new HashSet<string>();
+                void HandleOnUploadBegin(object sender, UploadManagerEventArgs eventArgs)
+                {
+                    lock (localLockObject)
+                    {
+                        string localFile = uploadIDsToLocalFilePath[eventArgs.UploadID];
+                        if (localFilesThatHaveAlreadyStarted.Contains(localFile) == false)
+                        {
+                            localFilesThatHaveAlreadyStarted.Add(localFile);
+                            SendNotification(BeginUploadFile, localFile, null);
+                        }
+                    }
+                }
+
                 void HandleOnUploadFailed(object sender, UploadManagerEventArgs eventArgs)
                 {
                     lock (localLockObject)
                     {
-                        string localFileFailedToUpload = uploadIDsToLocalFilePath[eventArgs.UploadID];
-                        SendNotification(FailedToUploadFile, $"Failed to upload file {localFileFailedToUpload} due to {eventArgs.UploadResult}", null);
+                        SendNotification(
+                            FailedToUploadFile,
+                            $"{uploadIDsToLocalFilePath[eventArgs.UploadID]} | {eventArgs.UploadResult.ToString()}",
+                            null
+                        );
                     }
                 }
 
@@ -318,15 +219,14 @@ namespace B2BackupUtility.Proxies
                 {
                     lock (localLockObject)
                     {
-                        numberOfFilesUploaded++;
                         string localFilePath = uploadIDsToLocalFilePath[eventArgs.UploadID];
-                        if (localFileToFileShardIDs.TryGetValue(localFilePath, out ISet<Tuple<long, string>> fileShardsForLocalFile) == false)
+                        if (localFileToFileShardIDs.TryGetValue(localFilePath, out ISet<UploadManagerEventArgs> uploadEvents) == false)
                         {
-                            fileShardsForLocalFile = new HashSet<Tuple<long, string>>();
-                            localFileToFileShardIDs[localFilePath] = fileShardsForLocalFile;
+                            uploadEvents = new HashSet<UploadManagerEventArgs>();
+                            localFileToFileShardIDs[localFilePath] = uploadEvents;
                         }
 
-                        fileShardsForLocalFile.Add(Tuple.Create(eventArgs.FileShardPieceNumber, eventArgs.FileShardID));
+                        uploadEvents.Add(eventArgs);
 
                         ISet<string> uploadIDsForLocalFile = localFilePathToUploadIDs[localFilePath];
                         uploadIDsForLocalFile.Remove(eventArgs.UploadID);
@@ -334,7 +234,37 @@ namespace B2BackupUtility.Proxies
                         {
                             SendNotification(FinishUploadFile, localFilePath, null);
 
-                            // TODO: Upload file manifest. Read the TODO above about generalizing the authorization session generator and make it thread safe
+                            string[] orderedShardIDs = new string[uploadEvents.Count];
+                            string[] orderedShardHashes = new string[uploadEvents.Count];
+
+                            foreach (UploadManagerEventArgs uploadEvent in uploadEvents)
+                            {
+                                orderedShardIDs[(int)uploadEvent.FileShardPieceNumber] = uploadEvent.FileShardID;
+                                orderedShardHashes[(int)uploadEvent.FileShardPieceNumber] = uploadEvent.FileShardSHA1;
+                            }
+
+                            // Create file
+                            FileInfo info = new FileInfo(localFilePath);
+                            Database.File file = new Database.File
+                            {
+                                FileID = Guid.NewGuid().ToString(),
+                                FileLength = info.Length,
+                                FileName = localFilePath,
+                                FileShardIDs = orderedShardIDs,
+                                FileShardHashes = orderedShardHashes,
+                                LastModified = info.LastWriteTimeUtc.ToBinary(),
+                                SHA1 = SHA1FileHashStore.Instance.ComputeSHA1(localFilePath),
+                            };
+
+                            // Update manifest
+                            if (TryGetFileByName(localFilePath, out Database.File fileThatExists))
+                            {
+                                // Remove old file first
+                                RemoveFile(fileThatExists);
+                            }
+
+                            AddFile(file);
+                            UploadFileDatabaseManifest(authorizationSessionGenerator());
                         }
                     }
                 }
@@ -343,12 +273,16 @@ namespace B2BackupUtility.Proxies
                 {
                     lock (localLockObject)
                     {
-                        string localFileFailedToUpload = uploadIDsToLocalFilePath[eventArgs.UploadID];
-                        SendNotification(FileTierChanged, $"File {localFileFailedToUpload} tier changed to {eventArgs.NewUploadTier}", null);
+                        SendNotification(
+                            FileTierChanged,
+                            $"{uploadIDsToLocalFilePath[eventArgs.UploadID]} -> {eventArgs.NewUploadTier}",
+                            null
+                        );
                     }
                 }
 
                 // Hook up events
+                uploadManager.OnUploadBegin += HandleOnUploadBegin;
                 uploadManager.OnUploadFailed += HandleOnUploadFailed;
                 uploadManager.OnUploadFinished += HandleOnUploadFinished;
                 uploadManager.OnUploadTierChanged += HandleOnUploadTierChanged;
@@ -362,6 +296,7 @@ namespace B2BackupUtility.Proxies
                 lock (localLockObject)
                 {
                     // Unsubscribe from events
+                    uploadManager.OnUploadBegin -= HandleOnUploadBegin;
                     uploadManager.OnUploadFailed -= HandleOnUploadFailed;
                     uploadManager.OnUploadFinished -= HandleOnUploadFinished;
                     uploadManager.OnUploadTierChanged -= HandleOnUploadTierChanged;
@@ -420,27 +355,6 @@ namespace B2BackupUtility.Proxies
                     yield return localFilePath;
                 }
             }
-        }
-
-        private static BackblazeB2ActionResult<IBackblazeB2UploadResult> ExecuteUploadAction<T>(
-            BaseAction<T> action
-        ) where T : IBackblazeB2UploadResult
-        {
-            BackblazeB2ActionResult<T> uploadResult = action.Execute();
-            BackblazeB2ActionResult<IBackblazeB2UploadResult> castedResult;
-            if (uploadResult.HasResult)
-            {
-                castedResult = new BackblazeB2ActionResult<IBackblazeB2UploadResult>(uploadResult.Result);
-            }
-            else
-            {
-                castedResult = new BackblazeB2ActionResult<IBackblazeB2UploadResult>(
-                    Maybe<IBackblazeB2UploadResult>.Nothing,
-                    uploadResult.Errors
-                );
-            }
-
-            return castedResult;
         }
         #endregion
     }

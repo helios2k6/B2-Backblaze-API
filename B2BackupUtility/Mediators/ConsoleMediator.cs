@@ -54,7 +54,6 @@ namespace B2BackupUtility.Mediators
             { DeleteFileProxy.FailedToDeleteFile, LogLevel.WARNING},
             { UploadFileProxy.FailedToUploadFile, LogLevel.WARNING },
             { UploadFileProxy.FailedToUploadFileManifest, LogLevel.WARNING },
-            { UploadFileProxy.ExponentialBackoffInitiated, LogLevel.WARNING },
             { PruneFileShardProxy.FailedToPruneFile, LogLevel.WARNING },
 
             // Info level messages
@@ -63,6 +62,7 @@ namespace B2BackupUtility.Mediators
             { ListFiles.AllFilesListNotification, LogLevel.INFO },
             { UploadFileProxy.BeginUploadFile, LogLevel.INFO },
             { UploadFileProxy.FinishUploadFile, LogLevel.INFO },
+            { UploadFileProxy.FileTierChanged, LogLevel.INFO },
             { DeleteFileProxy.FinishedDeletingFile, LogLevel.INFO },
             { UploadFileProxy.SkippedUploadFile, LogLevel.INFO },
             { PruneFileShardProxy.FinishedPruningFile, LogLevel.INFO },

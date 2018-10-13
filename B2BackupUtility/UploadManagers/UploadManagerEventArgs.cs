@@ -44,6 +44,11 @@ namespace B2BackupUtility.UploadManagers
         public string FileShardID { get; set; }
 
         /// <summary>
+        /// The File Shard SHA-1
+        /// </summary>
+        public string FileShardSHA1 { get; set; }
+
+        /// <summary>
         /// The upload result, if there is on
         /// </summary>
         public BackblazeB2ActionResult<IBackblazeB2UploadResult> UploadResult { get; set; }

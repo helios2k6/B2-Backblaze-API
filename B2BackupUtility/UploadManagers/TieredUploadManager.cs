@@ -65,7 +65,7 @@ namespace B2BackupUtility.UploadManagers
 
         private const long MaxSize = 536870912; // 512 mebibytes
 
-        private readonly UploadManagerAuthorizationSessionTicketCounter _ticketCounter;
+        private readonly Func<BackblazeB2AuthorizationSession> _authorizationSessionGenerator;
         private readonly BlockingCollection<UploadJob> _fastLane;
         private readonly BlockingCollection<UploadJob> _midLane;
         private readonly BlockingCollection<UploadJob> _slowLane;
@@ -78,6 +78,7 @@ namespace B2BackupUtility.UploadManagers
         #endregion
 
         #region public events
+        public event EventHandler<UploadManagerEventArgs> OnUploadBegin;
         public event EventHandler<UploadManagerEventArgs> OnUploadFinished;
         public event EventHandler<UploadManagerEventArgs> OnUploadTierChanged;
         public event EventHandler<UploadManagerEventArgs> OnUploadFailed;
@@ -90,7 +91,7 @@ namespace B2BackupUtility.UploadManagers
             CancellationToken cancellationToken
         )
         {
-            _ticketCounter = new UploadManagerAuthorizationSessionTicketCounter(authorizationSessionGenerator);
+            _authorizationSessionGenerator = authorizationSessionGenerator;
             _fastLane = new BlockingCollection<UploadJob>();
             _midLane = new BlockingCollection<UploadJob>();
             _slowLane = new BlockingCollection<UploadJob>();
@@ -200,8 +201,6 @@ namespace B2BackupUtility.UploadManagers
             {
                 t.Dispose();
             }
-
-            _ticketCounter.Dispose();
         }
         #endregion
 
@@ -210,6 +209,11 @@ namespace B2BackupUtility.UploadManagers
         {
             foreach (UploadJob job in _fastLane.GetConsumingEnumerable())
             {
+                OnUploadBegin(this, new UploadManagerEventArgs
+                {
+                    UploadID = job.UploadID,
+                });
+
                 FileShard fileShard = job.LazyShard.Value;
                 MultinodeMemoryManagementSystem
                     .Instance
@@ -218,7 +222,7 @@ namespace B2BackupUtility.UploadManagers
 
                 BackblazeB2ActionResult<IBackblazeB2UploadResult> uploadResult = ExecuteLaneImpl(
                     _config,
-                    _ticketCounter,
+                    _authorizationSessionGenerator,
                     fileShard,
                     _cancellationToken,
                     true,
@@ -245,7 +249,7 @@ namespace B2BackupUtility.UploadManagers
 
                 BackblazeB2ActionResult<IBackblazeB2UploadResult> uploadResult = ExecuteLaneImpl(
                     _config,
-                    _ticketCounter,
+                    _authorizationSessionGenerator,
                     fileShard,
                     _cancellationToken,
                     true,
@@ -288,6 +292,7 @@ namespace B2BackupUtility.UploadManagers
                 {
                     FileShardID = job.LazyShard.Value.ID,
                     FileShardPieceNumber = job.LazyShard.Value.PieceNumber,
+                    FileShardSHA1 = job.LazyShard.Value.SHA1,
                     UploadID = job.UploadID,
                     UploadResult = uploadResult,
                 });
@@ -306,7 +311,7 @@ namespace B2BackupUtility.UploadManagers
 
                 BackblazeB2ActionResult<IBackblazeB2UploadResult> uploadResult = ExecuteLaneImpl(
                     _config,
-                    _ticketCounter,
+                    _authorizationSessionGenerator,
                     fileShard,
                     _cancellationToken,
                     false,
@@ -328,6 +333,7 @@ namespace B2BackupUtility.UploadManagers
                     {
                         FileShardID = job.LazyShard.Value.ID,
                         FileShardPieceNumber = job.LazyShard.Value.PieceNumber,
+                        FileShardSHA1 = job.LazyShard.Value.SHA1,
                         UploadID = job.UploadID,
                         UploadResult = uploadResult,
                     });
@@ -343,7 +349,7 @@ namespace B2BackupUtility.UploadManagers
 
         private static BackblazeB2ActionResult<IBackblazeB2UploadResult> ExecuteLaneImpl(
             Config config,
-            UploadManagerAuthorizationSessionTicketCounter ticketCounter,
+            Func<BackblazeB2AuthorizationSession> authorizationSessionGenerator,
             FileShard fileShard,
             CancellationToken cancellationToken,
             bool canUseMultipleConnections,
@@ -363,56 +369,53 @@ namespace B2BackupUtility.UploadManagers
                 .AllocateMemory(serializedAndEncryptedBytes.Length, cancellationToken);
 
             BackblazeB2ActionResult<IBackblazeB2UploadResult> result = null;
-            using (UploadManagerAuthorizationSessionTicket authorizationTicket = ticketCounter.GetAuthorizationSessionTicket())
+            if (fileShard.Length > DefaultUploadChunkSize && canUseMultipleConnections)
             {
-                if (fileShard.Length > DefaultUploadChunkSize && canUseMultipleConnections)
-                {
-                    // Reallocate another chunk of memory since the multiconnection action will allocate
-                    // more memory internally
-                    MultinodeMemoryManagementSystem
-                        .Instance
-                        .GetMemoryGovernor(MemoryServiceName)
-                        .AllocateMemory(serializedAndEncryptedBytes.Length, cancellationToken);
+                // Reallocate another chunk of memory since the multiconnection action will allocate
+                // more memory internally
+                MultinodeMemoryManagementSystem
+                    .Instance
+                    .GetMemoryGovernor(MemoryServiceName)
+                    .AllocateMemory(serializedAndEncryptedBytes.Length, cancellationToken);
 
-                    result = ExecuteUploadAction(
-                        new UploadWithMultipleConnectionsAction(
-                            authorizationTicket.AuthorizationSession,
-                            new MemoryStream(serializedAndEncryptedBytes),
-                            fileShard.ID,
-                            config.BucketID,
-                            DefaultUploadChunkSize,
-                            uploadConnections,
-                            uploadAttempts,
-                            cancellationToken,
-                            _ => { } // There is no backoff, so we can just NoOp here
-                        ));
-
-                    MultinodeMemoryManagementSystem
-                        .Instance
-                        .GetMemoryGovernor(MemoryServiceName)
-                        .FreeMemory(serializedAndEncryptedBytes.Length);
-                }
-                else
-                {
-                    result = ExecuteUploadAction(
-                       new UploadWithSingleConnectionAction(
-                           authorizationTicket.AuthorizationSession,
-                           config.BucketID,
-                           serializedAndEncryptedBytes,
-                           fileShard.ID,
-                           uploadAttempts,
-                           cancellationToken,
-                           _ => { } // There is no backoff, so we can just NoOp here
-                       ));
-                }
+                result = ExecuteUploadAction(
+                    new UploadWithMultipleConnectionsAction(
+                        authorizationSessionGenerator(),
+                        new MemoryStream(serializedAndEncryptedBytes),
+                        fileShard.ID,
+                        config.BucketID,
+                        DefaultUploadChunkSize,
+                        uploadConnections,
+                        uploadAttempts,
+                        cancellationToken,
+                        _ => { } // There is no backoff, so we can just NoOp here
+                    ));
 
                 MultinodeMemoryManagementSystem
                     .Instance
                     .GetMemoryGovernor(MemoryServiceName)
                     .FreeMemory(serializedAndEncryptedBytes.Length);
-
-                return result;
             }
+            else
+            {
+                result = ExecuteUploadAction(
+                   new UploadWithSingleConnectionAction(
+                       authorizationSessionGenerator(),
+                       config.BucketID,
+                       serializedAndEncryptedBytes,
+                       fileShard.ID,
+                       uploadAttempts,
+                       cancellationToken,
+                       _ => { } // There is no backoff, so we can just NoOp here
+                   ));
+            }
+
+            MultinodeMemoryManagementSystem
+                .Instance
+                .GetMemoryGovernor(MemoryServiceName)
+                .FreeMemory(serializedAndEncryptedBytes.Length);
+
+            return result;
         }
 
         private static BackblazeB2ActionResult<IBackblazeB2UploadResult> ExecuteUploadAction<T>(

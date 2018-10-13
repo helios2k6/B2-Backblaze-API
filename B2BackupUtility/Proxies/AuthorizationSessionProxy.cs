@@ -36,6 +36,8 @@ namespace B2BackupUtility.Proxies
         private static TimeSpan OneHour => TimeSpan.FromMinutes(60);
 
         private readonly Config _config;
+        private readonly object _lockObject;
+
         private BackblazeB2AuthorizationSession _authorizationSession;
         #endregion
 
@@ -43,17 +45,20 @@ namespace B2BackupUtility.Proxies
         public static string Name => "Authorization Session Proxy";
 
         /// <summary>
-        /// Get the authorization session
+        /// Get the authorization session in a multi-threaded safe way
         /// </summary>
         public BackblazeB2AuthorizationSession AuthorizationSession
         {
             get
             {
-                if (_authorizationSession == null || _authorizationSession.SessionExpirationDate - DateTime.Now < OneHour)
+                lock (_lockObject)
                 {
-                    _authorizationSession = CreateNewAuthorizationSession();
+                    if (_authorizationSession == null || _authorizationSession.SessionExpirationDate - DateTime.Now < OneHour)
+                    {
+                        _authorizationSession = CreateNewAuthorizationSession();
+                    }
+                    return _authorizationSession;
                 }
-                return _authorizationSession;
             }
         }
         #endregion
@@ -66,6 +71,7 @@ namespace B2BackupUtility.Proxies
         public AuthorizationSessionProxy(Config config) : base(Name, null)
         {
             _config = config;
+            _lockObject = new object();
         }
         #endregion
 
