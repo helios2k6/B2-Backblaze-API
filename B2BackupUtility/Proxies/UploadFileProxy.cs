@@ -28,12 +28,10 @@ using B2BackupUtility.UploadManagers;
 using Functional.Maybe;
 using Newtonsoft.Json;
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace B2BackupUtility.Proxies
 {
@@ -45,6 +43,7 @@ namespace B2BackupUtility.Proxies
         #region private fields
         private const int DefaultUploadAttempts = 1;
 
+        private static int DefaultFilesToUploadBeforeUploadingManifest => 5;
         private static int DefaultReuploadAttempts => 3;
         private static int DefaultUploadConnections => 20;
         private static int DefaultUploadChunkSize => 5242880; // 5 mebibytes
@@ -59,7 +58,7 @@ namespace B2BackupUtility.Proxies
         public static string FailedToUploadFileManifest => "Failed To Upload File Manifest";
         public static string SkippedUploadFile => "Skip Uploading File";
         public static string FinishUploadFile => "Finished Uploading File";
-        public static string ExponentialBackoffInitiated => "Exponential Backoff Initiated";
+        public static string FileTierChanged => "File Tier Changed";
         #endregion
 
         #region ctor
@@ -252,7 +251,7 @@ namespace B2BackupUtility.Proxies
 
         #region private methods
         private void UploadFiles(
-            Func<BackblazeB2AuthorizationSession> authorizationSessionGenerator,
+            Func<BackblazeB2AuthorizationSession> authorizationSessionGenerator, // TODO: formalize this idea and generalize it cause we need to use it later
             IEnumerable<string> localFilePaths,
             bool shouldOverride
         )
@@ -283,38 +282,90 @@ namespace B2BackupUtility.Proxies
                 absoluteLocalFilePaths.Add(absoluteFilePath);
             }
 
-            object localLockObject = new object();
             using (TieredUploadManager uploadManager = new TieredUploadManager(authorizationSessionGenerator, Config, CancellationEventRouter.GlobalCancellationToken))
             {
-                EventHandler<UploadManagerEventArgs> handleOnUploadFailed = (sender, eventArgs) =>
+                IDictionary<string, ISet<string>> localFilePathToUploadIDs = new Dictionary<string, ISet<string>>();
+                IDictionary<string, string> uploadIDsToLocalFilePath = new Dictionary<string, string>();
+                foreach (string localFilePath in absoluteLocalFilePaths)
                 {
+                    localFilePathToUploadIDs[localFilePath] = new HashSet<string>();
+                    foreach (Lazy<FileShard> lazyFileShard in FileShardFactory.CreateLazyFileShards(localFilePath))
+                    {
+                        string uploadID = uploadManager.AddLazyFileShard(lazyFileShard);
 
-                };
+                        localFilePathToUploadIDs[localFilePath].Add(uploadID);
+                        uploadIDsToLocalFilePath[uploadID] = localFilePath;
+                    }
+                }
 
-                EventHandler<UploadManagerEventArgs> handleOnUploadFinished = (sender, eventArgs) =>
+                // This part is tricky because all of these event handlers will be executed on background threads. Because of this
+                // we will need to lock around the SendNotification call in order to prevent any race conditions or data corruption
+                // due to any state changes that occur because of it. We know the main thread is waiting on these background 
+                // threads below because it's called the "Wait()" method
+                object localLockObject = new object();
+                int numberOfFilesUploaded = 0;
+                IDictionary<string, ISet<Tuple<long, string>>> localFileToFileShardIDs = new Dictionary<string, ISet<Tuple<long, string>>>();
+                void HandleOnUploadFailed(object sender, UploadManagerEventArgs eventArgs)
                 {
+                    lock (localLockObject)
+                    {
+                        string localFileFailedToUpload = uploadIDsToLocalFilePath[eventArgs.UploadID];
+                        SendNotification(FailedToUploadFile, $"Failed to upload file {localFileFailedToUpload} due to {eventArgs.UploadResult}", null);
+                    }
+                }
 
-                };
-
-                EventHandler<UploadManagerEventArgs> handleOnUploadTierChanged = (sender, eventArgs) =>
+                void HandleOnUploadFinished(object sender, UploadManagerEventArgs eventArgs)
                 {
+                    lock (localLockObject)
+                    {
+                        numberOfFilesUploaded++;
+                        string localFilePath = uploadIDsToLocalFilePath[eventArgs.UploadID];
+                        if (localFileToFileShardIDs.TryGetValue(localFilePath, out ISet<Tuple<long, string>> fileShardsForLocalFile) == false)
+                        {
+                            fileShardsForLocalFile = new HashSet<Tuple<long, string>>();
+                            localFileToFileShardIDs[localFilePath] = fileShardsForLocalFile;
+                        }
 
-                };
+                        fileShardsForLocalFile.Add(Tuple.Create(eventArgs.FileShardPieceNumber, eventArgs.FileShardID));
+
+                        ISet<string> uploadIDsForLocalFile = localFilePathToUploadIDs[localFilePath];
+                        uploadIDsForLocalFile.Remove(eventArgs.UploadID);
+                        if (uploadIDsForLocalFile.Any() == false)
+                        {
+                            SendNotification(FinishUploadFile, localFilePath, null);
+
+                            // TODO: Upload file manifest. Read the TODO above about generalizing the authorization session generator and make it thread safe
+                        }
+                    }
+                }
+
+                void HandleOnUploadTierChanged(object sender, UploadManagerEventArgs eventArgs)
+                {
+                    lock (localLockObject)
+                    {
+                        string localFileFailedToUpload = uploadIDsToLocalFilePath[eventArgs.UploadID];
+                        SendNotification(FileTierChanged, $"File {localFileFailedToUpload} tier changed to {eventArgs.NewUploadTier}", null);
+                    }
+                }
 
                 // Hook up events
-                uploadManager.OnUploadFailed += handleOnUploadFailed;
-                uploadManager.OnUploadFinished += handleOnUploadFinished;
-                uploadManager.OnUploadTierChanged += handleOnUploadTierChanged;
+                uploadManager.OnUploadFailed += HandleOnUploadFailed;
+                uploadManager.OnUploadFinished += HandleOnUploadFinished;
+                uploadManager.OnUploadTierChanged += HandleOnUploadTierChanged;
 
-                Parallel.ForEach(absoluteLocalFilePaths, (absoluteLocalFilePath, _, __) => 
+                uploadManager.SealUploadManager();
+                uploadManager.Execute();
+                uploadManager.Wait();
+
+                // Specifically lock this part so that there is not possibility of a rogue thread
+                // firing an event while this main thread is in the middle of cleaning it up
+                lock (localLockObject)
                 {
-                    
-                });
-
-                // Unsubscribe from events
-                uploadManager.OnUploadFailed -= handleOnUploadFailed;
-                uploadManager.OnUploadFinished -= handleOnUploadFinished;
-                uploadManager.OnUploadTierChanged -= handleOnUploadTierChanged;
+                    // Unsubscribe from events
+                    uploadManager.OnUploadFailed -= HandleOnUploadFailed;
+                    uploadManager.OnUploadFinished -= HandleOnUploadFinished;
+                    uploadManager.OnUploadTierChanged -= HandleOnUploadTierChanged;
+                }
             }
         }
 
@@ -369,15 +420,6 @@ namespace B2BackupUtility.Proxies
                     yield return localFilePath;
                 }
             }
-        }
-
-        private void SendNotificationAboutExponentialBackoff(TimeSpan backoff, string fileName, string fileShardID)
-        {
-            SendNotification(
-                ExponentialBackoffInitiated,
-                $"Exponential backoff initiated for file {fileName} shard {fileShardID} for {backoff}",
-                null
-            );
         }
 
         private static BackblazeB2ActionResult<IBackblazeB2UploadResult> ExecuteUploadAction<T>(

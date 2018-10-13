@@ -88,10 +88,21 @@ namespace B2BackupUtility.Database
         }
 
         /// <summary>
-        /// This will create a stream of Lazy File Shards that defer the generate of the file shard
+        /// This will create a stream of Lazy File Shards that defer the generation of a file shard with
+        /// the default shard size
         /// </summary>
         /// <param name="filePath">The local file path to read from</param>
-        /// <param name="shardLength"> The length of each shard</param>
+        /// <returns>An IEnumerable of File Shards that are lazily generated</returns>
+        public static IEnumerable<Lazy<FileShard>> CreateLazyFileShards(string filePath)
+        {
+            return CreateLazyFileShards(filePath, DefaultShardLength);
+        }
+
+        /// <summary>
+        /// This will create a stream of Lazy File Shards that defer the generation of a file shard
+        /// </summary>
+        /// <param name="filePath">The local file path to read from</param>
+        /// <param name="shardLength">The length of each shard</param>
         /// <returns>An IEnumerable of File Shards that are lazily generated</returns>
         public static IEnumerable<Lazy<FileShard>> CreateLazyFileShards(string filePath, int shardLength)
         {

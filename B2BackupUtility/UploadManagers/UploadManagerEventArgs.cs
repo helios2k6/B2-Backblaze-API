@@ -34,9 +34,19 @@ namespace B2BackupUtility.UploadManagers
         public string UploadID { get; set; }
 
         /// <summary>
+        /// The File Shard piece number
+        /// </summary>
+        public long FileShardPieceNumber { get; set; }
+
+        /// <summary>
+        /// The File Shard ID that was uploaded
+        /// </summary>
+        public string FileShardID { get; set; }
+
+        /// <summary>
         /// The upload result, if there is on
         /// </summary>
-        BackblazeB2ActionResult<IBackblazeB2UploadResult> UploadResult { get; set; }
+        public BackblazeB2ActionResult<IBackblazeB2UploadResult> UploadResult { get; set; }
 
         /// <summary>
         /// A print-friendly name that describes which tier this upload is moving to

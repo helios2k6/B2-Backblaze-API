@@ -34,8 +34,6 @@ namespace B2BackupUtility.UploadManagers
     {
         #region private fields
         private BackblazeB2AuthorizationSession _currentAuthorizationSession;
-        private bool _isDisposed;
-
         private readonly HashSet<string> _outstandingTicketIDs;
         private readonly ManualResetEventSlim _manualResetEvent;
         private readonly Func<BackblazeB2AuthorizationSession> _authorizationSessionGenerator;
@@ -43,7 +41,7 @@ namespace B2BackupUtility.UploadManagers
         #endregion
 
         #region public properties
-        public bool IsDisposed => _isDisposed;
+        public bool IsDisposed { get; private set; }
         #endregion
 
         #region ctor
@@ -52,7 +50,7 @@ namespace B2BackupUtility.UploadManagers
         )
         {
             _authorizationSessionGenerator = authorizationSessionGenerator;
-            _isDisposed = false;
+            IsDisposed = false;
             _outstandingTicketIDs = new HashSet<string>();
             _manualResetEvent = new ManualResetEventSlim();
             _currentAuthorizationSession = null;
@@ -116,10 +114,11 @@ namespace B2BackupUtility.UploadManagers
         #region IDisposable Support
         public void Dispose()
         {
-            if (_isDisposed)
+            if (IsDisposed)
             {
                 return;
             }
+            IsDisposed = true;
 
             _manualResetEvent.Dispose();
         }

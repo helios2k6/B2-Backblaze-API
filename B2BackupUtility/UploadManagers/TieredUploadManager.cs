@@ -72,7 +72,7 @@ namespace B2BackupUtility.UploadManagers
         private readonly CancellationToken _cancellationToken;
         private readonly List<Task> _taskList;
         private readonly Config _config;
-        
+
         private bool _isSealed;
         private bool _isDisposed;
         #endregion
@@ -109,7 +109,7 @@ namespace B2BackupUtility.UploadManagers
         /// </summary>
         /// <param name="lazyFileShard">The file shard to upload</param>
         /// <returns></returns>
-        public string AddUploadJob(Lazy<FileShard> lazyFileShard)
+        public string AddLazyFileShard(Lazy<FileShard> lazyFileShard)
         {
             if (_isDisposed)
             {
@@ -286,7 +286,10 @@ namespace B2BackupUtility.UploadManagers
 
                 OnUploadFinished(this, new UploadManagerEventArgs
                 {
+                    FileShardID = job.LazyShard.Value.ID,
+                    FileShardPieceNumber = job.LazyShard.Value.PieceNumber,
                     UploadID = job.UploadID,
+                    UploadResult = uploadResult,
                 });
             }
         }
@@ -316,13 +319,17 @@ namespace B2BackupUtility.UploadManagers
                     OnUploadFailed(this, new UploadManagerEventArgs
                     {
                         UploadID = job.UploadID,
+                        UploadResult = uploadResult,
                     });
                 }
                 else
                 {
                     OnUploadFinished(this, new UploadManagerEventArgs
                     {
+                        FileShardID = job.LazyShard.Value.ID,
+                        FileShardPieceNumber = job.LazyShard.Value.PieceNumber,
                         UploadID = job.UploadID,
+                        UploadResult = uploadResult,
                     });
                 }
 
@@ -354,7 +361,7 @@ namespace B2BackupUtility.UploadManagers
                 .Instance
                 .GetMemoryGovernor(MemoryServiceName)
                 .AllocateMemory(serializedAndEncryptedBytes.Length, cancellationToken);
-            
+
             BackblazeB2ActionResult<IBackblazeB2UploadResult> result = null;
             using (UploadManagerAuthorizationSessionTicket authorizationTicket = ticketCounter.GetAuthorizationSessionTicket())
             {
