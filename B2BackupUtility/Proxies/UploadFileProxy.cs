@@ -88,11 +88,6 @@ namespace B2BackupUtility.Proxies
             bool shouldOverride
         )
         {
-            if (Directory.Exists(localFolderPath) == false)
-            {
-                throw new DirectoryNotFoundException($"Could not find directory {localFolderPath}");
-            }
-
             UploadFiles(authorizationSessionGenerator, GetFilesToUpload(localFolderPath, shouldOverride), shouldOverride);
         }
 
@@ -108,29 +103,7 @@ namespace B2BackupUtility.Proxies
             bool shouldOverride
         )
         {
-            string absoluteFilePath = Path.GetFullPath(localFilePath);
-            if (System.IO.File.Exists(absoluteFilePath) == false)
-            {
-                throw new FileNotFoundException("Could not find file to upload", absoluteFilePath);
-            }
-
-            // Check to see if the file exists already
-            if (TryGetFileByName(absoluteFilePath, out Database.File fileThatExists))
-            {
-                // If we can't override, we need to throw an exception
-                if (shouldOverride == false)
-                {
-                    throw new FailedToUploadFileException("File already exists and we are not allowed to override it!")
-                    {
-                        File = absoluteFilePath,
-                    };
-                }
-
-                // Remove the file from the manifest
-                RemoveFile(fileThatExists);
-            }
-
-            UploadFiles(() => authorizationSession, new[] { absoluteFilePath }, shouldOverride);
+            UploadFiles(() => authorizationSession, new[] { localFilePath }, shouldOverride);
         }
         #endregion
 
