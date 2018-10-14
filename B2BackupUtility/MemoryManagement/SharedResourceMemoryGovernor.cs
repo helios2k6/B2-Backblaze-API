@@ -29,13 +29,19 @@ namespace B2BackupUtility.MemoryManagement
     /// </summary>
     public sealed class SharedResourceMemoryGovernor : IDisposable
     {
+        #region private fields
+        private static int MaxWaitTimeInMS => 120000; // 120 seconds
+        private static int MaxNumberOfWaitCycles => 5;
+
         private readonly long _memoryCapacity;
         private readonly ManualResetEventSlim _signal;
         private readonly object _lockObject;
 
         private bool _isDisposed;
         private long _currentlyAvailableMemory;
+        #endregion
 
+        #region ctor
         /// <summary>
         /// Construct a new Shared Resource Memory Generator with the max memory allocation
         /// </summary>
@@ -47,6 +53,21 @@ namespace B2BackupUtility.MemoryManagement
             _memoryCapacity = memoryCapacity;
             _currentlyAvailableMemory = memoryCapacity;
             _isDisposed = false;
+        }
+        #endregion
+
+        #region public methods
+        /// <summary>
+        /// Allocates memory and returns a MemoryResourceContext that automatically frees the memory that has been
+        /// allocated when it is disposed of.
+        /// </summary>
+        /// <param name="bytesToAllocate">The bytes to allocate</param>
+        /// <param name="cancellationToken">The cancellation token to listen on</param>
+        /// <returns>A MemoryResourceContext that will free the memory when it is disposed of</returns>
+        public MemoryResourceContext AllocateMemoryWithContext(long bytesToAllocate, CancellationToken cancellationToken)
+        {
+            AllocateMemory(bytesToAllocate, cancellationToken);
+            return new MemoryResourceContext(this, bytesToAllocate);
         }
 
         /// <summary>
@@ -71,11 +92,17 @@ namespace B2BackupUtility.MemoryManagement
                 throw new ArgumentException("You must provide a positive number for the number of tickets");
             }
 
+            int numberOfCycles = 0;
             while (true)
             {
+                if (numberOfCycles > MaxNumberOfWaitCycles)
+                {
+                    throw new CouldNotAllocateMemoryException("Could not allocate memory");
+                }
+
                 lock (_lockObject)
                 {
-                    // Scenario 1: We have enough tickets
+                    // Scenario 1: We have enough memory
                     if (_currentlyAvailableMemory > bytesToAllocate)
                     {
                         _currentlyAvailableMemory -= bytesToAllocate;
@@ -85,8 +112,8 @@ namespace B2BackupUtility.MemoryManagement
                     _signal.Reset();
                 }
 
-                // Scenario 2: We do not have enough tickets and we need to wait
-                _signal.Wait(cancellationToken);
+                // Scenario 2: We do not have enough memory and we need to wait until more frees up
+                _signal.Wait(MaxWaitTimeInMS, cancellationToken);
             }
         }
 
@@ -127,5 +154,6 @@ namespace B2BackupUtility.MemoryManagement
             _isDisposed = true;
             _signal.Dispose();
         }
+        #endregion
     }
 }
