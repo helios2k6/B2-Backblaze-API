@@ -56,13 +56,16 @@ namespace B2BackupUtility
                 throw new InvalidOperationException("File does not exist. Cannot compute SHA-1");
             }
 
-            if (_localFileToSHA1HashMap.TryGetValue(localFilePath, out string fileSHA1) == false)
+            lock (_localFileToSHA1HashMap)
             {
-                fileSHA1 = ComputeSHA1(new FileStream(localFilePath, FileMode.Open, FileAccess.Read, FileShare.Read));
-                _localFileToSHA1HashMap.Add(localFilePath, fileSHA1);
-            }
+                if (_localFileToSHA1HashMap.TryGetValue(localFilePath, out string fileSHA1) == false)
+                {
+                    fileSHA1 = ComputeSHA1(new FileStream(localFilePath, FileMode.Open, FileAccess.Read, FileShare.Read));
+                    _localFileToSHA1HashMap.Add(localFilePath, fileSHA1);
+                }
 
-            return fileSHA1;
+                return fileSHA1;
+            }
         }
 
         /// <summary>

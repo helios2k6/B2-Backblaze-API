@@ -137,7 +137,7 @@ namespace B2BackupUtility.Database
 
         private static Lazy<FileShard> CreateLazyFileShard(string filePath, long pieceNumber, int shardLength)
         {
-            return new Lazy<FileShard>(() => 
+            return new Lazy<FileShard>(() =>
             {
                 using (FileStream fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read))
                 {

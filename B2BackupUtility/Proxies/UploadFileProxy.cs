@@ -19,19 +19,14 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-using B2BackblazeBridge.Actions;
 using B2BackblazeBridge.Core;
 using B2BackupUtility.Database;
-using B2BackupUtility.Encryption;
 using B2BackupUtility.Proxies.Exceptions;
 using B2BackupUtility.UploadManagers;
-using Functional.Maybe;
-using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text;
 
 namespace B2BackupUtility.Proxies
 {
@@ -156,10 +151,9 @@ namespace B2BackupUtility.Proxies
                     }
                 }
 
-                // This part is tricky because all of these event handlers will be executed on background threads. Because of this
-                // we will need to lock around the SendNotification call in order to prevent any race conditions or data corruption
-                // due to any state changes that occur because of it. We know the main thread is waiting on these background 
-                // threads below because it's called the "Wait()" method
+                // This part is tricky because all of these event handlers will be executed on background threads. Because of this,
+                // we will need to lock the SendNotification call in order to prevent any race conditions or data corruption. We 
+                // know the main thread is blocked on these background threads because has called the "Wait()" method.
                 object localLockObject = new object();
                 IDictionary<string, ISet<UploadManagerEventArgs>> localFileToFileShardIDs = new Dictionary<string, ISet<UploadManagerEventArgs>>();
                 ISet<string> localFilesThatHaveAlreadyStarted = new HashSet<string>();
