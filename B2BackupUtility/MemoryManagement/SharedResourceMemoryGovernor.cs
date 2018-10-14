@@ -36,11 +36,16 @@ namespace B2BackupUtility.MemoryManagement
         private bool _isDisposed;
         private long _currentlyAvailableMemory;
 
-        public SharedResourceMemoryGovernor(long ticketCapacity)
+        /// <summary>
+        /// Construct a new Shared Resource Memory Generator with the max memory allocation
+        /// </summary>
+        /// <param name="memoryCapacity">The memory capacity of this governor</param>
+        public SharedResourceMemoryGovernor(long memoryCapacity)
         {
             _lockObject = new object();
             _signal = new ManualResetEventSlim();
-            _memoryCapacity = ticketCapacity;
+            _memoryCapacity = memoryCapacity;
+            _currentlyAvailableMemory = memoryCapacity;
             _isDisposed = false;
         }
 
