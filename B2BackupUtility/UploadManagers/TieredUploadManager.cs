@@ -54,16 +54,20 @@ namespace B2BackupUtility.UploadManagers
         #region private fields
         private const string MemoryServiceName = "Tiered Upload Manager";
 
+        private const int DefaultFastLaneCount = 5;
+        private const int DefaultMidLaneCount = 3;
+        private const int DefaultSlowLaneCount = 1;
+
         private const int DefaultUploadChunkSize = 5242880; // 5 mebibytes
-        private const int FastLaneUploadConnections = 20;
-        private const int FastLaneUploadAttempts = 1;
+        private const int DefaultFastLaneUploadConnections = 20;
+        private const int DefaultFastLaneUploadAttempts = 1;
 
-        private const int MidLaneUploadConnections = 5;
-        private const int MidLaneUploadAttempts = 3;
+        private const int DefaultMidLaneUploadConnections = 5;
+        private const int DefaultMidLaneUploadAttempts = 3;
 
-        private const int SlowLandUploadAttempts = 10;
+        private const int DefaultSlowLandUploadAttempts = 10;
 
-        private const long MaxMemoryAllowed = 6442450944; // 6 gibibytes
+        private const long DefaultMaxMemoryAllowed = 6442450944; // 6 gibibytes
 
         private readonly Func<BackblazeB2AuthorizationSession> _authorizationSessionGenerator;
         private readonly BlockingCollection<UploadJob> _fastLane;
@@ -73,6 +77,9 @@ namespace B2BackupUtility.UploadManagers
         private readonly List<Task> _taskList;
         private readonly Config _config;
 
+        private int _fastLaneCount;
+        private int _midLaneCount;
+        private int _slowLaneCount;
         private bool _isSealed;
         private bool _isDisposed;
         #endregion
@@ -82,6 +89,74 @@ namespace B2BackupUtility.UploadManagers
         public event EventHandler<UploadManagerEventArgs> OnUploadFinished;
         public event EventHandler<UploadManagerEventArgs> OnUploadTierChanged;
         public event EventHandler<UploadManagerEventArgs> OnUploadFailed;
+        #endregion
+
+        #region public properties
+        /// <summary>
+        /// The number of fast lanes
+        /// </summary>
+        public int FastLaneCount
+        {
+            get { return _fastLaneCount; }
+            set
+            {
+                if (_isDisposed)
+                {
+                    throw new ObjectDisposedException("This object has been disposed");
+                }
+
+                if (value <= 0)
+                {
+                    throw new ArgumentException("The number of fast lanes must be greater than 0");
+                }
+
+                _fastLaneCount = value;
+            }
+        }
+
+        /// <summary>
+        /// The number of mid lanes
+        /// </summary>
+        public int MidLaneCount
+        {
+            get { return _midLaneCount; }
+            set
+            {
+                if (_isDisposed)
+                {
+                    throw new ObjectDisposedException("This object has been disposed");
+                }
+
+                if (value <= 0)
+                {
+                    throw new ArgumentException("The number of mid lanes must be greater than 0");
+                }
+
+                _midLaneCount = value;
+            }
+        }
+
+        /// <summary>
+        /// The number of slow lanes
+        /// </summary>
+        public int SlowLaneCount
+        {
+            get { return _slowLaneCount; }
+            set
+            {
+                if (_isDisposed)
+                {
+                    throw new ObjectDisposedException("This object has been disposed");
+                }
+
+                if (value <= 0)
+                {
+                    throw new ArgumentException("The number of slow lanes must be greater than 0");
+                }
+
+                _slowLaneCount = value;
+            }
+        }
         #endregion
 
         #region ctor
@@ -100,7 +175,11 @@ namespace B2BackupUtility.UploadManagers
             _isSealed = false;
             _config = config;
 
-            MultinodeMemoryManagementSystem.Instance.AddService(MemoryServiceName, MaxMemoryAllowed);
+            FastLaneCount = DefaultFastLaneCount;
+            MidLaneCount = DefaultMidLaneCount;
+            SlowLaneCount = DefaultSlowLaneCount;
+
+            MultinodeMemoryManagementSystem.Instance.AddService(MemoryServiceName, DefaultMaxMemoryAllowed);
         }
         #endregion
 
@@ -144,16 +223,23 @@ namespace B2BackupUtility.UploadManagers
                 throw new ObjectDisposedException("This object has been disposed");
             }
 
-            _taskList.AddRange(new[]
+            // Start fast lanes
+            for (int i = 0; i < FastLaneCount; i++)
             {
-                Task.Factory.StartNew(ExecuteFastLane), // Fast lane 1
-                Task.Factory.StartNew(ExecuteFastLane), // Fast lane 2
-                Task.Factory.StartNew(ExecuteFastLane), // Fast lane 3
-                Task.Factory.StartNew(ExecuteFastLane), // Fast lane 4
-                Task.Factory.StartNew(ExecuteMidLane), // Mid lane 1
-                Task.Factory.StartNew(ExecuteMidLane), // Mid lane 2
-                Task.Factory.StartNew(ExecuteSlowLane), // Slow lane 1
-            });
+                _taskList.Add(Task.Factory.StartNew(ExecuteFastLane));
+            }
+            
+            // Start mid lanes
+            for (int i = 0; i < MidLaneCount; i++)
+            {
+                _taskList.Add(Task.Factory.StartNew(ExecuteMidLane));
+            }
+
+            // Start slow lanes
+            for (int i = 0; i < SlowLaneCount; i++)
+            {
+                _taskList.Add(Task.Factory.StartNew(ExecuteSlowLane));
+            }
         }
 
         /// <summary>
@@ -230,8 +316,8 @@ namespace B2BackupUtility.UploadManagers
                     fileShard,
                     _cancellationToken,
                     true,
-                    FastLaneUploadConnections,
-                    FastLaneUploadAttempts
+                    DefaultFastLaneUploadConnections,
+                    DefaultFastLaneUploadAttempts
                 );
 
                 PostProcessJob(job, uploadResult, _midLane, "Mid Tier");
@@ -253,8 +339,8 @@ namespace B2BackupUtility.UploadManagers
                     job.LazyShard.Value,
                     _cancellationToken,
                     true,
-                    MidLaneUploadConnections,
-                    MidLaneUploadAttempts
+                    DefaultMidLaneUploadConnections,
+                    DefaultMidLaneUploadAttempts
                 );
 
                 PostProcessJob(job, uploadResult, _slowLane, "Slow Tier");

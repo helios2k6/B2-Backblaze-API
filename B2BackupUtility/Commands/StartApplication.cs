@@ -28,13 +28,17 @@ namespace B2BackupUtility.Commands
     /// </summary>
     public sealed class StartApplication : MacroCommand
     {
+        #region public properties
         public static string CommandNotification => "Start Application";
+        #endregion
 
+        #region protected methods
         protected override void InitializeMacroCommand()
         {
             AddSubCommand(() => new InitializeProgramArguments());
             AddSubCommand(() => new InitializeView());
             AddSubCommand(() => new StartSelectedProgramCommand());
         }
+        #endregion
     }
 }

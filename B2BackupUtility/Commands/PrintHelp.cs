@@ -43,7 +43,7 @@ namespace B2BackupUtility.Commands
         #endregion
 
         #region private properties
-        private static string HeaderText => "B2 Backup Utility v7.0";
+        private static string HeaderText => "B2 Backup Utility v7.2";
 
         private static string InstructionText => "Usage: <this program> <necessary switches> <action> [options]";
 

@@ -33,8 +33,6 @@ namespace B2BackupUtility.Commands
     {
         #region public properties
         public static string CommandNotification => "Initialize File Database Manifest";
-
-        public static string FailedCommandNotification => "Failed To Initialize File Database Manifest";
         #endregion
 
         #region public methods

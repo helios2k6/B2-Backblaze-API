@@ -31,7 +31,11 @@ namespace B2BackupUtility.Commands
     /// </summary>
     public sealed class InitializeView : SimpleCommand
     {
+        #region public properties
         public static string CommandNotification => "Initialize View";
+        #endregion
+
+        #region public methods
         public override void Execute(INotification notification)
         {
             ProgramArgumentsProxy programArgumentsProxy = (ProgramArgumentsProxy)Facade.RetrieveProxy(ProgramArgumentsProxy.Name);
@@ -51,5 +55,6 @@ namespace B2BackupUtility.Commands
 
             Facade.RegisterMediator(new ConsoleMediator(logLevel));
         }
+        #endregion
     }
 }

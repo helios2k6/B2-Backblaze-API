@@ -33,8 +33,6 @@ namespace B2BackupUtility.Commands
         #region public properties
         public static string CommandNotification => "Initialize Config";
 
-        public static string FailedCommandNotification => "Failed To Initialize Config";
-
         public static string CommandOption = "--config";
         #endregion
 

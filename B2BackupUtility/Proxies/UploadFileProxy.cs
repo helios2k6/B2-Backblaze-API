@@ -26,7 +26,6 @@ using B2BackupUtility.UploadManagers;
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 
 namespace B2BackupUtility.Proxies
 {
@@ -35,23 +34,15 @@ namespace B2BackupUtility.Proxies
     /// </summary>
     public sealed class UploadFileProxy : BaseRemoteFileSystemProxy
     {
-        #region private fields
-        private static int DefaultFilesToUploadBeforeUploadingManifest => 5;
-        private static int DefaultReuploadAttempts => 3;
-        private static int DefaultUploadConnections => 20;
-        private static int DefaultUploadChunkSize => 5242880; // 5 mebibytes
-        private static int MaxConsecutiveFileManifestUploadFailures => 3;
-        #endregion
-
         #region public properties
         public static string Name => "Upload File Proxy";
-
         public static string BeginUploadFile => "Begin Upload File";
         public static string FailedToUploadFile => "Failed To Upload File";
         public static string FailedToUploadFileManifest => "Failed To Upload File Manifest";
-        public static string SkippedUploadFile => "Skip Uploading File";
-        public static string FinishUploadFile => "Finished Uploading File";
         public static string FileTierChanged => "File Tier Changed";
+        public static string FinishUploadFile => "Finished Uploading File";
+        public static string SkippedUploadFile => "Skip Uploading File";
+        public static string UploadProgress => "Upload Progress";
         #endregion
 
         #region ctor
@@ -138,10 +129,12 @@ namespace B2BackupUtility.Proxies
             using (TieredUploadManager uploadManager = new TieredUploadManager(authorizationSessionGenerator, Config, CancellationEventRouter.GlobalCancellationToken))
             {
                 IDictionary<string, ISet<string>> localFilePathToUploadIDs = new Dictionary<string, ISet<string>>();
+                IDictionary<string, ISet<string>> localFilePathToFinishedUploadIDs = new Dictionary<string, ISet<string>>();
                 IDictionary<string, string> uploadIDsToLocalFilePath = new Dictionary<string, string>();
                 foreach (string localFilePath in absoluteLocalFilePaths)
                 {
                     localFilePathToUploadIDs[localFilePath] = new HashSet<string>();
+                    localFilePathToFinishedUploadIDs[localFilePath] = new HashSet<string>();
                     foreach (Lazy<FileShard> lazyFileShard in FileShardFactory.CreateLazyFileShards(localFilePath))
                     {
                         string uploadID = uploadManager.AddLazyFileShard(lazyFileShard);
@@ -194,10 +187,11 @@ namespace B2BackupUtility.Proxies
                         }
 
                         uploadEvents.Add(eventArgs);
+                        localFilePathToFinishedUploadIDs[localFilePath].Add(eventArgs.UploadID);
 
-                        ISet<string> uploadIDsForLocalFile = localFilePathToUploadIDs[localFilePath];
-                        uploadIDsForLocalFile.Remove(eventArgs.UploadID);
-                        if (uploadIDsForLocalFile.Any() == false)
+                        int currentNumberOfUploadedShards = localFilePathToFinishedUploadIDs[localFilePath].Count;
+                        int totalNumberOfShards = localFilePathToUploadIDs[localFilePath].Count;
+                        if (totalNumberOfShards == currentNumberOfUploadedShards)
                         {
                             SendNotification(FinishUploadFile, localFilePath, null);
 
@@ -232,6 +226,11 @@ namespace B2BackupUtility.Proxies
 
                             AddFile(file);
                             UploadFileDatabaseManifest(authorizationSessionGenerator());
+                        }
+                        else
+                        {
+                            double percentFinished = ((double)currentNumberOfUploadedShards / totalNumberOfShards) * 100.0;
+                            SendNotification(UploadProgress, $"{localFilePath} - {percentFinished:N2}% uploaded", null);
                         }
                     }
                 }

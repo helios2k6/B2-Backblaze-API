@@ -33,12 +33,6 @@ namespace B2BackupUtility.Commands
         #region public properties
         public static string CommandNotification => "Upload Folder";
 
-        public static string FailedCommandNotification => "Failed To Upload Folder";
-
-        public static string BeginUploadingFolderNotification => "Begin Uploading Folder";
-
-        public static string FinishedCommandNotification => "Finished Uploading Folder";
-
         public static string CommandSwitch => "--upload-folder";
 
         public static string FolderOption => "--folder";

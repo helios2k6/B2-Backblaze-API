@@ -33,8 +33,6 @@ namespace B2BackupUtility.Commands
         #region public properties
         public static string CommandNotification => "Upload File";
 
-        public static string FailedCommandNotification => "Failed Uploading File";
-
         public static string CommandSwitch => "--upload-file";
 
         public static string FileOption => "--file";

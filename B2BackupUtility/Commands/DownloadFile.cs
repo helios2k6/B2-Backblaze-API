@@ -32,8 +32,6 @@ namespace B2BackupUtility.Commands
         #region public properties
         public static string CommandNotification => "Download File";
 
-        public static string FailedCommandNotification => "Failed To Download File";
-
         public static string FinishedCommandNotification => "Finished Downloading File";
 
         public static string CommandSwitch => "--download-file";

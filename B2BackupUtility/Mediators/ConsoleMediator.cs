@@ -41,14 +41,10 @@ namespace B2BackupUtility.Mediators
         private static readonly IDictionary<string, LogLevel> NotifLogLevels = new Dictionary<string, LogLevel>
         {
             // Critical messsages
-            { InitializeConfig.FailedCommandNotification, LogLevel.CRITICAL },
-            { StartSelectedProgramCommand.FailedCommandNotification, LogLevel.CRITICAL },
-            { UploadFile.FailedCommandNotification, LogLevel.CRITICAL },
-            { UploadFolder.FailedCommandNotification, LogLevel.CRITICAL },
-            { DownloadFile.FailedCommandNotification, LogLevel.CRITICAL },
             { CancellationEventRouter.CancellationEvent, LogLevel.CRITICAL },
             { CancellationEventRouter.ImmediateCancellationEvent, LogLevel.CRITICAL },
             { PrintHelp.HelpStringNotification, LogLevel.CRITICAL },
+            { StartSelectedProgramCommand.FailedCommandNotification, LogLevel.CRITICAL },
 
             // Warning messages
             { DeleteFileProxy.FailedToDeleteFile, LogLevel.WARNING},
@@ -57,21 +53,20 @@ namespace B2BackupUtility.Mediators
             { PruneFileShardProxy.FailedToPruneFile, LogLevel.WARNING },
 
             // Info level messages
+            { DeleteFileProxy.FinishedDeletingFile, LogLevel.INFO },
+            { DownloadFile.FinishedCommandNotification, LogLevel.INFO },
             { GenerateEncryptionKey.EncryptionKeyNotification, LogLevel.INFO },
             { GenerateEncryptionKey.InitializationVectorNotification, LogLevel.INFO },
             { ListFiles.AllFilesListNotification, LogLevel.INFO },
+            { PruneFileShardProxy.FinishedPruningFile, LogLevel.INFO },
             { UploadFileProxy.BeginUploadFile, LogLevel.INFO },
             { UploadFileProxy.FinishUploadFile, LogLevel.INFO },
             { UploadFileProxy.FileTierChanged, LogLevel.INFO },
-            { DeleteFileProxy.FinishedDeletingFile, LogLevel.INFO },
             { UploadFileProxy.SkippedUploadFile, LogLevel.INFO },
-            { PruneFileShardProxy.FinishedPruningFile, LogLevel.INFO },
-            { UploadFolder.FinishedCommandNotification, LogLevel.INFO },
-            { DownloadFile.FinishedCommandNotification, LogLevel.INFO },
+            { UploadFileProxy.UploadProgress, LogLevel.INFO },
 
             // Verbose messages
             { DeleteFileProxy.BeginDeletingFile, LogLevel.VERBOSE },
-            { UploadFolder.BeginUploadingFolderNotification, LogLevel.VERBOSE },
 
             // Debug messages
             { DeleteAllFiles.CommandNotification, LogLevel.DEBUG },
@@ -85,10 +80,10 @@ namespace B2BackupUtility.Mediators
             { InitializeRemoteFileSystem.CommandNotification, LogLevel.DEBUG },
             { ListFiles.CommandNotification, LogLevel.DEBUG },
             { PrintHelp.CommandNotification, LogLevel.DEBUG },
+            { PruneFileShardProxy.BeginPruneFile, LogLevel.DEBUG },
             { StartSelectedProgramCommand.CommandNotification, LogLevel.DEBUG },
             { UploadFile.CommandNotification, LogLevel.DEBUG },
             { UploadFolder.CommandNotification, LogLevel.DEBUG },
-            { PruneFileShardProxy.BeginPruneFile, LogLevel.DEBUG },
         };
 
         private static readonly IDictionary<LogLevel, string> LogLevelToPrefix = new Dictionary<LogLevel, string>
@@ -127,7 +122,9 @@ namespace B2BackupUtility.Mediators
         {
             if (NotifLogLevels.TryGetValue(notification.Name, out LogLevel logLevel) && _logLevel <= logLevel)
             {
-                Console.Error.WriteLine($"{LogLevelToPrefix[logLevel]}[{DateTime.Now}][{notification.Name}] - {GetLogMessageFromNotification(notification)}");
+                string messageFromNotification = GetLogMessageFromNotification(notification);
+                string connector = string.IsNullOrWhiteSpace(messageFromNotification) ? string.Empty : " - ";
+                Console.Error.WriteLine($"[{LogLevelToPrefix[logLevel]}][{DateTime.Now}][{notification.Name}]{connector}{messageFromNotification}");
             }
         }
 
