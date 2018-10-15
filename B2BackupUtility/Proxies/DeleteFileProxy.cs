@@ -25,6 +25,7 @@ using B2BackupUtility.Proxies.Exceptions;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using static B2BackblazeBridge.Core.BackblazeB2ListFilesResult;
 
 namespace B2BackupUtility.Proxies
@@ -59,23 +60,34 @@ namespace B2BackupUtility.Proxies
         {
             RemoveAllFiles();
             IEnumerable<FileResult> rawB2FileList = GetRawB2FileNames(authorizationSessionGenerator());
-            foreach (FileResult rawB2File in rawB2FileList)
+            object lockObject = new object();
+            Parallel.ForEach(rawB2FileList, rawB2File =>
             {
                 CancellationEventRouter.GlobalCancellationToken.ThrowIfCancellationRequested();
 
-                SendNotification(BeginDeletingFile, rawB2File.FileName, null);
+                lock (lockObject)
+                {
+                    SendNotification(BeginDeletingFile, rawB2File.FileName, null);
+                }
+                
                 DeleteFileAction deleteFileAction =
                     new DeleteFileAction(authorizationSessionGenerator(), rawB2File.FileID, rawB2File.FileName);
                 BackblazeB2ActionResult<BackblazeB2DeleteFileResult> deletionResult = deleteFileAction.Execute();
                 if (deletionResult.HasErrors)
                 {
-                    SendNotification(FailedToDeleteFile, deletionResult, null);
+                    lock (lockObject)
+                    {
+                        SendNotification(FailedToDeleteFile, deletionResult, null);
+                    }
                 }
                 else
                 {
-                    SendNotification(FinishedDeletingFile, rawB2File.FileName, null);
+                    lock (lockObject)
+                    {
+                        SendNotification(FinishedDeletingFile, rawB2File.FileName, null);
+                    }
                 }
-            }
+            });
         }
 
         /// <summary>

@@ -59,6 +59,7 @@ namespace B2BackblazeBridge.Actions
         private readonly Lazy<CancellationToken> _linkedCancellationToken;
 
         private bool disposedValue = false;
+        private long _totalNumberOfChunks;
         #endregion
 
         #region ctor
@@ -108,6 +109,7 @@ namespace B2BackblazeBridge.Actions
             _jobStream = new BlockingCollection<ProducerUploadJob>(MaxMemoryAllowed / _fileChunkSizesInBytes);
             _exponentialBackoffCallback = exponentialBackoffCallback;
             _internalThreadCancellationTokenSource = new CancellationTokenSource();
+            _totalNumberOfChunks = 0;
         }
         #endregion
 
@@ -186,7 +188,6 @@ namespace B2BackblazeBridge.Actions
             {
                 using (CancellationTokenSource combinedCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(_internalThreadCancellationTokenSource.Token, CancellationToken))
                 {
-                    long currentChunk = 0;
                     byte[] localBuffer = new byte[_fileChunkSizesInBytes];
                     while (true)
                     {
@@ -209,7 +210,7 @@ namespace B2BackblazeBridge.Actions
                                 {
                                     Buffer = truncatedBuffer,
                                     ContentLength = amountRead,
-                                    FilePartNumber = currentChunk + 1L, // File parts are 1-index based...I know, fucking stupid
+                                    FilePartNumber = Interlocked.Read(ref _totalNumberOfChunks) + 1L, // File parts are 1-index based...I know, fucking stupid
                                     SHA1 = ComputeSHA1Hash(truncatedBuffer),
                                 }, TimeSpan.FromSeconds(4));
 
@@ -224,7 +225,7 @@ namespace B2BackblazeBridge.Actions
                                 }
                             }
 
-                            currentChunk++;
+                            Interlocked.Increment(ref _totalNumberOfChunks);
                         }
                         else
                         {
@@ -247,7 +248,6 @@ namespace B2BackblazeBridge.Actions
                 _bucketID,
                 fileID
             ).Execute();
-
 
             if (uploadPartURLResponse.HasErrors)
             {
@@ -313,12 +313,25 @@ namespace B2BackblazeBridge.Actions
             IEnumerable<BackblazeB2ActionResult<UploadFilePartResponse>> uploadResponses
         )
         {
-            if (uploadResponses.Any(t => t.HasErrors))
+            if (uploadResponses.Any(t => t.HasErrors) || Interlocked.Read(ref _totalNumberOfChunks) != uploadResponses.Count())
             {
                 IEnumerable<BackblazeB2ActionErrorDetails> errors = from uploadResponse in uploadResponses
                                                                     where uploadResponse.HasErrors
                                                                     from error in uploadResponse.Errors
                                                                     select error;
+                
+                if (errors.Any() == false)
+                {
+                    errors = new[]
+                    {
+                        new BackblazeB2ActionErrorDetails
+                        {
+                            Code = "INTERNAL_UPLOAD_ERROR",
+                            Message = "Unable to upload all file chunks. Most likely due to all upload consumer threads failing",
+                            Status = -1,
+                        },
+                    };
+                }
 
                 return new BackblazeB2ActionResult<BackblazeB2UploadMultipartFileResult>(Maybe<BackblazeB2UploadMultipartFileResult>.Nothing, errors);
             }

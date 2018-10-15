@@ -34,6 +34,12 @@ namespace B2BackupUtility.Database
     {
         #region public properties
         /// <summary>
+        /// The data format version number of this database manifest.
+        /// </summary>
+        [JsonProperty(PropertyName = "DataFormatVersionNumber")]
+        public long DataFormatVersionNumber { get; set; }
+
+        /// <summary>
         /// The different files that are in this database
         /// </summary>
         [JsonProperty(PropertyName = "Files")]

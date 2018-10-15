@@ -146,9 +146,13 @@ namespace B2BackupUtility.UploadManagers
 
             _taskList.AddRange(new[]
             {
-                Task.Factory.StartNew(ExecuteFastLane),
-                Task.Factory.StartNew(ExecuteMidLane),
-                Task.Factory.StartNew(ExecuteSlowLane),
+                Task.Factory.StartNew(ExecuteFastLane), // Fast lane 1
+                Task.Factory.StartNew(ExecuteFastLane), // Fast lane 2
+                Task.Factory.StartNew(ExecuteFastLane), // Fast lane 3
+                Task.Factory.StartNew(ExecuteFastLane), // Fast lane 4
+                Task.Factory.StartNew(ExecuteMidLane), // Mid lane 1
+                Task.Factory.StartNew(ExecuteMidLane), // Mid lane 2
+                Task.Factory.StartNew(ExecuteSlowLane), // Slow lane 1
             });
         }
 
@@ -207,7 +211,7 @@ namespace B2BackupUtility.UploadManagers
         #region private methods
         private void ExecuteFastLane()
         {
-            foreach (UploadJob job in _fastLane.GetConsumingEnumerable())
+            foreach (UploadJob job in _fastLane.GetConsumingEnumerable(_cancellationToken))
             {
                 OnUploadBegin(this, new UploadManagerEventArgs
                 {
@@ -239,8 +243,10 @@ namespace B2BackupUtility.UploadManagers
 
         private void ExecuteMidLane()
         {
-            foreach (UploadJob job in _midLane.GetConsumingEnumerable())
+            foreach (UploadJob job in _midLane.GetConsumingEnumerable(_cancellationToken))
             {
+                _cancellationToken.ThrowIfCancellationRequested();
+
                 BackblazeB2ActionResult<IBackblazeB2UploadResult> uploadResult = ExecuteLaneImpl(
                     _config,
                     _authorizationSessionGenerator,
@@ -295,8 +301,10 @@ namespace B2BackupUtility.UploadManagers
 
         private void ExecuteSlowLane()
         {
-            foreach (UploadJob job in _slowLane.GetConsumingEnumerable())
+            foreach (UploadJob job in _slowLane.GetConsumingEnumerable(_cancellationToken))
             {
+                _cancellationToken.ThrowIfCancellationRequested();
+
                 FileShard fileShard = job.LazyShard.Value;
                 BackblazeB2ActionResult<IBackblazeB2UploadResult> uploadResult = ExecuteLaneImpl(
                     _config,
