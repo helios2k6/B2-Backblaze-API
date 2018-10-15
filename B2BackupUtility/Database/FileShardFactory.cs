@@ -31,101 +31,43 @@ namespace B2BackupUtility.Database
     /// </summary>
     public static class FileShardFactory
     {
-        #region private fields
-        private static int DefaultShardLength => 104857600; // 100 Mebibytes
+        #region public fields
+        /// <summary>
+        /// The shard length used for all file shards
+        /// </summary>
+        public static int ShardLength => 104857600; // 100 Mebibytes
         #endregion
 
         #region public methods
         /// <summary>
-        /// Creates an IEnumerable of FileShards 
-        /// </summary>
-        /// <param name="byteStream">The stream of bytes to read from</param>
-        /// <param name="shardLength">The desired shard length</param>
-        /// <param name="disposeOfStream">Whether or not to dispose of the stream</param>
-        /// <returns>An IEnumerable of FileShards</returns>
-        public static IEnumerable<FileShard> CreateFileShards(Stream byteStream, int shardLength, bool disposeOfStream)
-        {
-            byte[] payloadBuffer = new byte[shardLength];
-            long pieceNumber = 0;
-            while (true)
-            {
-                int bytesRead = byteStream.Read(payloadBuffer, 0, shardLength);
-                if (bytesRead < 1)
-                {
-                    break;
-                }
-
-                byte[] payload = new byte[bytesRead];
-                Buffer.BlockCopy(payloadBuffer, 0, payload, 0, bytesRead);
-
-                yield return new FileShard
-                {
-                    ID = Guid.NewGuid().ToString(),
-                    Length = bytesRead,
-                    Payload = payload,
-                    PieceNumber = pieceNumber++,
-                    SHA1 = SHA1FileHashStore.Instance.ComputeSHA1Hash(payload),
-                };
-            }
-
-            if (disposeOfStream)
-            {
-                byteStream.Dispose();
-            }
-
-            yield break;
-        }
-
-        /// <summary>
-        /// Creates an IEnumerable of FileShards 
-        /// </summary>
-        /// <param name="byteStream">The stream of bytes to read from</param>
-        /// <param name="disposeOfStream">Whether or not to dispose of the stream</param>
-        /// <returns>An IEnumerable of FileShards</returns>
-        public static IEnumerable<FileShard> CreateFileShards(Stream byteStream, bool disposeOfStream)
-        {
-            return CreateFileShards(byteStream, DefaultShardLength, disposeOfStream);
-        }
-
-        /// <summary>
-        /// This will create a stream of Lazy File Shards that defer the generation of a file shard with
-        /// the default shard size
+        /// This will create a stream of Lazy File Shards that defer the generation of a file shard
         /// </summary>
         /// <param name="filePath">The local file path to read from</param>
         /// <returns>An IEnumerable of File Shards that are lazily generated</returns>
         public static IEnumerable<Lazy<FileShard>> CreateLazyFileShards(string filePath)
         {
-            return CreateLazyFileShards(filePath, DefaultShardLength);
-        }
-
-        /// <summary>
-        /// This will create a stream of Lazy File Shards that defer the generation of a file shard
-        /// </summary>
-        /// <param name="filePath">The local file path to read from</param>
-        /// <param name="shardLength">The length of each shard</param>
-        /// <returns>An IEnumerable of File Shards that are lazily generated</returns>
-        public static IEnumerable<Lazy<FileShard>> CreateLazyFileShards(string filePath, int shardLength)
-        {
-            long numShards = CalculateNumberOfShards(filePath, shardLength);
+            long numShards = CalculateNumberOfShards(filePath);
             IEnumerable<Lazy<FileShard>> fileShardEnumerableHead = Enumerable.Empty<Lazy<FileShard>>();
             for (long i = 0; i < numShards; i++)
             {
-                fileShardEnumerableHead = fileShardEnumerableHead.Append(CreateLazyFileShard(filePath, i, shardLength));
+                fileShardEnumerableHead = fileShardEnumerableHead.Append(CreateLazyFileShard(filePath, i));
             }
 
             return fileShardEnumerableHead;
         }
+        #endregion
 
-        private static long CalculateNumberOfShards(string filePath, int shardLength)
+        #region private methods
+        private static long CalculateNumberOfShards(string filePath)
         {
             FileInfo fileInfo = new FileInfo(filePath);
-            if (fileInfo.Length < shardLength)
+            if (fileInfo.Length < ShardLength)
             {
                 return 1;
             }
 
-            bool hasMod = fileInfo.Length % shardLength > 0;
-            long numShards = fileInfo.Length / shardLength;
+            bool hasMod = fileInfo.Length % ShardLength > 0;
+            long numShards = fileInfo.Length / ShardLength;
 
             if (hasMod)
             {
@@ -135,17 +77,17 @@ namespace B2BackupUtility.Database
             return numShards;
         }
 
-        private static Lazy<FileShard> CreateLazyFileShard(string filePath, long pieceNumber, int shardLength)
+        private static Lazy<FileShard> CreateLazyFileShard(string filePath, long pieceNumber)
         {
             return new Lazy<FileShard>(() =>
             {
                 using (FileStream fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read))
                 {
                     // Seek into file
-                    fileStream.Position = pieceNumber * shardLength;
+                    fileStream.Position = pieceNumber * ShardLength;
 
-                    byte[] payloadBuffer = new byte[shardLength];
-                    int bytesRead = fileStream.Read(payloadBuffer, 0, shardLength);
+                    byte[] payloadBuffer = new byte[ShardLength];
+                    int bytesRead = fileStream.Read(payloadBuffer, 0, ShardLength);
                     if (bytesRead < 1)
                     {
                         return null;

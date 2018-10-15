@@ -26,6 +26,8 @@ using B2BackupUtility.UploadManagers;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
+using System.Text;
 
 namespace B2BackupUtility.Proxies
 {
@@ -43,6 +45,10 @@ namespace B2BackupUtility.Proxies
         public static string FinishUploadFile => "Finished Uploading File";
         public static string SkippedUploadFile => "Skip Uploading File";
         public static string UploadProgress => "Upload Progress";
+        #endregion
+
+        #region private properties
+        private const char PathSeparator = '/';
         #endregion
 
         #region ctor
@@ -63,7 +69,8 @@ namespace B2BackupUtility.Proxies
         /// very long running function and this gives callers the opportunity to fetch a new 
         /// authorization session should this run over 24 hours
         /// </param>
-        /// <param name="localFilePath">The local path to the </param>
+        /// <param name="localFolderPath">The path to the local folder that contains the files to upload</param>
+        /// <param name="rootDestinationFolder">The root destination folder to upload the files to</param>
         /// <param name="shouldOverride">
         /// Whether to overide old files. If false, this will not throw an exception, but
         /// instead will quietly skip that file
@@ -71,10 +78,14 @@ namespace B2BackupUtility.Proxies
         public void AddFolder(
             Func<BackblazeB2AuthorizationSession> authorizationSessionGenerator,
             string localFolderPath,
+            string rootDestinationFolder,
             bool shouldOverride
         )
         {
-            UploadFiles(authorizationSessionGenerator, GetFilesToUpload(localFolderPath, shouldOverride), shouldOverride);
+            UploadFiles(
+                authorizationSessionGenerator,
+                GetFilesToUpload(Path.GetFullPath(localFolderPath), rootDestinationFolder, shouldOverride)
+            );
         }
 
         /// <summary>
@@ -82,57 +93,41 @@ namespace B2BackupUtility.Proxies
         /// </summary>
         /// <param name="authorizationSession">The authorization session</param>
         /// <param name="localFilePath">The local path to the </param>
+        /// <param name="remoteDestinationPath">The destination to upload to</param>
         /// <param name="shouldOverride">Whether to overide old files</param>
         public void AddLocalFile(
             BackblazeB2AuthorizationSession authorizationSession,
             string localFilePath,
+            string remoteDestinationPath,
             bool shouldOverride
         )
         {
-            UploadFiles(() => authorizationSession, new[] { localFilePath }, shouldOverride);
+            if (shouldOverride == false && TryGetFileByName(remoteDestinationPath, out Database.File existingFile))
+            {
+                throw new FailedToUploadFileException("Cannot override existing remote file");
+            }
+
+            UploadFiles(
+                () => authorizationSession,
+                new Dictionary<string, string> { { Path.GetFullPath(localFilePath), remoteDestinationPath } }
+            );
         }
         #endregion
 
         #region private methods
         private void UploadFiles(
             Func<BackblazeB2AuthorizationSession> authorizationSessionGenerator,
-            IEnumerable<string> localFilePaths,
-            bool shouldOverride
+            IDictionary<string, string> absoluteLocalFilePathsToDestinationFilePaths
         )
         {
-            // Do all of the sanity checks first, so we don't have to deal with aggregation exceptions
-            IList<string> absoluteLocalFilePaths = new List<string>();
-            foreach (string relativeLocalFilePath in localFilePaths)
-            {
-                string absoluteFilePath = Path.GetFullPath(relativeLocalFilePath);
-                if (System.IO.File.Exists(absoluteFilePath) == false)
-                {
-                    throw new FileNotFoundException("Could not find file to upload", absoluteFilePath);
-                }
-
-                // Check to see if the file exists already
-                if (TryGetFileByName(absoluteFilePath, out Database.File fileThatExists))
-                {
-                    // If we can't override, we need to throw an exception
-                    if (shouldOverride == false)
-                    {
-                        throw new FailedToUploadFileException("File already exists and we are not allowed to override it!")
-                        {
-                            File = absoluteFilePath,
-                        };
-                    }
-                }
-
-                absoluteLocalFilePaths.Add(absoluteFilePath);
-            }
-
             using (TieredUploadManager uploadManager = new TieredUploadManager(authorizationSessionGenerator, Config, CancellationEventRouter.GlobalCancellationToken))
             {
                 IDictionary<string, ISet<string>> localFilePathToUploadIDs = new Dictionary<string, ISet<string>>();
                 IDictionary<string, ISet<string>> localFilePathToFinishedUploadIDs = new Dictionary<string, ISet<string>>();
                 IDictionary<string, string> uploadIDsToLocalFilePath = new Dictionary<string, string>();
-                foreach (string localFilePath in absoluteLocalFilePaths)
+                foreach (KeyValuePair<string, string> localPathToRemotePath in absoluteLocalFilePathsToDestinationFilePaths)
                 {
+                    string localFilePath = localPathToRemotePath.Key;
                     localFilePathToUploadIDs[localFilePath] = new HashSet<string>();
                     localFilePathToFinishedUploadIDs[localFilePath] = new HashSet<string>();
                     foreach (Lazy<FileShard> lazyFileShard in FileShardFactory.CreateLazyFileShards(localFilePath))
@@ -204,13 +199,15 @@ namespace B2BackupUtility.Proxies
                                 orderedShardHashes[(int)uploadEvent.FileShardPieceNumber] = uploadEvent.FileShardSHA1;
                             }
 
+                            string destinationPath = absoluteLocalFilePathsToDestinationFilePaths[localFilePath];
+
                             // Create file
                             FileInfo info = new FileInfo(localFilePath);
                             Database.File file = new Database.File
                             {
                                 FileID = Guid.NewGuid().ToString(),
                                 FileLength = info.Length,
-                                FileName = localFilePath,
+                                FileName = destinationPath,
                                 FileShardIDs = orderedShardIDs,
                                 FileShardHashes = orderedShardHashes,
                                 LastModified = info.LastWriteTimeUtc.ToBinary(),
@@ -218,7 +215,7 @@ namespace B2BackupUtility.Proxies
                             };
 
                             // Update manifest
-                            if (TryGetFileByName(localFilePath, out Database.File fileThatExists))
+                            if (TryGetFileByName(destinationPath, out Database.File fileThatExists))
                             {
                                 // Remove old file first
                                 RemoveFile(fileThatExists);
@@ -229,7 +226,7 @@ namespace B2BackupUtility.Proxies
                         }
                         else
                         {
-                            double percentFinished = ((double)currentNumberOfUploadedShards / totalNumberOfShards) * 100.0;
+                            double percentFinished = (double)currentNumberOfUploadedShards / totalNumberOfShards * 100.0;
                             SendNotification(UploadProgress, $"{localFilePath} - {percentFinished:N2}% uploaded", null);
                         }
                     }
@@ -270,22 +267,46 @@ namespace B2BackupUtility.Proxies
             }
         }
 
-        private IEnumerable<string> GetFilesToUpload(
-            string folder,
+        private IDictionary<string, string> GetFilesToUpload(
+            string absoluteLocalFolder,
+            string rootDestinationFolder,
             bool overrideFiles
         )
         {
-            IEnumerable<string> allLocalFiles = Directory.EnumerateFiles(folder, "*", SearchOption.AllDirectories);
-            if (overrideFiles)
+            // Sanitize root destination folder
+            rootDestinationFolder = rootDestinationFolder.Replace('\\', PathSeparator);
+
+            string GetDestinationPath(string absoluteLocalPath)
             {
-                foreach (string localFilePath in allLocalFiles)
+                StringBuilder pathBuilder = new StringBuilder();
+                pathBuilder.Append(rootDestinationFolder);
+
+                if (rootDestinationFolder.Last() != PathSeparator)
                 {
-                    yield return localFilePath;
+                    pathBuilder.Append(PathSeparator);
                 }
 
-                yield break;
+                string sanitizedLocalPath = absoluteLocalPath
+                    .Replace('\\', PathSeparator)
+                    .Replace("\\\\", PathSeparator.ToString(), StringComparison.Ordinal)
+                    .Substring(absoluteLocalFolder.Length);
+
+                if (sanitizedLocalPath.First() == PathSeparator)
+                {
+                    sanitizedLocalPath = sanitizedLocalPath.Substring(1);
+                }
+
+                pathBuilder.Append(sanitizedLocalPath);
+                return pathBuilder.ToString();
             }
 
+            IEnumerable<string> allLocalFiles = Directory.EnumerateFiles(absoluteLocalFolder, "*", SearchOption.AllDirectories);
+            if (overrideFiles)
+            {
+                return allLocalFiles.ToDictionary(localFilePath => Path.GetFullPath(localFilePath), GetDestinationPath);
+            }
+
+            IDictionary<string, string> localPathsToRemotePaths = new Dictionary<string, string>();
             foreach (string localFilePath in allLocalFiles)
             {
                 if (TryGetFileByName(localFilePath, out Database.File remoteFileEntry))
@@ -304,7 +325,7 @@ namespace B2BackupUtility.Proxies
                             string sha1OfLocalFile = SHA1FileHashStore.Instance.ComputeSHA1(localFilePath);
                             if (string.Equals(sha1OfLocalFile, remoteFileEntry.SHA1, StringComparison.OrdinalIgnoreCase) == false)
                             {
-                                yield return localFilePath;
+                                localPathsToRemotePaths[localFilePath] = GetDestinationPath(localFilePath);
                             }
                         }
                         // Scenario 1 is implied 
@@ -312,15 +333,17 @@ namespace B2BackupUtility.Proxies
                     else
                     {
                         // Scenario 2
-                        yield return localFilePath;
+                        localPathsToRemotePaths[localFilePath] = GetDestinationPath(localFilePath);
                     }
                 }
                 else
                 {
                     // We have never uploaded this file to the server
-                    yield return localFilePath;
+                    localPathsToRemotePaths[localFilePath] = GetDestinationPath(localFilePath);
                 }
             }
+
+            return localPathsToRemotePaths;
         }
         #endregion
     }

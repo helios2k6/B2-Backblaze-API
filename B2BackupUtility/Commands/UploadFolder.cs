@@ -37,6 +37,8 @@ namespace B2BackupUtility.Commands
 
         public static string FolderOption => "--folder";
 
+        public static string RootDestinationFolderOption => "--root-destination-folder";
+
         public static string OverrideOption => "--override";
 
         public static CommandType CommandType => CommandType.UPLOAD_FOLDER;
@@ -48,17 +50,19 @@ namespace B2BackupUtility.Commands
             AuthorizationSessionProxy authorizationSessionProxy = (AuthorizationSessionProxy)Facade.RetrieveProxy(AuthorizationSessionProxy.Name);
             ProgramArgumentsProxy programArgProxy = (ProgramArgumentsProxy)Facade.RetrieveProxy(ProgramArgumentsProxy.Name);
             UploadFileProxy uploadFileProxy = (UploadFileProxy)Facade.RetrieveProxy(UploadFileProxy.Name);
-            if (programArgProxy.TryGetArgument(FolderOption, out string folderToUpload))
+            if (programArgProxy.TryGetArgument(FolderOption, out string folderToUpload) &&
+                programArgProxy.TryGetArgument(RootDestinationFolderOption, out string rootDestinationFolder))
             {
                 uploadFileProxy.AddFolder(
                     () => authorizationSessionProxy.AuthorizationSession,
                     folderToUpload,
+                    rootDestinationFolder,
                     programArgProxy.DoesOptionExist(OverrideOption)
                 );
             }
             else
             {
-                throw new TerminateProgramException("No folder path provided to upload");
+                throw new TerminateProgramException("No folder path provided to upload or no root destination folder to upload to");
             }
         }
         #endregion

@@ -67,8 +67,8 @@ namespace B2BackupUtility.Commands
             { ListFiles.CommandSwitch, Enumerable.Empty<string>() },
             { PruneShards.CommandSwitch, Enumerable.Empty<string>() },
             { CommandSwitch, Enumerable.Empty<string>() },
-            { UploadFile.CommandSwitch, new[] { UploadFile.FileOption, UploadFile.OverrideOption } },
-            { UploadFolder.CommandSwitch, new[] { UploadFolder.FolderOption, UploadFolder.OverrideOption } },
+            { UploadFile.CommandSwitch, new[] { UploadFile.FileOption, UploadFile.OverrideOption, UploadFile.DestinationOption } },
+            { UploadFolder.CommandSwitch, new[] { UploadFolder.FolderOption, UploadFolder.OverrideOption, UploadFolder.RootDestinationFolderOption } },
         };
         #endregion
 

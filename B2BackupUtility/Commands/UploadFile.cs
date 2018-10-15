@@ -37,6 +37,8 @@ namespace B2BackupUtility.Commands
 
         public static string FileOption => "--file";
 
+        public static string DestinationOption => "--destination";
+
         public static string OverrideOption => "--override";
 
         public static CommandType CommandType => CommandType.UPLOAD;
@@ -49,17 +51,18 @@ namespace B2BackupUtility.Commands
             ConfigProxy configProxy = (ConfigProxy)Facade.RetrieveProxy(ConfigProxy.Name);
             ProgramArgumentsProxy programArgProxy = (ProgramArgumentsProxy)Facade.RetrieveProxy(ProgramArgumentsProxy.Name);
             UploadFileProxy uploadFileProxy = (UploadFileProxy)Facade.RetrieveProxy(UploadFileProxy.Name);
-            if (programArgProxy.TryGetArgument(FileOption, out string fileToUpload))
+            if (programArgProxy.TryGetArgument(FileOption, out string fileToUpload) && programArgProxy.TryGetArgument(DestinationOption, out string remoteDestinationPath))
             {
                 uploadFileProxy.AddLocalFile(
                     authorizationSessionProxy.AuthorizationSession,
                     fileToUpload,
+                    remoteDestinationPath,
                     programArgProxy.DoesOptionExist(OverrideOption)
                 );
             }
             else
             {
-                throw new TerminateProgramException("File to upload not provided");
+                throw new TerminateProgramException("File to upload not provided or destination path not provided");
             }
         }
         #endregion
