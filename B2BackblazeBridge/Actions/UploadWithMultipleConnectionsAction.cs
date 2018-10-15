@@ -56,7 +56,6 @@ namespace B2BackblazeBridge.Actions
         private readonly BlockingCollection<ProducerUploadJob> _jobStream;
         private readonly Action<TimeSpan> _exponentialBackoffCallback;
         private readonly CancellationTokenSource _internalThreadCancellationTokenSource;
-        private readonly Lazy<CancellationToken> _linkedCancellationToken;
 
         private bool disposedValue = false;
         private long _totalNumberOfChunks;
