@@ -44,6 +44,7 @@ namespace B2BackupUtility.Proxies
     {
         #region public properties
         public static string RemoteFileDatabaseManifestName => "b2_backup_util_file_database_manifest.txt.aes.gz";
+        public static long CurrentDatabaseDataFormatVersion => 1;
         #endregion
 
         #region private fields and properties
@@ -237,7 +238,11 @@ namespace B2BackupUtility.Proxies
                             .SingleOrDefault();
                         if (fileDatabaseManifestFileResult == null)
                         {
-                            SharedFileDatabaseManifest = new FileDatabaseManifest { Files = new Database.File[0] };
+                            SharedFileDatabaseManifest = new FileDatabaseManifest
+                            {
+                                DataFormatVersionNumber = CurrentDatabaseDataFormatVersion,
+                                Files = new Database.File[0]
+                            };
                         }
                         else
                         {
@@ -262,7 +267,11 @@ namespace B2BackupUtility.Proxies
                                 }
                                 else
                                 {
-                                    SharedFileDatabaseManifest = new FileDatabaseManifest { Files = new Database.File[0] };
+                                    SharedFileDatabaseManifest = new FileDatabaseManifest
+                                    {
+                                        DataFormatVersionNumber = CurrentDatabaseDataFormatVersion,
+                                        Files = new Database.File[0]
+                                    };
                                 }
                             }
                         }
