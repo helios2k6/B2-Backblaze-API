@@ -88,11 +88,11 @@ namespace B2BackupUtility.Mediators
 
         private static readonly IDictionary<LogLevel, string> LogLevelToPrefix = new Dictionary<LogLevel, string>
         {
-            { LogLevel.DEBUG, "[DEBUG]" },
-            { LogLevel.VERBOSE, "[VERBOSE]" },
-            { LogLevel.INFO, "[INFO]" },
-            { LogLevel.WARNING, "[WARNING]" },
-            { LogLevel.CRITICAL, "[CRITICAL]" },
+            { LogLevel.DEBUG, "DEBUG" },
+            { LogLevel.VERBOSE, "VERBOSE" },
+            { LogLevel.INFO, "INFO" },
+            { LogLevel.WARNING, "WARNING" },
+            { LogLevel.CRITICAL, "CRITICAL" },
         };
         #endregion
 
