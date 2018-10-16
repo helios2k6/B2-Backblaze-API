@@ -309,7 +309,8 @@ namespace B2BackupUtility.Proxies
             IDictionary<string, string> localPathsToRemotePaths = new Dictionary<string, string>();
             foreach (string localFilePath in allLocalFiles)
             {
-                if (TryGetFileByName(localFilePath, out Database.File remoteFileEntry))
+                string predictedDestinationPath = GetDestinationPath(localFilePath);
+                if (TryGetFileByName(predictedDestinationPath, out Database.File remoteFileEntry))
                 {
                     // Need confirm if this is a duplicate or not
                     // 1. If the lengths and last modified dates are the same, then just assume the files are equals (do not upload)
@@ -325,7 +326,7 @@ namespace B2BackupUtility.Proxies
                             string sha1OfLocalFile = SHA1FileHashStore.Instance.ComputeSHA1(localFilePath);
                             if (string.Equals(sha1OfLocalFile, remoteFileEntry.SHA1, StringComparison.OrdinalIgnoreCase) == false)
                             {
-                                localPathsToRemotePaths[localFilePath] = GetDestinationPath(localFilePath);
+                                localPathsToRemotePaths[localFilePath] = predictedDestinationPath;
                             }
                         }
                         // Scenario 1 is implied 
@@ -333,13 +334,13 @@ namespace B2BackupUtility.Proxies
                     else
                     {
                         // Scenario 2
-                        localPathsToRemotePaths[localFilePath] = GetDestinationPath(localFilePath);
+                        localPathsToRemotePaths[localFilePath] = predictedDestinationPath;
                     }
                 }
                 else
                 {
                     // We have never uploaded this file to the server
-                    localPathsToRemotePaths[localFilePath] = GetDestinationPath(localFilePath);
+                    localPathsToRemotePaths[localFilePath] = predictedDestinationPath;
                 }
             }
 
