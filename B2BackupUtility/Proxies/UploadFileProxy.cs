@@ -47,7 +47,7 @@ namespace B2BackupUtility.Proxies
         public static string UploadProgress => "Upload Progress";
         #endregion
 
-        #region private properties
+        #region private fields
         private const char PathSeparator = '/';
         #endregion
 
@@ -222,7 +222,10 @@ namespace B2BackupUtility.Proxies
                             }
 
                             AddFile(file);
-                            UploadFileDatabaseManifest(authorizationSessionGenerator());
+                            if (TryUploadFileDatabaseManifest(authorizationSessionGenerator()) == false)
+                            {
+                                SendNotification(FailedToUploadFileManifest, null, null);
+                            }
                         }
                         else
                         {

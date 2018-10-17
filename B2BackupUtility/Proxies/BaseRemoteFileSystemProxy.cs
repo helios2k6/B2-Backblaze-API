@@ -179,6 +179,22 @@ namespace B2BackupUtility.Proxies
             return rawB2FileList;
         }
 
+        protected bool TryUploadFileDatabaseManifest(
+            BackblazeB2AuthorizationSession authorizationSession
+        )
+        {
+            try
+            {
+                UploadFileDatabaseManifest(authorizationSession);
+            }
+            catch (FailedToUploadFileDatabaseManifestException)
+            {
+                return false;
+            }
+
+            return true;
+        }
+
         protected void UploadFileDatabaseManifest(
             BackblazeB2AuthorizationSession authorizationSession
         )
