@@ -28,6 +28,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading;
 
 namespace B2BackupUtility.Proxies
 {
@@ -45,6 +46,7 @@ namespace B2BackupUtility.Proxies
         public static string FinishUploadFile => "Finished Uploading File";
         public static string SkippedUploadFile => "Skip Uploading File";
         public static string UploadProgress => "Upload Progress";
+        public static string UploadingFileManifest => "Uploading File Manifest";
         #endregion
 
         #region private fields
@@ -145,6 +147,7 @@ namespace B2BackupUtility.Proxies
                 object localLockObject = new object();
                 IDictionary<string, ISet<UploadManagerEventArgs>> localFileToFileShardIDs = new Dictionary<string, ISet<UploadManagerEventArgs>>();
                 ISet<string> localFilesThatHaveAlreadyStarted = new HashSet<string>();
+                bool uploadedManifest = true;
                 void HandleOnUploadBegin(object sender, UploadManagerEventArgs eventArgs)
                 {
                     lock (localLockObject)
@@ -221,10 +224,12 @@ namespace B2BackupUtility.Proxies
                                 RemoveFile(fileThatExists);
                             }
 
+                            uploadedManifest = false;
                             AddFile(file);
                             if (TryUploadFileDatabaseManifest(authorizationSessionGenerator()) == false)
                             {
                                 SendNotification(FailedToUploadFileManifest, null, null);
+                                uploadedManifest = true;
                             }
                         }
                         else
@@ -266,6 +271,16 @@ namespace B2BackupUtility.Proxies
                     uploadManager.OnUploadFailed -= HandleOnUploadFailed;
                     uploadManager.OnUploadFinished -= HandleOnUploadFinished;
                     uploadManager.OnUploadTierChanged -= HandleOnUploadTierChanged;
+                }
+
+                // Ensure that we've uploaded the file manifest and if not upload it again
+                if (uploadedManifest == false)
+                {
+                    SendNotification(UploadingFileManifest, "Uploading file manifest", null);
+                    while (TryUploadFileDatabaseManifest(authorizationSessionGenerator()) == false)
+                    {
+                        Thread.Sleep(TimeSpan.FromSeconds(10));
+                    }
                 }
             }
         }
