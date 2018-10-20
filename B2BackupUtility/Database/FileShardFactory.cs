@@ -90,7 +90,15 @@ namespace B2BackupUtility.Database
                     int bytesRead = fileStream.Read(payloadBuffer, 0, ShardLength);
                     if (bytesRead < 1)
                     {
-                        return null;
+                        // This could be due to a zero-length file
+                        return new FileShard
+                        {
+                            ID = Guid.NewGuid().ToString(),
+                            Length = bytesRead,
+                            Payload = new byte[0],
+                            PieceNumber = pieceNumber++,
+                            SHA1 = SHA1FileHashStore.Instance.ComputeSHA1Hash(new byte[0]),
+                        };
                     }
 
                     byte[] payload = new byte[bytesRead];

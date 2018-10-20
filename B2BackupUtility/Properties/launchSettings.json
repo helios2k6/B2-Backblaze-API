@@ -1,7 +1,8 @@
 {
   "profiles": {
     "B2BackupUtility": {
-      "commandName": "Project"
+      "commandName": "Project",
+      "commandLineArgs": "--config D:\\B2Backup\\b2_util_documents_windows.json --upload-folder --folder D:\\Documents --root-destination-folder Documents"
     }
   }
 }
