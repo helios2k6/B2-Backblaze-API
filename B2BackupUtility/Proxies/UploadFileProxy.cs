@@ -124,8 +124,6 @@ namespace B2BackupUtility.Proxies
         {
             using (TieredUploadManager uploadManager = new TieredUploadManager(authorizationSessionGenerator, Config, CancellationEventRouter.GlobalCancellationToken))
             {
-                uploadManager.FastLaneCount = 1;
-
                 IDictionary<string, ISet<string>> localFilePathToUploadIDs = new Dictionary<string, ISet<string>>();
                 IDictionary<string, ISet<string>> localFilePathToFinishedUploadIDs = new Dictionary<string, ISet<string>>();
                 IDictionary<string, string> uploadIDsToLocalFilePath = new Dictionary<string, string>();
