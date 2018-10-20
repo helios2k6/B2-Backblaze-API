@@ -51,6 +51,7 @@ namespace B2BackupUtility.Proxies
 
         #region private fields
         private const char PathSeparator = '/';
+        private readonly TimeSpan MaxTimeBetweenFileManifestUploads = TimeSpan.FromMinutes(5);
         #endregion
 
         #region ctor
@@ -147,6 +148,7 @@ namespace B2BackupUtility.Proxies
                 object localLockObject = new object();
                 IDictionary<string, ISet<UploadManagerEventArgs>> localFileToFileShardIDs = new Dictionary<string, ISet<UploadManagerEventArgs>>();
                 ISet<string> localFilesThatHaveAlreadyStarted = new HashSet<string>();
+                DateTime lastFileManifestUpload = DateTime.Now;
                 bool uploadedManifest = true;
                 void HandleOnUploadBegin(object sender, UploadManagerEventArgs eventArgs)
                 {
@@ -226,10 +228,13 @@ namespace B2BackupUtility.Proxies
 
                             uploadedManifest = false;
                             AddFile(file);
-                            if (TryUploadFileDatabaseManifest(authorizationSessionGenerator()) == false)
+                            if (DateTime.Now - lastFileManifestUpload >= MaxTimeBetweenFileManifestUploads)
                             {
-                                SendNotification(FailedToUploadFileManifest, null, null);
-                                uploadedManifest = true;
+                                if (TryUploadFileDatabaseManifest(authorizationSessionGenerator()) == false)
+                                {
+                                    SendNotification(FailedToUploadFileManifest, null, null);
+                                    uploadedManifest = true;
+                                }
                             }
                         }
                         else
