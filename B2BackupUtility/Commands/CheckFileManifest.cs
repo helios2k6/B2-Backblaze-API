@@ -26,6 +26,9 @@ using PureMVC.Patterns.Command;
 
 namespace B2BackupUtility.Commands
 {
+    /// <summary>
+    /// Checks the integrity of the file manifest
+    /// </summary>
     public sealed class CheckFileManifest : SimpleCommand
     {
         #region public properties

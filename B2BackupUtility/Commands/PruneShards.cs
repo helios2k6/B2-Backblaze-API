@@ -26,6 +26,9 @@ using PureMVC.Patterns.Command;
 
 namespace B2BackupUtility.Commands
 {
+    /// <summary>
+    /// Prune extraneous shards
+    /// </summary>
     public sealed class PruneShards : SimpleCommand
     {
         #region public properties

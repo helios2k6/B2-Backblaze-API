@@ -27,6 +27,9 @@ using System.IO;
 
 namespace B2BackupUtility.Commands
 {
+    /// <summary>
+    /// Download a file
+    /// </summary>
     public sealed class DownloadFile : SimpleCommand
     {
         #region public properties
