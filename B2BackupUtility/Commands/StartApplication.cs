@@ -37,7 +37,7 @@ namespace B2BackupUtility.Commands
         {
             AddSubCommand(() => new InitializeProgramArguments());
             AddSubCommand(() => new InitializeView());
-            AddSubCommand(() => new StartSelectedProgramCommand());
+            AddSubCommand(() => new StartSelectedProgram());
         }
         #endregion
     }

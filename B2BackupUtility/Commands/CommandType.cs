@@ -27,6 +27,11 @@ namespace B2BackupUtility.Commands
     public enum CommandType
     {
         /// <summary>
+        /// Check the file manifest to ensure all
+        /// file shards are accounted for
+        /// </summary>
+        CHECK_FILE_MANIFEST,
+        /// <summary>
         /// Download file command
         /// </summary>
         DOWNLOAD,
@@ -43,10 +48,6 @@ namespace B2BackupUtility.Commands
         /// initialization vector
         /// </summary>
         GENERATE_ENCRYPTION_KEY,
-        /// <summary>
-        /// Get the file info command
-        /// </summary>
-        GET_FILE_INFO,
         /// <summary>
         /// List file command
         /// </summary>

@@ -44,7 +44,7 @@ namespace B2BackupUtility.Mediators
             { CancellationEventRouter.CancellationEvent, LogLevel.CRITICAL },
             { CancellationEventRouter.ImmediateCancellationEvent, LogLevel.CRITICAL },
             { PrintHelp.HelpStringNotification, LogLevel.CRITICAL },
-            { StartSelectedProgramCommand.FailedCommandNotification, LogLevel.CRITICAL },
+            { StartSelectedProgram.FailedCommandNotification, LogLevel.CRITICAL },
 
             // Warning messages
             { DeleteFileProxy.FailedToDeleteFile, LogLevel.WARNING},
@@ -53,6 +53,9 @@ namespace B2BackupUtility.Mediators
             { PruneFileShardProxy.FailedToPruneFile, LogLevel.WARNING },
 
             // Info level messages
+            { CheckFileManifestProxy.BeginCheckFileManifest, LogLevel.INFO },
+            { CheckFileManifestProxy.ShardIDNotAccountedFor, LogLevel.INFO },
+            { CheckFileManifestProxy.FinishedCheckFileManifest, LogLevel.INFO },
             { DeleteFileProxy.FinishedDeletingFile, LogLevel.INFO },
             { DownloadFile.FinishedCommandNotification, LogLevel.INFO },
             { GenerateEncryptionKey.EncryptionKeyNotification, LogLevel.INFO },
@@ -70,6 +73,7 @@ namespace B2BackupUtility.Mediators
             { DeleteFileProxy.BeginDeletingFile, LogLevel.VERBOSE },
 
             // Debug messages
+            { CheckFileManifest.CommandNotification, LogLevel.DEBUG },
             { DeleteAllFiles.CommandNotification, LogLevel.DEBUG },
             { DeleteFile.CommandNotification, LogLevel.DEBUG },
             { DownloadFile.CommandNotification, LogLevel.DEBUG },
@@ -82,7 +86,7 @@ namespace B2BackupUtility.Mediators
             { ListFiles.CommandNotification, LogLevel.DEBUG },
             { PrintHelp.CommandNotification, LogLevel.DEBUG },
             { PruneFileShardProxy.BeginPruneFile, LogLevel.DEBUG },
-            { StartSelectedProgramCommand.CommandNotification, LogLevel.DEBUG },
+            { StartSelectedProgram.CommandNotification, LogLevel.DEBUG },
             { UploadFile.CommandNotification, LogLevel.DEBUG },
             { UploadFolder.CommandNotification, LogLevel.DEBUG },
         };

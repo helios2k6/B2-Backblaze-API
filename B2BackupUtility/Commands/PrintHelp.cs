@@ -43,7 +43,7 @@ namespace B2BackupUtility.Commands
         #endregion
 
         #region private properties
-        private static string HeaderText => "B2 Backup Utility v7.2";
+        private static string HeaderText => "B2 Backup Utility v7.3";
 
         private static string InstructionText => "Usage: <this program> <necessary switches> <action> [options]";
 
@@ -60,6 +60,7 @@ namespace B2BackupUtility.Commands
 
         private static IDictionary<string, IEnumerable<string>> CommandSwitchesToOptionsMap = new Dictionary<string, IEnumerable<string>>
         {
+            { CheckFileManifest.CommandSwitch, Enumerable.Empty<string>() },
             { DeleteAllFiles.CommandSwitch, Enumerable.Empty<string>() },
             { DeleteFile.CommandSwitch, new[] { DeleteFile.FileNameOption } },
             { DownloadFile.CommandSwitch, new[] { DownloadFile.FileNameOption, DownloadFile.FileIDOption, DownloadFile.DestinationOption } },

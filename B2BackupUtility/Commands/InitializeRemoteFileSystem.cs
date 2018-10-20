@@ -44,10 +44,11 @@ namespace B2BackupUtility.Commands
             BackblazeB2AuthorizationSession authorizationSession = authorizationSessionProxy.AuthorizationSession;
             Config config = configProxy.Config;
 
-            Facade.RegisterProxy(new RemoteFileSystemProxy(authorizationSession, config));
-            Facade.RegisterProxy(new UploadFileProxy(authorizationSession, config));
+            Facade.RegisterProxy(new CheckFileManifestProxy(authorizationSession, config));
             Facade.RegisterProxy(new DeleteFileProxy(authorizationSession, config));
+            Facade.RegisterProxy(new RemoteFileSystemProxy(authorizationSession, config));
             Facade.RegisterProxy(new PruneFileShardProxy(authorizationSession, config));
+            Facade.RegisterProxy(new UploadFileProxy(authorizationSession, config));
         }
         #endregion
     }

@@ -34,6 +34,7 @@ namespace B2BackupUtility
         protected override void InitializeController()
         {
             base.InitializeController();
+            RegisterCommand(CheckFileManifest.CommandNotification, () => new CheckFileManifest());
             RegisterCommand(DeleteAllFiles.CommandNotification, () => new DeleteAllFiles());
             RegisterCommand(DeleteFile.CommandNotification, () => new DeleteFile());
             RegisterCommand(DownloadFile.CommandNotification, () => new DownloadFile());
@@ -49,7 +50,7 @@ namespace B2BackupUtility
             RegisterCommand(PruneShards.CommandNotification, () => new PruneShards());
             RegisterCommand(PrintHelp.CommandNotification, () => new PrintHelp());
             RegisterCommand(StartApplication.CommandNotification, () => new StartApplication());
-            RegisterCommand(StartSelectedProgramCommand.CommandNotification, () => new StartSelectedProgramCommand());
+            RegisterCommand(StartSelectedProgram.CommandNotification, () => new StartSelectedProgram());
             RegisterCommand(UploadFile.CommandNotification, () => new UploadFile());
             RegisterCommand(UploadFolder.CommandNotification, () => new UploadFolder());
         }

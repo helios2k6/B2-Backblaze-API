@@ -297,57 +297,67 @@ namespace B2BackupUtility.UploadManagers
         #region private methods
         private void ExecuteFastLane()
         {
-            foreach (UploadJob job in _fastLane.GetConsumingEnumerable(_cancellationToken))
+            try
             {
-                OnUploadBegin(this, new UploadManagerEventArgs
+                foreach (UploadJob job in _fastLane.GetConsumingEnumerable(_cancellationToken))
                 {
-                    UploadID = job.UploadID,
-                });
+                    OnUploadBegin(this, new UploadManagerEventArgs
+                    {
+                        UploadID = job.UploadID,
+                    });
 
-                FileShard fileShard = job.LazyShard.Value;
-                MultinodeMemoryManagementSystem
-                    .Instance
-                    .GetMemoryGovernor(MemoryServiceName)
-                    .AllocateMemory(fileShard.Length, _cancellationToken);
+                    FileShard fileShard = job.LazyShard.Value;
+                    MultinodeMemoryManagementSystem
+                        .Instance
+                        .GetMemoryGovernor(MemoryServiceName)
+                        .AllocateMemory(fileShard.Length, _cancellationToken);
 
-                BackblazeB2ActionResult<IBackblazeB2UploadResult> uploadResult = ExecuteLaneImpl(
-                    _config,
-                    _authorizationSessionGenerator,
-                    fileShard,
-                    _cancellationToken,
-                    true,
-                    DefaultFastLaneUploadConnections,
-                    DefaultFastLaneUploadAttempts
-                );
+                    BackblazeB2ActionResult<IBackblazeB2UploadResult> uploadResult = ExecuteLaneImpl(
+                        _config,
+                        _authorizationSessionGenerator,
+                        fileShard,
+                        _cancellationToken,
+                        true,
+                        DefaultFastLaneUploadConnections,
+                        DefaultFastLaneUploadAttempts
+                    );
 
-                PostProcessJob(job, uploadResult, _midLane, "Mid Tier");
+                    PostProcessJob(job, uploadResult, _midLane, "Mid Tier");
+                }
             }
-
-            // We will no longer add to the mid-lane queue
-            _midLane.CompleteAdding();
+            finally
+            {
+                // We will no longer add to the mid-lane queue
+                _midLane.CompleteAdding();
+            }
         }
 
         private void ExecuteMidLane()
         {
-            foreach (UploadJob job in _midLane.GetConsumingEnumerable(_cancellationToken))
+            try
             {
-                _cancellationToken.ThrowIfCancellationRequested();
+                foreach (UploadJob job in _midLane.GetConsumingEnumerable(_cancellationToken))
+                {
+                    _cancellationToken.ThrowIfCancellationRequested();
 
-                BackblazeB2ActionResult<IBackblazeB2UploadResult> uploadResult = ExecuteLaneImpl(
-                    _config,
-                    _authorizationSessionGenerator,
-                    job.LazyShard.Value,
-                    _cancellationToken,
-                    true,
-                    DefaultMidLaneUploadConnections,
-                    DefaultMidLaneUploadAttempts
-                );
+                    BackblazeB2ActionResult<IBackblazeB2UploadResult> uploadResult = ExecuteLaneImpl(
+                        _config,
+                        _authorizationSessionGenerator,
+                        job.LazyShard.Value,
+                        _cancellationToken,
+                        true,
+                        DefaultMidLaneUploadConnections,
+                        DefaultMidLaneUploadAttempts
+                    );
 
-                PostProcessJob(job, uploadResult, _slowLane, "Slow Tier");
+                    PostProcessJob(job, uploadResult, _slowLane, "Slow Tier");
+                }
             }
-
-            // We will no longer add to the slow-lane queue
-            _slowLane.CompleteAdding();
+            finally
+            {
+                // We will no longer add to the slow-lane queue
+                _slowLane.CompleteAdding();
+            }
         }
 
         private void PostProcessJob(
