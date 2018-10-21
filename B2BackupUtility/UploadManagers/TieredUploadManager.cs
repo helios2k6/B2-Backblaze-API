@@ -97,7 +97,7 @@ namespace B2BackupUtility.UploadManagers
         /// </summary>
         public int FastLaneCount
         {
-            get { return _fastLaneCount; }
+            get => _fastLaneCount;
             set
             {
                 if (_isDisposed)
@@ -119,7 +119,7 @@ namespace B2BackupUtility.UploadManagers
         /// </summary>
         public int MidLaneCount
         {
-            get { return _midLaneCount; }
+            get => _midLaneCount;
             set
             {
                 if (_isDisposed)
@@ -141,7 +141,7 @@ namespace B2BackupUtility.UploadManagers
         /// </summary>
         public int SlowLaneCount
         {
-            get { return _slowLaneCount; }
+            get => _slowLaneCount;
             set
             {
                 if (_isDisposed)
@@ -224,16 +224,26 @@ namespace B2BackupUtility.UploadManagers
             }
 
             // Start fast lanes
+            Task[] fastLaneTasks = new Task[FastLaneCount];
             for (int i = 0; i < FastLaneCount; i++)
             {
-                _taskList.Add(Task.Factory.StartNew(ExecuteFastLane));
+                fastLaneTasks[i] = Task.Factory.StartNew(ExecuteFastLane);
             }
-            
+            _taskList.Add(Task.WhenAll(fastLaneTasks).ContinueWith(_ =>
+            {
+                _midLane.CompleteAdding();
+            }));
+
             // Start mid lanes
+            Task[] midLaneTasks = new Task[MidLaneCount];
             for (int i = 0; i < MidLaneCount; i++)
             {
-                _taskList.Add(Task.Factory.StartNew(ExecuteMidLane));
+                midLaneTasks[i] = Task.Factory.StartNew(ExecuteMidLane);
             }
+            _taskList.Add(Task.WhenAll(midLaneTasks).ContinueWith(_ =>
+            {
+                _slowLane.CompleteAdding();
+            }));
 
             // Start slow lanes
             for (int i = 0; i < SlowLaneCount; i++)
@@ -297,66 +307,50 @@ namespace B2BackupUtility.UploadManagers
         #region private methods
         private void ExecuteFastLane()
         {
-            try
+            foreach (UploadJob job in _fastLane.GetConsumingEnumerable(_cancellationToken))
             {
-                foreach (UploadJob job in _fastLane.GetConsumingEnumerable(_cancellationToken))
+                OnUploadBegin(this, new UploadManagerEventArgs
                 {
-                    OnUploadBegin(this, new UploadManagerEventArgs
-                    {
-                        UploadID = job.UploadID,
-                    });
+                    UploadID = job.UploadID,
+                });
 
-                    FileShard fileShard = job.LazyShard.Value;
-                    MultinodeMemoryManagementSystem
-                        .Instance
-                        .GetMemoryGovernor(MemoryServiceName)
-                        .AllocateMemory(fileShard.Length, _cancellationToken);
+                FileShard fileShard = job.LazyShard.Value;
+                MultinodeMemoryManagementSystem
+                    .Instance
+                    .GetMemoryGovernor(MemoryServiceName)
+                    .AllocateMemory(fileShard.Length, _cancellationToken);
 
-                    BackblazeB2ActionResult<IBackblazeB2UploadResult> uploadResult = ExecuteLaneImpl(
-                        _config,
-                        _authorizationSessionGenerator,
-                        fileShard,
-                        _cancellationToken,
-                        true,
-                        DefaultFastLaneUploadConnections,
-                        DefaultFastLaneUploadAttempts
-                    );
+                BackblazeB2ActionResult<IBackblazeB2UploadResult> uploadResult = ExecuteLaneImpl(
+                    _config,
+                    _authorizationSessionGenerator,
+                    fileShard,
+                    _cancellationToken,
+                    true,
+                    DefaultFastLaneUploadConnections,
+                    DefaultFastLaneUploadAttempts
+                );
 
-                    PostProcessJob(job, uploadResult, _midLane, "Mid Tier");
-                }
-            }
-            finally
-            {
-                // We will no longer add to the mid-lane queue
-                _midLane.CompleteAdding();
+                PostProcessJob(job, uploadResult, _midLane, "Mid Tier");
             }
         }
 
         private void ExecuteMidLane()
         {
-            try
+            foreach (UploadJob job in _midLane.GetConsumingEnumerable(_cancellationToken))
             {
-                foreach (UploadJob job in _midLane.GetConsumingEnumerable(_cancellationToken))
-                {
-                    _cancellationToken.ThrowIfCancellationRequested();
+                _cancellationToken.ThrowIfCancellationRequested();
 
-                    BackblazeB2ActionResult<IBackblazeB2UploadResult> uploadResult = ExecuteLaneImpl(
-                        _config,
-                        _authorizationSessionGenerator,
-                        job.LazyShard.Value,
-                        _cancellationToken,
-                        true,
-                        DefaultMidLaneUploadConnections,
-                        DefaultMidLaneUploadAttempts
-                    );
+                BackblazeB2ActionResult<IBackblazeB2UploadResult> uploadResult = ExecuteLaneImpl(
+                    _config,
+                    _authorizationSessionGenerator,
+                    job.LazyShard.Value,
+                    _cancellationToken,
+                    true,
+                    DefaultMidLaneUploadConnections,
+                    DefaultMidLaneUploadAttempts
+                );
 
-                    PostProcessJob(job, uploadResult, _slowLane, "Slow Tier");
-                }
-            }
-            finally
-            {
-                // We will no longer add to the slow-lane queue
-                _slowLane.CompleteAdding();
+                PostProcessJob(job, uploadResult, _slowLane, "Slow Tier");
             }
         }
 

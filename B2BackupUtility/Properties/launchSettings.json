@@ -2,7 +2,7 @@
   "profiles": {
     "B2BackupUtility": {
       "commandName": "Project",
-      "commandLineArgs": "--config D:\\B2Backup\\b2_util_anime_windows.json --check-file-manifest"
+      "commandLineArgs": "--config D:\\B2Backup\\b2_util_documents_windows.json --upload-file --file D:\\documents_backup_2018-10-21.7z --destination Backups/documents_backup_2018-10-21.7z"
     }
   }
 }
