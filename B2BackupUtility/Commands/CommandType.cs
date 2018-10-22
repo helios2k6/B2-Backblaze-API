@@ -36,6 +36,10 @@ namespace B2BackupUtility.Commands
         /// </summary>
         DOWNLOAD,
         /// <summary>
+        /// Download the file manifest
+        /// </summary>
+        DOWNLOAD_FILE_MANIFEST,
+        /// <summary>
         /// Delete file command
         /// </summary>
         DELETE,

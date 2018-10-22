@@ -77,6 +77,7 @@ namespace B2BackupUtility.Mediators
             { DeleteAllFiles.CommandNotification, LogLevel.DEBUG },
             { DeleteFile.CommandNotification, LogLevel.DEBUG },
             { DownloadFile.CommandNotification, LogLevel.DEBUG },
+            { DownloadFileManifest.CommandNotification, LogLevel.DEBUG },
             { GenerateEncryptionKey.CommandNotification, LogLevel.DEBUG },
             { InitializeAuthorizationSession.CommandNotification, LogLevel.DEBUG },
             { InitializeConfig.CommandNotification, LogLevel.DEBUG },

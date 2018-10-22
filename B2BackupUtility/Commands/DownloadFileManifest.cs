@@ -1,4 +1,4 @@
-﻿/* 
+/* 
  * Copyright (c) 2015 Andrew Johnson
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy of 
@@ -26,25 +26,25 @@ using PureMVC.Patterns.Command;
 namespace B2BackupUtility.Commands
 {
     /// <summary>
-    /// Checks the integrity of the file manifest
+    /// Downloads the file manifest
     /// </summary>
-    public sealed class CheckFileManifest : SimpleCommand
+    public sealed class DownloadFileManifest : SimpleCommand
     {
         #region public properties
-        public static string CommandNotification => "Check File Manifest";
+        public static string CommandNotification => "Download File Manifest";
 
-        public static string CommandSwitch => "--check-file-manifest";
+        public static string FinishedCommandNotification => "Finished Downloading File Manifest";
 
-        public static CommandType CommandType => CommandType.CHECK_FILE_MANIFEST;
+        public static string CommandSwitch => "--download-file-manifest";
+
+        public static CommandType CommandType => CommandType.DOWNLOAD_FILE_MANIFEST;
         #endregion
 
         #region public methods
         public override void Execute(INotification notification)
         {
-            AuthorizationSessionProxy authorizationSessionProxy = (AuthorizationSessionProxy)Facade.RetrieveProxy(AuthorizationSessionProxy.Name);
-            CheckFileManifestProxy checkFileManifestProxy = (CheckFileManifestProxy)Facade.RetrieveProxy(CheckFileManifestProxy.Name);
-
-            checkFileManifestProxy.CheckFileManifest(() => authorizationSessionProxy.AuthorizationSession);
+            DownloadFileManifestProxy proxy = (DownloadFileManifestProxy)Facade.RetrieveProxy(DownloadFileManifestProxy.Name);
+            proxy.DownloadFileManifest();
         }
         #endregion
     }

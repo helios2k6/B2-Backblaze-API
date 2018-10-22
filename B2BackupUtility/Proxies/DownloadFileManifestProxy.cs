@@ -1,4 +1,4 @@
-﻿/* 
+/* 
  * Copyright (c) 2015 Andrew Johnson
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy of 
@@ -19,32 +19,42 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-using B2BackupUtility.Proxies;
-using PureMVC.Interfaces;
-using PureMVC.Patterns.Command;
+using B2BackblazeBridge.Core;
+using B2BackupUtility.Database;
+using Newtonsoft.Json;
+using PureMVC.Patterns.Proxy;
 
-namespace B2BackupUtility.Commands
+namespace B2BackupUtility.Proxies
 {
     /// <summary>
-    /// Checks the integrity of the file manifest
+    /// Proxy that downloads the file manifest
     /// </summary>
-    public sealed class CheckFileManifest : SimpleCommand
+    public sealed class DownloadFileManifestProxy : BaseRemoteFileSystemProxy
     {
         #region public properties
-        public static string CommandNotification => "Check File Manifest";
+        public static string Name => "Download File Manifest Proxy";
+        public static string LocalFileManifestFileName => "b2_backup_util_file_database_manifest.txt";
+        #endregion
 
-        public static string CommandSwitch => "--check-file-manifest";
-
-        public static CommandType CommandType => CommandType.CHECK_FILE_MANIFEST;
+        #region ctor
+        public DownloadFileManifestProxy(
+            BackblazeB2AuthorizationSession authorizationSession,
+            Config config
+        ) : base(Name, authorizationSession, config)
+        {
+        }
         #endregion
 
         #region public methods
-        public override void Execute(INotification notification)
+        /// <summary>
+        /// Downloads the file manifest to the current directory 
+        /// </summary>
+        public void DownloadFileManifest()
         {
-            AuthorizationSessionProxy authorizationSessionProxy = (AuthorizationSessionProxy)Facade.RetrieveProxy(AuthorizationSessionProxy.Name);
-            CheckFileManifestProxy checkFileManifestProxy = (CheckFileManifestProxy)Facade.RetrieveProxy(CheckFileManifestProxy.Name);
-
-            checkFileManifestProxy.CheckFileManifest(() => authorizationSessionProxy.AuthorizationSession);
+            System.IO.File.WriteAllText(
+                LocalFileManifestFileName,
+                JsonConvert.SerializeObject(GetClonedFileDatabaseManifest())
+            );
         }
         #endregion
     }

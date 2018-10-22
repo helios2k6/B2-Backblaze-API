@@ -218,6 +218,15 @@ namespace B2BackupUtility.Proxies
                 };
             }
         }
+
+        /// <summary>
+        /// Clones the current file database manifest and returns it
+        /// </summary>
+        /// <returns></returns>
+        protected FileDatabaseManifest GetClonedFileDatabaseManifest()
+        {
+            return DeserializeManifest(SerializeManifest(FileDatabaseManifest, Config), Config);
+        }
         #endregion
 
         #region private methods
@@ -277,8 +286,7 @@ namespace B2BackupUtility.Proxies
                                     outputStream.Flush();
                                     SharedFileDatabaseManifest = DeserializeManifest(
                                         outputStream.ToArray(),
-                                        config.EncryptionKey,
-                                        config.InitializationVector
+                                        config
                                     );
                                 }
                                 else
@@ -315,13 +323,12 @@ namespace B2BackupUtility.Proxies
 
         private static FileDatabaseManifest DeserializeManifest(
             byte[] encryptedBytes,
-            string encryptionKey,
-            string initializationVector
+            Config config
         )
         {
             using (MemoryStream deserializedMemoryStream = new MemoryStream())
             {
-                using (MemoryStream compressedBytesStream = new MemoryStream(EncryptionHelpers.DecryptBytes(encryptedBytes, encryptionKey, initializationVector)))
+                using (MemoryStream compressedBytesStream = new MemoryStream(EncryptionHelpers.DecryptBytes(encryptedBytes, config.EncryptionKey, config.InitializationVector)))
                 using (GZipStream decompressionStream = new GZipStream(compressedBytesStream, CompressionMode.Decompress))
                 {
                     decompressionStream.CopyTo(deserializedMemoryStream);
