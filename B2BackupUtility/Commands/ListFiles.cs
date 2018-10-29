@@ -60,8 +60,12 @@ namespace B2BackupUtility.Commands
                 return "No files";
             }
 
+            IEnumerable<Database.File> sortedFiles = from file in files
+                                                     orderby file.FileName
+                                                     select file;
+
             builder.AppendLine("All Files");
-            foreach (Database.File file in files)
+            foreach (Database.File file in sortedFiles)
             {
                 builder.AppendLine(file.ToString());
             }
