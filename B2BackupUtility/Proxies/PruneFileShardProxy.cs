@@ -25,6 +25,7 @@ using B2BackupUtility.Proxies.Exceptions;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using static B2BackblazeBridge.Core.BackblazeB2ListFilesResult;
 
 namespace B2BackupUtility.Proxies
@@ -69,11 +70,12 @@ namespace B2BackupUtility.Proxies
                 };
             }
 
+            object lockObject = new object();
             IDictionary<string, FileResult> fileNameToFileResultMap = listFilesActionResult.Result.Files.ToDictionary(k => k.FileName, v => v);
             ISet<string> allDatabaseFileShardIds = FileDatabaseManifestFiles.SelectMany(t => t.FileShardIDs).ToHashSet();
             ISet<string> allRawFileNamesOnServer = fileNameToFileResultMap.Keys.ToHashSet();
             ISet<string> allFilesNotAccountedFor = allRawFileNamesOnServer.Except(allDatabaseFileShardIds).Where(t => t.Equals(RemoteFileDatabaseManifestName, StringComparison.OrdinalIgnoreCase) == false).ToHashSet();
-            foreach (string fileNameNotAccountedFor in allFilesNotAccountedFor)
+            Parallel.ForEach(allFilesNotAccountedFor, fileNameNotAccountedFor =>
             {
                 CancellationEventRouter.GlobalCancellationToken.ThrowIfCancellationRequested();
 
@@ -85,13 +87,19 @@ namespace B2BackupUtility.Proxies
                 BackblazeB2ActionResult<BackblazeB2DeleteFileResult> deletionResult = deleteFileAction.Execute();
                 if (deletionResult.HasErrors)
                 {
-                    SendNotification(FailedToPruneFile, deletionResult, null);
+                    lock (lockObject)
+                    {
+                        SendNotification(FailedToPruneFile, deletionResult, null);
+                    }
                 }
                 else
                 {
-                    SendNotification(FinishedPruningFile, fileNameNotAccountedFor, null);
+                    lock (lockObject)
+                    {
+                        SendNotification(FinishedPruningFile, fileNameNotAccountedFor, null);
+                    }
                 }
-            }
+            });
         }
         #endregion
     }

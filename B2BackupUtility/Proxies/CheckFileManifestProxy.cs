@@ -73,8 +73,8 @@ namespace B2BackupUtility.Proxies
                                                                        from shardID in file.FileShardIDs
                                                                        select new KeyValuePair<string, Database.File>(shardID, file)).ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
 
-            IEnumerable<string> allShardIDsNotAccountedFor = from file in FileDatabaseManifestFiles
-                                                             from shardID in file.FileShardIDs
+            IEnumerable<string> allShardIDsNotAccountedFor = from file in FileDatabaseManifestFiles.AsParallel()
+                                                             from shardID in file.FileShardIDs.AsParallel()
                                                              where allShardIDsPresent.Contains(shardID) == false
                                                              select shardID;
             bool allShardIDsAccountedFor = true;
