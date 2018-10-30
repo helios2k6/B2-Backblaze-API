@@ -55,16 +55,12 @@ namespace B2BackupUtility.Commands
         private static string BuildStringFromFiles(IEnumerable<Database.File> files)
         {
             StringBuilder builder = new StringBuilder();
-            if (files.Any() == false)
-            {
-                return "No files";
-            }
+            IList<Database.File> sortedFiles = (from file in files
+                                                orderby file.FileName
+                                                select file).ToList();
 
-            IEnumerable<Database.File> sortedFiles = from file in files
-                                                     orderby file.FileName
-                                                     select file;
-
-            builder.AppendLine("All Files");
+            builder.AppendLine($"{sortedFiles.Count} files");
+            builder.AppendLine($"Total size: {sortedFiles.Sum(f => f.FileLength):n0} bytes");
             foreach (Database.File file in sortedFiles)
             {
                 builder.AppendLine(file.ToString());

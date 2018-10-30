@@ -2,7 +2,7 @@
   "profiles": {
     "B2BackupUtility": {
       "commandName": "Project",
-      "commandLineArgs": "--config D:\\b2_util_anime_windows.json --list-files"
+      "commandLineArgs": "--config D:\\B2Backup\\b2_util_anime_windows.json --list-files"
     }
   }
 }
