@@ -27,10 +27,13 @@ using B2BackupUtility.Proxies.Exceptions;
 using Newtonsoft.Json;
 using PureMVC.Patterns.Proxy;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 using static B2BackblazeBridge.Core.BackblazeB2ListFilesResult;
 
 namespace B2BackupUtility.Proxies
@@ -47,6 +50,8 @@ namespace B2BackupUtility.Proxies
 
         #region public properties
         public static string Name => "Download File Proxy";
+
+        public static string DownloadedShard => "Downloaded Shard";
         #endregion
 
         #region ctor
@@ -90,12 +95,18 @@ namespace B2BackupUtility.Proxies
             }
 
             IDictionary<string, FileResult> fileNameToFileResultMap = listFilesActionResult.Result.Files.ToDictionary(k => k.FileName, v => v);
-            IList<string> localFileShardIDPaths = new List<string>();
-            // Download all file shards first
-            foreach (string fileShardID in file.FileShardIDs)
+            ConcurrentBag<Tuple<string, long>> localFileShardIDPathsAndIndices = new ConcurrentBag<Tuple<string, long>>();
+            long currentShardsDownloaded = 0;
+            object notificationLock = new object();
+            Parallel.ForEach(file.FileShardIDs, (fileShardID, loopState, currentShardIndex) =>
             {
+                if (loopState.ShouldExitCurrentIteration || loopState.IsExceptional || loopState.IsStopped)
+                {
+                    return;
+                }
+
                 string shardFilePath = Path.Combine(Directory.GetCurrentDirectory(), fileShardID);
-                localFileShardIDPaths.Add(shardFilePath);
+                localFileShardIDPathsAndIndices.Add(Tuple.Create(shardFilePath, currentShardIndex));
 
                 if (fileNameToFileResultMap.TryGetValue(fileShardID, out FileResult b2FileShard))
                 {
@@ -105,25 +116,31 @@ namespace B2BackupUtility.Proxies
                         BackblazeB2ActionResult<BackblazeB2DownloadFileResult> downloadResult = fileShardDownload.Execute();
                         if (downloadResult.HasErrors)
                         {
+                            loopState.Stop();
                             throw new FailedToDownloadFileException
                             {
                                 BackblazeErrorDetails = downloadResult.Errors,
                             };
                         }
+
+                        long totalDownloaded = Interlocked.Increment(ref currentShardsDownloaded);
+                        lock (notificationLock)
+                        {
+                            SendNotification(DownloadedShard, $"Progress: {totalDownloaded} / {file.FileShardIDs.Length} downloaded", null);
+                        }
                     }
                 }
                 else
                 {
-                    throw new FailedToDownloadFileException("Could not find the B2 File for file shard");
+                    loopState.Stop();
+                    throw new FailedToDownloadFileException($"Could not find the file shard: {fileShardID}");
                 }
-            }
+            });
 
             long currentShard = 0;
             using (FileStream outputFileStream = System.IO.File.Create(destination))
             {
-                // Then reconstruct the original file. The ordering of the file shards
-                // is assumed to be the order we should use to reconstruct the original file
-                foreach (string fileShardPath in localFileShardIDPaths)
+                foreach (string fileShardPath in localFileShardIDPathsAndIndices.OrderBy(t => t.Item2).Select(t => t.Item1))
                 {
                     // Load the bytes into memory
                     byte[] decryptedBytes = EncryptionHelpers.DecryptBytes(

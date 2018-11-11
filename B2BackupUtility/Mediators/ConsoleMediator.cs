@@ -58,6 +58,7 @@ namespace B2BackupUtility.Mediators
             { CheckFileManifestProxy.FinishedCheckFileManifest, LogLevel.INFO },
             { DeleteFileProxy.FinishedDeletingFile, LogLevel.INFO },
             { DownloadFile.FinishedCommandNotification, LogLevel.INFO },
+            { DownloadFileProxy.DownloadedShard, LogLevel.INFO },
             { GenerateEncryptionKey.EncryptionKeyNotification, LogLevel.INFO },
             { GenerateEncryptionKey.InitializationVectorNotification, LogLevel.INFO },
             { ListFiles.AllFilesListNotification, LogLevel.INFO },
