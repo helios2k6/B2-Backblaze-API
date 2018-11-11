@@ -1,7 +1,8 @@
 {
   "profiles": {
     "B2BackupUtility": {
-      "commandName": "Project"
+      "commandName": "Project",
+      "commandLineArgs": "--config D:\\B2Backup\\b2_util_documents.json --rename-file --file-id 84e43a2b-0d12-4cfd-b490-876c3248ca21 --new-file-name Backups/documents_backup_2018-11-05.7z"
     }
   }
 }

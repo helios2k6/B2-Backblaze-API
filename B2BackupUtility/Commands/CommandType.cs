@@ -57,6 +57,10 @@ namespace B2BackupUtility.Commands
         /// </summary>
         LIST,
         /// <summary>
+        /// Rename a file
+        /// </summary>
+        RENAME_FILE,
+        /// <summary>
         /// Prune file shards that are not accounted for
         /// </summary>
         PRUNE,

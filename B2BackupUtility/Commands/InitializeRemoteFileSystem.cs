@@ -48,6 +48,7 @@ namespace B2BackupUtility.Commands
             Facade.RegisterProxy(new DeleteFileProxy(authorizationSession, config));
             Facade.RegisterProxy(new DownloadFileManifestProxy(authorizationSession, config));
             Facade.RegisterProxy(new RemoteFileSystemProxy(authorizationSession, config));
+            Facade.RegisterProxy(new RenameFileProxy(authorizationSession, config));
             Facade.RegisterProxy(new PruneFileShardProxy(authorizationSession, config));
             Facade.RegisterProxy(new UploadFileProxy(authorizationSession, config));
         }

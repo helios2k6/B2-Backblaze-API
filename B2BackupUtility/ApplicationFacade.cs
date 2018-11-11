@@ -48,6 +48,7 @@ namespace B2BackupUtility
             RegisterCommand(InitializeRemoteFileSystem.CommandNotification, () => new InitializeRemoteFileSystem());
             RegisterCommand(Commands.InitializeView.CommandNotification, () => new InitializeView());
             RegisterCommand(ListFiles.CommandNotification, () => new ListFiles());
+            RegisterCommand(RenameFile.CommandNotification, () => new RenameFile());
             RegisterCommand(PruneShards.CommandNotification, () => new PruneShards());
             RegisterCommand(PrintHelp.CommandNotification, () => new PrintHelp());
             RegisterCommand(StartApplication.CommandNotification, () => new StartApplication());

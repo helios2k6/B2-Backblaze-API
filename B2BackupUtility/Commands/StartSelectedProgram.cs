@@ -43,6 +43,7 @@ namespace B2BackupUtility.Commands
             { DownloadFileManifest.CommandSwitch, CommandType.DOWNLOAD_FILE_MANIFEST },
             { GenerateEncryptionKey.CommandSwitch, CommandType.GENERATE_ENCRYPTION_KEY },
             { ListFiles.CommandSwitch, CommandType.LIST },
+            { RenameFile.CommandSwitch, CommandType.RENAME_FILE },
             { PruneShards.CommandSwitch, CommandType.PRUNE },
             { UploadFile.CommandSwitch, CommandType.UPLOAD },
             { UploadFolder.CommandSwitch, CommandType.UPLOAD_FOLDER }
@@ -57,6 +58,7 @@ namespace B2BackupUtility.Commands
             { DownloadFileManifest.CommandType, DownloadFileManifest.CommandNotification },
             { GenerateEncryptionKey.CommandType, GenerateEncryptionKey.CommandNotification },
             { ListFiles.CommandType, ListFiles.CommandNotification },
+            { RenameFile.CommandType, RenameFile.CommandNotification },
             { PruneShards.CommandType, PruneShards.CommandNotification },
             { UploadFile.CommandType, UploadFile.CommandNotification },
             { UploadFolder.CommandType, UploadFolder.CommandNotification },
