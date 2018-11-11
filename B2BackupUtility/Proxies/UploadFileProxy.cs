@@ -29,6 +29,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace B2BackupUtility.Proxies
 {
@@ -330,7 +331,7 @@ namespace B2BackupUtility.Proxies
             }
 
             IDictionary<string, string> localPathsToRemotePaths = new Dictionary<string, string>();
-            foreach (string localFilePath in allLocalFiles)
+            Parallel.ForEach(allLocalFiles, localFilePath =>
             {
                 string predictedDestinationPath = GetDestinationPath(localFilePath);
                 if (TryGetFileByName(predictedDestinationPath, out Database.File remoteFileEntry))
@@ -349,7 +350,10 @@ namespace B2BackupUtility.Proxies
                             string sha1OfLocalFile = SHA1FileHashStore.Instance.ComputeSHA1(localFilePath);
                             if (string.Equals(sha1OfLocalFile, remoteFileEntry.SHA1, StringComparison.OrdinalIgnoreCase) == false)
                             {
-                                localPathsToRemotePaths[localFilePath] = predictedDestinationPath;
+                                lock (localPathsToRemotePaths)
+                                {
+                                    localPathsToRemotePaths[localFilePath] = predictedDestinationPath;
+                                }
                             }
                         }
                         // Scenario 1 is implied 
@@ -357,15 +361,21 @@ namespace B2BackupUtility.Proxies
                     else
                     {
                         // Scenario 2
-                        localPathsToRemotePaths[localFilePath] = predictedDestinationPath;
+                        lock (localPathsToRemotePaths)
+                        {
+                            localPathsToRemotePaths[localFilePath] = predictedDestinationPath;
+                        }
                     }
                 }
                 else
                 {
                     // We have never uploaded this file to the server
-                    localPathsToRemotePaths[localFilePath] = predictedDestinationPath;
+                    lock (localPathsToRemotePaths)
+                    {
+                        localPathsToRemotePaths[localFilePath] = predictedDestinationPath;
+                    }
                 }
-            }
+            });
 
             return localPathsToRemotePaths;
         }
