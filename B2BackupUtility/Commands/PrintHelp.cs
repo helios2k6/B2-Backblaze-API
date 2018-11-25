@@ -65,7 +65,7 @@ namespace B2BackupUtility.Commands
             { DeleteFile.CommandSwitch, new[] { DeleteFile.FileNameOption, DeleteFile.FileIDOption } },
             { DownloadFile.CommandSwitch, new[] { DownloadFile.FileNameOption, DownloadFile.FileIDOption, DownloadFile.DestinationOption } },
             { DownloadFileManifest.CommandSwitch, Enumerable.Empty<string>() },
-            { DownloadFiles.CommandNotification, new[] { DownloadFiles.FileIDsOption }},
+            { DownloadFiles.CommandSwitch, new[] { DownloadFiles.FileIDsOption }},
             { GenerateEncryptionKey.CommandSwitch, Enumerable.Empty<string>() },
             { ListFiles.CommandSwitch, Enumerable.Empty<string>() },
             { RenameFile.CommandSwitch, new[] { RenameFile.FileIDOption, RenameFile.NewFileNameOption } },
