@@ -50,20 +50,27 @@ namespace B2BackupUtility.Commands
             AuthorizationSessionProxy authorizationSessionProxy = (AuthorizationSessionProxy)Facade.RetrieveProxy(AuthorizationSessionProxy.Name);
             ProgramArgumentsProxy programArgProxy = (ProgramArgumentsProxy)Facade.RetrieveProxy(ProgramArgumentsProxy.Name);
             UploadFileProxy uploadFileProxy = (UploadFileProxy)Facade.RetrieveProxy(UploadFileProxy.Name);
-            if (programArgProxy.TryGetArgument(FolderOption, out string folderToUpload) &&
-                programArgProxy.TryGetArgument(RootDestinationFolderOption, out string rootDestinationFolder))
+
+            if (programArgProxy.TryGetArgument(FolderOption, out string folderToUpload) == false)
             {
-                uploadFileProxy.AddFolder(
-                    () => authorizationSessionProxy.AuthorizationSession,
-                    folderToUpload,
-                    rootDestinationFolder,
-                    programArgProxy.DoesOptionExist(OverrideOption)
+                throw new TerminateProgramException(
+                    $"No folder provided. Did you remember to use {FolderOption}?"
                 );
             }
-            else
+
+            if (programArgProxy.TryGetArgument(RootDestinationFolderOption, out string rootDestinationFolder) == false)
             {
-                throw new TerminateProgramException("No folder path provided to upload or no root destination folder to upload to");
+                throw new TerminateProgramException(
+                    $"No root destination folder provided. Did you remember to use {RootDestinationFolderOption}?"
+                );
             }
+
+            uploadFileProxy.AddFolder(
+                () => authorizationSessionProxy.AuthorizationSession,
+                folderToUpload,
+                rootDestinationFolder,
+                programArgProxy.DoesOptionExist(OverrideOption)
+            );
         }
         #endregion
     }

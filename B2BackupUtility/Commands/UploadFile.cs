@@ -51,19 +51,27 @@ namespace B2BackupUtility.Commands
             ConfigProxy configProxy = (ConfigProxy)Facade.RetrieveProxy(ConfigProxy.Name);
             ProgramArgumentsProxy programArgProxy = (ProgramArgumentsProxy)Facade.RetrieveProxy(ProgramArgumentsProxy.Name);
             UploadFileProxy uploadFileProxy = (UploadFileProxy)Facade.RetrieveProxy(UploadFileProxy.Name);
-            if (programArgProxy.TryGetArgument(FileOption, out string fileToUpload) && programArgProxy.TryGetArgument(DestinationOption, out string remoteDestinationPath))
+
+            if (programArgProxy.TryGetArgument(FileOption, out string fileToUpload) == false)
             {
-                uploadFileProxy.AddLocalFile(
-                    authorizationSessionProxy.AuthorizationSession,
-                    fileToUpload,
-                    remoteDestinationPath,
-                    programArgProxy.DoesOptionExist(OverrideOption)
+                throw new TerminateProgramException(
+                    $"File to upload not provided. Did you remember to use {FileOption}?"
                 );
             }
-            else
+
+            if (programArgProxy.TryGetArgument(DestinationOption, out string remoteDestinationPath) == false)
             {
-                throw new TerminateProgramException("File to upload not provided or destination path not provided");
+                throw new TerminateProgramException(
+                    $"Destination not provided. Did you remember to use {DestinationOption}?"
+                );
             }
+
+            uploadFileProxy.AddLocalFile(
+                authorizationSessionProxy.AuthorizationSession,
+                fileToUpload,
+                remoteDestinationPath,
+                programArgProxy.DoesOptionExist(OverrideOption)
+            );
         }
         #endregion
     }
