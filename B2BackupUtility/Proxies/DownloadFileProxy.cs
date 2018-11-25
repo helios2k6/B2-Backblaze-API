@@ -126,7 +126,7 @@ namespace B2BackupUtility.Proxies
                         long totalDownloaded = Interlocked.Increment(ref currentShardsDownloaded);
                         lock (notificationLock)
                         {
-                            SendNotification(DownloadedShard, $"Progress: {totalDownloaded} / {file.FileShardIDs.Length} downloaded", null);
+                            SendNotification(DownloadedShard, $"{file.FileName} download progress: {totalDownloaded} / {file.FileShardIDs.Length} downloaded", null);
                         }
                     }
                 }
