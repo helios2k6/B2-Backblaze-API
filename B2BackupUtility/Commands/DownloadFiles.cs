@@ -50,6 +50,8 @@ namespace B2BackupUtility.Commands
             DownloadFileProxy downloadFileProxy = (DownloadFileProxy)Facade.RetrieveProxy(DownloadFileProxy.Name);
             foreach (Database.File remoteFile in GetFilesToDownload())
             {
+                CancellationEventRouter.GlobalCancellationToken.ThrowIfCancellationRequested();
+
                 downloadFileProxy.DownloadFile(
                     authorizationProxy.AuthorizationSession,
                     remoteFile,
