@@ -78,13 +78,14 @@ namespace B2BackupUtility.Commands
                 if (counter > 0)
                 {
                     localDownloadPath = localDownloadPath + $"_{counter}";
-                    counter++;
                 }
 
                 if (File.Exists(localDownloadPath) == false)
                 {
                     return localDownloadPath;
                 }
+
+                counter++;
             }
         }
 
