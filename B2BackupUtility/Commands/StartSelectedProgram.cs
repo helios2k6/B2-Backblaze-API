@@ -39,8 +39,9 @@ namespace B2BackupUtility.Commands
             { CheckFileManifest.CommandSwitch, CommandType.CHECK_FILE_MANIFEST },
             { DeleteAllFiles.CommandSwitch, CommandType.DELETE_ALL_FILES },
             { DeleteFile.CommandSwitch, CommandType.DELETE },
-            { DownloadFile.CommandSwitch, CommandType.DOWNLOAD },
+            { DownloadFile.CommandSwitch, CommandType.DOWNLOAD_FILE },
             { DownloadFileManifest.CommandSwitch, CommandType.DOWNLOAD_FILE_MANIFEST },
+            { DownloadFiles.CommandSwitch, CommandType.DOWNLOAD_FILES },
             { GenerateEncryptionKey.CommandSwitch, CommandType.GENERATE_ENCRYPTION_KEY },
             { ListFiles.CommandSwitch, CommandType.LIST },
             { RenameFile.CommandSwitch, CommandType.RENAME_FILE },
@@ -56,6 +57,7 @@ namespace B2BackupUtility.Commands
             { DeleteFile.CommandType, DeleteFile.CommandNotification },
             { DownloadFile.CommandType, DownloadFile.CommandNotification },
             { DownloadFileManifest.CommandType, DownloadFileManifest.CommandNotification },
+            { DownloadFiles.CommandType, DownloadFiles.CommandNotification },
             { GenerateEncryptionKey.CommandType, GenerateEncryptionKey.CommandNotification },
             { ListFiles.CommandType, ListFiles.CommandNotification },
             { RenameFile.CommandType, RenameFile.CommandNotification },
@@ -104,6 +106,7 @@ namespace B2BackupUtility.Commands
             switch (commandType)
             {
                 case CommandType.CHECK_FILE_MANIFEST:
+                case CommandType.DOWNLOAD_FILES:
                 case CommandType.DELETE_ALL_FILES:
                 case CommandType.PRUNE:
                 case CommandType.UPLOAD_FOLDER:

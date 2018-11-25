@@ -32,9 +32,13 @@ namespace B2BackupUtility.Commands
         /// </summary>
         CHECK_FILE_MANIFEST,
         /// <summary>
-        /// Download file command
+        /// Download a single file
         /// </summary>
-        DOWNLOAD,
+        DOWNLOAD_FILE,
+        /// <summary>
+        /// Download multiple files
+        /// </summary>
+        DOWNLOAD_FILES,
         /// <summary>
         /// Download the file manifest
         /// </summary>

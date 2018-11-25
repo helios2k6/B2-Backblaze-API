@@ -39,6 +39,7 @@ namespace B2BackupUtility
             RegisterCommand(DeleteFile.CommandNotification, () => new DeleteFile());
             RegisterCommand(DownloadFile.CommandNotification, () => new DownloadFile());
             RegisterCommand(DownloadFileManifest.CommandNotification, () => new DownloadFileManifest());
+            RegisterCommand(DownloadFiles.CommandNotification, () => new DownloadFiles());
             RegisterCommand(GenerateEncryptionKey.CommandNotification, () => new GenerateEncryptionKey());
             RegisterCommand(InitializeAuthorizationSession.CommandNotification, () => new InitializeAuthorizationSession());
             RegisterCommand(InitializeConfig.CommandNotification, () => new InitializeConfig());

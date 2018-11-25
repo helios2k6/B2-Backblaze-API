@@ -45,7 +45,7 @@ namespace B2BackupUtility.Commands
 
         public static string DestinationOption => "--destination";
 
-        public static CommandType CommandType => CommandType.DOWNLOAD;
+        public static CommandType CommandType => CommandType.DOWNLOAD_FILE;
         #endregion
 
         #region public methods

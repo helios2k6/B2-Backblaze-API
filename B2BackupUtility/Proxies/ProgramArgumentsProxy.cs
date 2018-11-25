@@ -85,6 +85,34 @@ namespace B2BackupUtility.Proxies
             value = null;
             return false;
         }
+
+        /// <summary>
+        /// This will attempt to get all of the argument values passed in to a specific
+        /// switch until it detects the next switch (denoted by a "--")
+        /// </summary>
+        /// <param name="option">The option to get arguments for</param>
+        /// <returns>An IEnumerable of all of the arguments to the switch</returns>
+        public IEnumerable<string> GetArgsUntilNextSwitch(string option)
+        {
+            bool beginYielding = false;
+            foreach (string arg in ProgramArguments)
+            {
+                if (beginYielding)
+                {
+                    if (arg.IndexOf("--") == 0)
+                    {
+                        yield break;
+                    }
+
+                    yield return arg;
+                }
+
+                if (arg.Equals(option, StringComparison.OrdinalIgnoreCase))
+                {
+                    beginYielding = true;
+                }
+            }
+        }
         #endregion
     }
 }
