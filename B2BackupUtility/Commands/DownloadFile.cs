@@ -28,7 +28,7 @@ using System.IO;
 namespace B2BackupUtility.Commands
 {
     /// <summary>
-    /// Download a file
+    /// Download a file from the B2 Backblaze server
     /// </summary>
     public sealed class DownloadFile : SimpleCommand
     {
