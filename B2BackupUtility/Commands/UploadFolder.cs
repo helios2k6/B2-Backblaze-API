@@ -41,6 +41,8 @@ namespace B2BackupUtility.Commands
 
         public static string OverrideOption => "--override";
 
+        public static string DryRunOption => "--dry-run";
+
         public static CommandType CommandType => CommandType.UPLOAD_FOLDER;
         #endregion
 
@@ -69,7 +71,8 @@ namespace B2BackupUtility.Commands
                 () => authorizationSessionProxy.AuthorizationSession,
                 folderToUpload,
                 rootDestinationFolder,
-                programArgProxy.DoesOptionExist(OverrideOption)
+                programArgProxy.DoesOptionExist(OverrideOption),
+                programArgProxy.DoesOptionExist(DryRunOption)
             );
         }
         #endregion

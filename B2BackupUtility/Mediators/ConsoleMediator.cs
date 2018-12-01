@@ -68,6 +68,7 @@ namespace B2BackupUtility.Mediators
             { UploadFileProxy.FinishUploadFile, LogLevel.INFO },
             { UploadFileProxy.FileTierChanged, LogLevel.INFO },
             { UploadFileProxy.SkippedUploadFile, LogLevel.INFO },
+            { UploadFileProxy.UploadFolderDryRun, LogLevel.INFO },
             { UploadFileProxy.UploadProgress, LogLevel.INFO },
             { UploadFileProxy.UploadingFileManifest, LogLevel.INFO },
 

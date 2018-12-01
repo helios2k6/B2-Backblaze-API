@@ -43,7 +43,7 @@ namespace B2BackupUtility.Commands
         #endregion
 
         #region private properties
-        private static string HeaderText => "B2 Backup Utility v7.8";
+        private static string HeaderText => "B2 Backup Utility v7.9";
 
         private static string InstructionText => "Usage: <this program> <necessary switches> <action> [options]";
 
@@ -72,7 +72,7 @@ namespace B2BackupUtility.Commands
             { PruneShards.CommandSwitch, Enumerable.Empty<string>() },
             { CommandSwitch, Enumerable.Empty<string>() },
             { UploadFile.CommandSwitch, new[] { UploadFile.FileOption, UploadFile.OverrideOption, UploadFile.DestinationOption } },
-            { UploadFolder.CommandSwitch, new[] { UploadFolder.FolderOption, UploadFolder.OverrideOption, UploadFolder.RootDestinationFolderOption } },
+            { UploadFolder.CommandSwitch, new[] { UploadFolder.DryRunOption, UploadFolder.FolderOption, UploadFolder.OverrideOption, UploadFolder.RootDestinationFolderOption } },
         };
         #endregion
 

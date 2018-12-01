@@ -46,6 +46,7 @@ namespace B2BackupUtility.Proxies
         public static string FileTierChanged => "File Tier Changed";
         public static string FinishUploadFile => "Finished Uploading File";
         public static string SkippedUploadFile => "Skip Uploading File";
+        public static string UploadFolderDryRun => "Upload Folder Dry Run";
         public static string UploadProgress => "Upload Progress";
         public static string UploadingFileManifest => "Uploading File Manifest";
         #endregion
@@ -76,6 +77,7 @@ namespace B2BackupUtility.Proxies
         /// <param name="localFolderPath">The path to the local folder that contains the files to upload</param>
         /// <param name="rootDestinationFolder">The root destination folder to upload the files to</param>
         /// <param name="shouldOverride">
+        /// <param name="dryRun">Specifies whether to do a dry run</param>
         /// Whether to overide old files. If false, this will not throw an exception, but
         /// instead will quietly skip that file
         /// </param>
@@ -83,12 +85,14 @@ namespace B2BackupUtility.Proxies
             Func<BackblazeB2AuthorizationSession> authorizationSessionGenerator,
             string localFolderPath,
             string rootDestinationFolder,
-            bool shouldOverride
+            bool shouldOverride,
+            bool dryRun
         )
         {
             UploadFiles(
                 authorizationSessionGenerator,
-                GetFilesToUpload(Path.GetFullPath(localFolderPath), rootDestinationFolder, shouldOverride)
+                GetFilesToUpload(Path.GetFullPath(localFolderPath), rootDestinationFolder, shouldOverride) ,
+                dryRun
             );
         }
 
@@ -113,7 +117,8 @@ namespace B2BackupUtility.Proxies
 
             UploadFiles(
                 () => authorizationSession,
-                new Dictionary<string, string> { { Path.GetFullPath(localFilePath), remoteDestinationPath } }
+                new Dictionary<string, string> { { Path.GetFullPath(localFilePath), remoteDestinationPath } },
+                false
             );
         }
         #endregion
@@ -121,9 +126,22 @@ namespace B2BackupUtility.Proxies
         #region private methods
         private void UploadFiles(
             Func<BackblazeB2AuthorizationSession> authorizationSessionGenerator,
-            IDictionary<string, string> absoluteLocalFilePathsToDestinationFilePaths
+            IDictionary<string, string> absoluteLocalFilePathsToDestinationFilePaths,
+            bool dryRun
         )
         {
+            if (dryRun)
+            {
+                StringBuilder builder = new StringBuilder();
+                builder.AppendLine("Would have uploaded the following files");
+                foreach (KeyValuePair<string, string> absoluteToDestinationPath in absoluteLocalFilePathsToDestinationFilePaths)
+                {
+                    builder.AppendLine($"{absoluteToDestinationPath.Key} -> {absoluteToDestinationPath.Value}");
+                }
+                SendNotification(UploadFolderDryRun, builder.ToString(), null);
+                return;
+            }
+
             using (TieredUploadManager uploadManager = new TieredUploadManager(authorizationSessionGenerator, Config, CancellationEventRouter.GlobalCancellationToken))
             {
                 IDictionary<string, ISet<string>> localFilePathToUploadIDs = new Dictionary<string, ISet<string>>();
