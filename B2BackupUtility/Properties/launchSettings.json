@@ -1,8 +1,7 @@
 {
   "profiles": {
     "B2BackupUtility": {
-      "commandName": "Project",
-      "commandLineArgs": "--config D:\\B2Backup\\b2_util_anime.json --upload-folder --folder D:\\Anime --root-destination-folder Anime --dry-run"
+      "commandName": "Project"
     }
   }
 }
