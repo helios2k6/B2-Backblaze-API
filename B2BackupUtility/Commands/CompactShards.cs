@@ -36,6 +36,8 @@ namespace B2BackupUtility.Commands
 
         public static string CommandSwitch => "--compact-shards";
 
+        public static string DryRunOption => "--dry-run";
+
         public static CommandType CommandType => CommandType.COMPACT_SHARDS;
         #endregion
 
@@ -43,9 +45,13 @@ namespace B2BackupUtility.Commands
         public override void Execute(INotification notification)
         {
             AuthorizationSessionProxy authorizationSessionProxy = (AuthorizationSessionProxy)Facade.RetrieveProxy(AuthorizationSessionProxy.Name);
+            ProgramArgumentsProxy programArgProxy = (ProgramArgumentsProxy)Facade.RetrieveProxy(ProgramArgumentsProxy.Name);
             CompactShardsProxy compactShardsProxy = (CompactShardsProxy)Facade.RetrieveProxy(CompactShardsProxy.Name);
 
-            compactShardsProxy.CompactShards(authorizationSessionProxy.AuthorizationSession);
+            compactShardsProxy.CompactShards(
+                authorizationSessionProxy.AuthorizationSession,
+                programArgProxy.DoesOptionExist(DryRunOption)
+            );
         }
         #endregion
     }

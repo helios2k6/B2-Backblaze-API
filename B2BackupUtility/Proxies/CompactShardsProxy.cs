@@ -53,7 +53,10 @@ namespace B2BackupUtility.Proxies
         #endregion
 
         #region public methods
-        public void CompactShards(BackblazeB2AuthorizationSession authorizationSession)
+        public void CompactShards(
+            BackblazeB2AuthorizationSession authorizationSession,
+            bool dryRun
+        )
         {
             SendNotification(BeginCompactingShards, null, null);
             ISet<ISet<Database.File>> fileGroupsByContents = new HashSet<ISet<Database.File>>();
@@ -98,9 +101,12 @@ namespace B2BackupUtility.Proxies
                 }
             }
 
-            while (TryUploadFileDatabaseManifest(authorizationSession) == false)
+            if (dryRun == false)
             {
-                Thread.Sleep(TimeSpan.FromSeconds(5));
+                while (TryUploadFileDatabaseManifest(authorizationSession) == false)
+                {
+                    Thread.Sleep(TimeSpan.FromSeconds(5));
+                }
             }
 
             SendNotification(FinishedCompactingShards, null, null);
