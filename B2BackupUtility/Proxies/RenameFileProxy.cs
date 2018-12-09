@@ -21,6 +21,7 @@
 
 using B2BackblazeBridge.Core;
 using B2BackupUtility.Proxies.Exceptions;
+using System.Threading;
 
 namespace B2BackupUtility.Proxies
 {
@@ -63,12 +64,9 @@ namespace B2BackupUtility.Proxies
             RemoveFile(file);
             file.FileName = newFilePath;
             AddFile(file);
-            while (true)
+            while (TryUploadFileDatabaseManifest(authorizationSession) == false)
             {
-                if (TryUploadFileDatabaseManifest(authorizationSession))
-                {
-                    return;
-                }
+                Thread.Sleep(5);
             };
         }
         #endregion

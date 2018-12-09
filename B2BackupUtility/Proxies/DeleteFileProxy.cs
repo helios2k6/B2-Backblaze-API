@@ -25,6 +25,7 @@ using B2BackupUtility.Proxies.Exceptions;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using static B2BackblazeBridge.Core.BackblazeB2ListFilesResult;
 
@@ -69,7 +70,7 @@ namespace B2BackupUtility.Proxies
                 {
                     SendNotification(BeginDeletingFile, rawB2File.FileName, null);
                 }
-                
+
                 DeleteFileAction deleteFileAction =
                     new DeleteFileAction(authorizationSessionGenerator(), rawB2File.FileID, rawB2File.FileName);
                 BackblazeB2ActionResult<BackblazeB2DeleteFileResult> deletionResult = deleteFileAction.Execute();
@@ -103,37 +104,54 @@ namespace B2BackupUtility.Proxies
             // Remove entry in the File Manifest
             RemoveFile(file);
 
-            // Get the raw B2 File List so we can get the B2 file IDs of the file shards
-            ListFilesAction listFilesAction = ListFilesAction.CreateListFileActionForFileNames(authorizationSession, Config.BucketID, true);
-            BackblazeB2ActionResult<BackblazeB2ListFilesResult> listFilesActionResult = listFilesAction.Execute();
-            if (listFilesActionResult.HasErrors)
+            // Determine if another file shares the same file shards
+            IEnumerable<Database.File> filesThatShareTheSameShards = from currentFile in FileDatabaseManifestFiles
+                                                                     where file.FileLength == currentFile.FileLength &&
+                                                                        file.FileShardIDs.Length == currentFile.FileShardIDs.Length &&
+                                                                        file.SHA1.Equals(currentFile.SHA1, StringComparison.OrdinalIgnoreCase) &&
+                                                                        // Even if a single shard ID is shared by another file, that's enough to count it
+                                                                        // as being equal (or at least not eligible for hard-deletion)
+                                                                        file.FileShardIDs.Any(t => currentFile.FileShardIDs.Contains(t))
+                                                                     select currentFile;
+            // If there are no files that share the same Shard IDs
+            if (filesThatShareTheSameShards.Any() == false)
             {
-                throw new FailedToGetListOfFilesOnB2Exception
+                // Get the raw B2 File List so we can get the B2 file IDs of the file shards
+                ListFilesAction listFilesAction = ListFilesAction.CreateListFileActionForFileNames(authorizationSession, Config.BucketID, true);
+                BackblazeB2ActionResult<BackblazeB2ListFilesResult> listFilesActionResult = listFilesAction.Execute();
+                if (listFilesActionResult.HasErrors)
                 {
-                    BackblazeErrorDetails = listFilesActionResult.Errors,
-                };
-            }
-            IEnumerable<FileResult> rawB2FileList = listFilesActionResult.Result.Files;
-            IDictionary<string, FileResult> fileNameToFileResult = rawB2FileList.ToDictionary(k => k.FileName, v => v);
-
-            SendNotification(BeginDeletingFile, file.FileName, null);
-            foreach (string shardID in file.FileShardIDs)
-            {
-                if (fileNameToFileResult.TryGetValue(shardID, out FileResult fileShardToDelete))
-                {
-                    DeleteFileAction deleteFileAction =
-                        new DeleteFileAction(authorizationSession, fileShardToDelete.FileID, fileShardToDelete.FileName);
-
-                    BackblazeB2ActionResult<BackblazeB2DeleteFileResult> deletionResult = deleteFileAction.Execute();
-                    if (deletionResult.HasErrors)
+                    throw new FailedToGetListOfFilesOnB2Exception
                     {
-                        SendNotification(FailedToDeleteFile, deletionResult, null);
+                        BackblazeErrorDetails = listFilesActionResult.Errors,
+                    };
+                }
+                IEnumerable<FileResult> rawB2FileList = listFilesActionResult.Result.Files;
+                IDictionary<string, FileResult> fileNameToFileResult = rawB2FileList.ToDictionary(k => k.FileName, v => v);
+
+                SendNotification(BeginDeletingFile, file.FileName, null);
+                foreach (string shardID in file.FileShardIDs)
+                {
+                    if (fileNameToFileResult.TryGetValue(shardID, out FileResult fileShardToDelete))
+                    {
+                        DeleteFileAction deleteFileAction =
+                            new DeleteFileAction(authorizationSession, fileShardToDelete.FileID, fileShardToDelete.FileName);
+
+                        BackblazeB2ActionResult<BackblazeB2DeleteFileResult> deletionResult = deleteFileAction.Execute();
+                        if (deletionResult.HasErrors)
+                        {
+                            SendNotification(FailedToDeleteFile, deletionResult, null);
+                        }
                     }
                 }
             }
-            SendNotification(FinishedDeletingFile, file.FileName, null);
 
-            UploadFileDatabaseManifest(authorizationSession);
+            while (TryUploadFileDatabaseManifest(authorizationSession) == false)
+            {
+                Thread.Sleep(5);
+            }
+
+            SendNotification(FinishedDeletingFile, file.FileName, null);
         }
         #endregion
     }
