@@ -97,13 +97,13 @@ namespace B2BackupUtility.Proxies
                     AddFile(otherFile);
                 }
             }
-
+            /*
             while (TryUploadFileDatabaseManifest(authorizationSession) == false)
             {
                 Thread.Sleep(TimeSpan.FromSeconds(5));
             }
-
-            SendNotification(FinishedCompactingShards, null, null);
+            */
+            SendNotification(FinishedCompactingShards, "NOTE: This feature is disabled and does not persist to the server. Delete-File and Check-File-Manifest command not finished to accommodate this new data model", null);
         }
         #endregion
 
