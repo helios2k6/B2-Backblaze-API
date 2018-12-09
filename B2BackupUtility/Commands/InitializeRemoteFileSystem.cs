@@ -45,6 +45,7 @@ namespace B2BackupUtility.Commands
             Config config = configProxy.Config;
 
             Facade.RegisterProxy(new CheckFileManifestProxy(authorizationSession, config));
+            Facade.RegisterProxy(new CompactShardsProxy(authorizationSession, config));
             Facade.RegisterProxy(new DeleteFileProxy(authorizationSession, config));
             Facade.RegisterProxy(new DownloadFileManifestProxy(authorizationSession, config));
             Facade.RegisterProxy(new RemoteFileSystemProxy(authorizationSession, config));

@@ -35,6 +35,7 @@ namespace B2BackupUtility
         {
             base.InitializeController();
             RegisterCommand(CheckFileManifest.CommandNotification, () => new CheckFileManifest());
+            RegisterCommand(CompactShards.CommandNotification, () => new CompactShards());
             RegisterCommand(DeleteAllFiles.CommandNotification, () => new DeleteAllFiles());
             RegisterCommand(DeleteFile.CommandNotification, () => new DeleteFile());
             RegisterCommand(DownloadFile.CommandNotification, () => new DownloadFile());

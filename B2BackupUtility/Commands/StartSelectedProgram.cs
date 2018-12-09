@@ -37,6 +37,7 @@ namespace B2BackupUtility.Commands
         private static IDictionary<string, CommandType> CommandSwitchToActionMap => new Dictionary<string, CommandType>
         {
             { CheckFileManifest.CommandSwitch, CommandType.CHECK_FILE_MANIFEST },
+            { CompactShards.CommandSwitch, CommandType.COMPACT_SHARDS },
             { DeleteAllFiles.CommandSwitch, CommandType.DELETE_ALL_FILES },
             { DeleteFile.CommandSwitch, CommandType.DELETE },
             { DownloadFile.CommandSwitch, CommandType.DOWNLOAD_FILE },
@@ -53,6 +54,7 @@ namespace B2BackupUtility.Commands
         private static IDictionary<CommandType, string> CommandTypeToNotification => new Dictionary<CommandType, string>
         {
             { CheckFileManifest.CommandType, CheckFileManifest.CommandNotification },
+            { CompactShards.CommandType,  CompactShards.CommandNotification },
             { DeleteAllFiles.CommandType, DeleteAllFiles.CommandNotification },
             { DeleteFile.CommandType, DeleteFile.CommandNotification },
             { DownloadFile.CommandType, DownloadFile.CommandNotification },

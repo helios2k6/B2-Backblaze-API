@@ -32,6 +32,12 @@ namespace B2BackupUtility.Commands
         /// </summary>
         CHECK_FILE_MANIFEST,
         /// <summary>
+        /// Compact the Shard IDs of all files that are
+        /// identical such that they all have the same Shard
+        /// IDs
+        /// </summary>
+        COMPACT_SHARDS,
+        /// <summary>
         /// Download a single file
         /// </summary>
         DOWNLOAD_FILE,
