@@ -24,6 +24,7 @@ using B2BackupUtility.Proxies.Exceptions;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 
 namespace B2BackupUtility.Proxies
 {
@@ -69,9 +70,20 @@ namespace B2BackupUtility.Proxies
             }
 
             ISet<string> allShardIDsPresent = listFilesActionResult.Result.Files.Select(t => t.FileName).ToHashSet();
-            IDictionary<string, Database.File> shardIDToDatbaseFile = (from file in FileDatabaseManifestFiles
-                                                                       from shardID in file.FileShardIDs
-                                                                       select new KeyValuePair<string, Database.File>(shardID, file)).ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+            IDictionary<string, ISet<Database.File>> shardIDToDatbaseFile = new Dictionary<string, ISet<Database.File>>();
+            foreach (Database.File file in FileDatabaseManifestFiles)
+            {
+                foreach (string shardID in file.FileShardIDs)
+                {
+                    if (shardIDToDatbaseFile.TryGetValue(shardID, out ISet<Database.File> setOfFiles) == false)
+                    {
+                        setOfFiles = new HashSet<Database.File>();
+                        shardIDToDatbaseFile[shardID] = setOfFiles;
+                    }
+
+                    setOfFiles.Add(file);
+                }
+            }
 
             IEnumerable<string> allShardIDsNotAccountedFor = from file in FileDatabaseManifestFiles
                                                              from shardID in file.FileShardIDs
@@ -81,7 +93,12 @@ namespace B2BackupUtility.Proxies
             foreach (string shardIDNotAccountedFor in allShardIDsNotAccountedFor)
             {
                 allShardIDsAccountedFor = false;
-                SendNotification(ShardIDNotAccountedFor, $"Shard ID {shardIDNotAccountedFor} for {shardIDToDatbaseFile[shardIDNotAccountedFor]}", null);
+                StringBuilder stringBuilder = new StringBuilder();
+                foreach (Database.File file in shardIDToDatbaseFile[shardIDNotAccountedFor])
+                {
+                    stringBuilder.Append($"{file} | ");
+                }
+                SendNotification(ShardIDNotAccountedFor, $"Shard ID {shardIDNotAccountedFor} for file(s): {stringBuilder.ToString()}", null);
             }
 
             if (allShardIDsAccountedFor)
