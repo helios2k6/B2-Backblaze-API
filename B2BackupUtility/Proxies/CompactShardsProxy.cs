@@ -112,8 +112,5 @@ namespace B2BackupUtility.Proxies
             SendNotification(FinishedCompactingShards, null, null);
         }
         #endregion
-
-        #region private methods
-        #endregion
     }
 }

@@ -60,13 +60,46 @@ namespace B2BackupUtility.Commands
                                                 select file).ToList();
 
             builder.AppendLine($"{sortedFiles.Count} files");
-            builder.AppendLine($"Total size: {sortedFiles.Sum(f => f.FileLength):n0} bytes");
+            builder.AppendLine($"Total size: {GetTrueUsedSpace(sortedFiles):n0} bytes");
             foreach (Database.File file in sortedFiles)
             {
                 builder.AppendLine(file.ToString());
             }
 
             return builder.ToString();
+        }
+
+        private static long GetTrueUsedSpace(IEnumerable<Database.File> sortedFiles)
+        {
+            long currentSpaceTaken = 0;
+            IDictionary<string, ISet<string[]>> sha1ToSetOfShardIDs = new Dictionary<string, ISet<string[]>>();
+            foreach (Database.File file in sortedFiles)
+            {
+                if (sha1ToSetOfShardIDs.TryGetValue(file.SHA1, out ISet<string[]> setOfShardIDs) == false)
+                {
+                    setOfShardIDs = new HashSet<string[]>();
+                    sha1ToSetOfShardIDs[file.SHA1] = setOfShardIDs;
+                }
+
+                // Check to see if the shard IDs match. If they do, don't count the file
+                bool foundAMatch = false;
+                foreach (string[] currentListOfShardIDs in setOfShardIDs)
+                {
+                    if (file.FileShardIDs.SequenceEqual(currentListOfShardIDs))
+                    {
+                        foundAMatch = true;
+                        break;
+                    }
+                }
+
+                if (foundAMatch == false)
+                {
+                    currentSpaceTaken += file.FileLength;
+                    setOfShardIDs.Add(file.FileShardIDs);
+                }
+            }
+
+            return currentSpaceTaken;
         }
         #endregion
     }
