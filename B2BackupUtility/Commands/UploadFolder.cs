@@ -20,6 +20,7 @@
  */
 
 using B2BackupUtility.Proxies;
+using B2BackupUtility.Utils;
 using PureMVC.Interfaces;
 using PureMVC.Patterns.Command;
 
@@ -28,7 +29,7 @@ namespace B2BackupUtility.Commands
     /// <summary>
     /// Uploades a folder to the B2 Backblaze Server
     /// </summary>
-    public sealed class UploadFolder : SimpleCommand
+    public sealed class UploadFolder : SimpleCommand, ILogNotifier
     {
         #region public properties
         public static string CommandNotification => "Upload Folder";
@@ -49,6 +50,7 @@ namespace B2BackupUtility.Commands
         #region public methods
         public override void Execute(INotification notification)
         {
+            this.Debug(CommandNotification);
             AuthorizationSessionProxy authorizationSessionProxy = (AuthorizationSessionProxy)Facade.RetrieveProxy(AuthorizationSessionProxy.Name);
             ProgramArgumentsProxy programArgProxy = (ProgramArgumentsProxy)Facade.RetrieveProxy(ProgramArgumentsProxy.Name);
             UploadFileProxy uploadFileProxy = (UploadFileProxy)Facade.RetrieveProxy(UploadFileProxy.Name);

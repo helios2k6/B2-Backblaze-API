@@ -24,6 +24,7 @@ using B2BackblazeBridge.Core;
 using B2BackupUtility.Database;
 using B2BackupUtility.Encryption;
 using B2BackupUtility.Proxies.Exceptions;
+using B2BackupUtility.Utils;
 using Newtonsoft.Json;
 using PureMVC.Patterns.Proxy;
 using System;
@@ -40,7 +41,7 @@ namespace B2BackupUtility.Proxies
     /// <summary>
     /// The base class for all remote file system proxies
     /// </summary>
-    public abstract class BaseRemoteFileSystemProxy : Proxy
+    public abstract class BaseRemoteFileSystemProxy : Proxy, ILogNotifier
     {
         #region public properties
         public static string RemoteFileDatabaseManifestName => "b2_backup_util_file_database_manifest.txt.aes.gz";
@@ -133,6 +134,7 @@ namespace B2BackupUtility.Proxies
         {
             lock (SharedFileDatabaseManifestLock)
             {
+                this.Debug("Removing all files");
                 FileDatabaseManifest.Files = new Database.File[0];
             }
         }
@@ -145,6 +147,7 @@ namespace B2BackupUtility.Proxies
         {
             lock (SharedFileDatabaseManifestLock)
             {
+                this.Debug($"Removing file: {file}");
                 FileDatabaseManifest.Files = FileDatabaseManifest.Files.Where(t => t.Equals(file) == false).ToArray();
             }
         }
@@ -158,6 +161,7 @@ namespace B2BackupUtility.Proxies
         {
             lock (SharedFileDatabaseManifestLock)
             {
+                this.Debug($"Adding file: {file}");
                 FileDatabaseManifest.Files = FileDatabaseManifest.Files.Append(file).ToArray();
             }
         }
@@ -183,15 +187,18 @@ namespace B2BackupUtility.Proxies
             BackblazeB2AuthorizationSession authorizationSession
         )
         {
+            this.Debug("Attempting to upload file manifest");
             try
             {
                 UploadFileDatabaseManifest(authorizationSession);
             }
-            catch (FailedToUploadFileDatabaseManifestException)
+            catch (FailedToUploadFileDatabaseManifestException e)
             {
+                this.Debug($"Failed to upload file manifest: {e.ToString()}");
                 return false;
             }
 
+            this.Debug("Successfully uploaded file manifest");
             return true;
         }
 

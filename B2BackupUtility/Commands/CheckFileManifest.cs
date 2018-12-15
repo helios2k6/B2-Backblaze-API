@@ -20,6 +20,7 @@
  */
 
 using B2BackupUtility.Proxies;
+using B2BackupUtility.Utils;
 using PureMVC.Interfaces;
 using PureMVC.Patterns.Command;
 
@@ -28,7 +29,7 @@ namespace B2BackupUtility.Commands
     /// <summary>
     /// Checks the integrity of the file manifest
     /// </summary>
-    public sealed class CheckFileManifest : SimpleCommand
+    public sealed class CheckFileManifest : SimpleCommand, ILogNotifier
     {
         #region public properties
         public static string CommandNotification => "Check File Manifest";
@@ -41,6 +42,7 @@ namespace B2BackupUtility.Commands
         #region public methods
         public override void Execute(INotification notification)
         {
+            this.Debug(CommandNotification);
             AuthorizationSessionProxy authorizationSessionProxy = (AuthorizationSessionProxy)Facade.RetrieveProxy(AuthorizationSessionProxy.Name);
             CheckFileManifestProxy checkFileManifestProxy = (CheckFileManifestProxy)Facade.RetrieveProxy(CheckFileManifestProxy.Name);
 

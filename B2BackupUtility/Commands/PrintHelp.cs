@@ -21,6 +21,7 @@
 
 using B2BackupUtility.Mediators;
 using B2BackupUtility.Proxies;
+using B2BackupUtility.Utils;
 using PureMVC.Interfaces;
 using PureMVC.Patterns.Command;
 using System.Collections.Generic;
@@ -32,18 +33,16 @@ namespace B2BackupUtility.Commands
     /// <summary>
     /// Prints the help text
     /// </summary>
-    public sealed class PrintHelp : SimpleCommand
+    public sealed class PrintHelp : SimpleCommand, ILogNotifier
     {
         #region public properties
         public static string CommandNotification => "Print Help";
-
-        public static string HelpStringNotification => "Help String Notification";
 
         public static string CommandSwitch => "--print-help";
         #endregion
 
         #region private properties
-        private static string HeaderText => "B2 Backup Utility v8.3";
+        private static string HeaderText => "B2 Backup Utility v8.4";
 
         private static string InstructionText => "Usage: <this program> <necessary switches> <action> [options]";
 
@@ -81,6 +80,7 @@ namespace B2BackupUtility.Commands
         #region public methods
         public override void Execute(INotification notification)
         {
+            this.Debug(CommandNotification);
             StringBuilder builder = new StringBuilder();
             builder
                 .AppendLine()
@@ -113,7 +113,7 @@ namespace B2BackupUtility.Commands
                 builder.AppendLine();
             }
 
-            SendNotification(HelpStringNotification, builder.ToString(), null);
+            this.Critical(builder.ToString());
         }
         #endregion
     }

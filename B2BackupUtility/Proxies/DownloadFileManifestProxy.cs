@@ -20,16 +20,16 @@
  */
 
 using B2BackblazeBridge.Core;
-using B2BackupUtility.Database;
+using B2BackupUtility.Utils;
 using Newtonsoft.Json;
-using PureMVC.Patterns.Proxy;
+using System.IO;
 
 namespace B2BackupUtility.Proxies
 {
     /// <summary>
     /// Proxy that downloads the file manifest
     /// </summary>
-    public sealed class DownloadFileManifestProxy : BaseRemoteFileSystemProxy
+    public sealed class DownloadFileManifestProxy : BaseRemoteFileSystemProxy, ILogNotifier
     {
         #region public properties
         public static string Name => "Download File Manifest Proxy";
@@ -51,10 +51,13 @@ namespace B2BackupUtility.Proxies
         /// </summary>
         public void DownloadFileManifest()
         {
-            System.IO.File.WriteAllText(
+            this.Debug("Downloading file manifest");
+            File.WriteAllText(
                 LocalFileManifestFileName,
                 JsonConvert.SerializeObject(GetClonedFileDatabaseManifest())
             );
+
+            this.Info($"Downloaded file manifest to: {Path.Combine(Directory.GetCurrentDirectory(), LocalFileManifestFileName)}");
         }
         #endregion
     }

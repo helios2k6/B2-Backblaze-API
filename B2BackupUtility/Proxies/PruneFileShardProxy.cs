@@ -22,6 +22,7 @@
 using B2BackblazeBridge.Actions;
 using B2BackblazeBridge.Core;
 using B2BackupUtility.Proxies.Exceptions;
+using B2BackupUtility.Utils;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -33,14 +34,10 @@ namespace B2BackupUtility.Proxies
     /// <summary>
     /// Proxy that prunes file shards that are unaccounted for
     /// </summary>
-    public sealed class PruneFileShardProxy : BaseRemoteFileSystemProxy
+    public sealed class PruneFileShardProxy : BaseRemoteFileSystemProxy, ILogNotifier
     {
         #region public properties
         public static string Name => "Prune File Shard Proxy";
-
-        public static string BeginPruneFile => "Begin Prune File";
-        public static string FailedToPruneFile => "Failed To Prune File";
-        public static string FinishedPruningFile => "Finished Pruning File";
         #endregion
 
         #region ctor
@@ -59,6 +56,7 @@ namespace B2BackupUtility.Proxies
         /// <param name="authorizationSessionGenerator">The generator for an authorization session</param>
         public void PruneShards(Func<BackblazeB2AuthorizationSession> authorizationSessionGenerator)
         {
+            this.Debug("Pruning shards");
             // Get just the file names on the server
             ListFilesAction listFilesAction = ListFilesAction.CreateListFileActionForFileNames(authorizationSessionGenerator(), Config.BucketID, true);
             BackblazeB2ActionResult<BackblazeB2ListFilesResult> listFilesActionResult = listFilesAction.Execute();
@@ -79,7 +77,6 @@ namespace B2BackupUtility.Proxies
             {
                 CancellationEventRouter.GlobalCancellationToken.ThrowIfCancellationRequested();
 
-                SendNotification(BeginPruneFile, fileNameNotAccountedFor, null);
                 FileResult fileNotAccountedFor = fileNameToFileResultMap[fileNameNotAccountedFor];
                 DeleteFileAction deleteFileAction =
                     new DeleteFileAction(authorizationSessionGenerator(), fileNotAccountedFor.FileID, fileNotAccountedFor.FileName);
@@ -89,14 +86,14 @@ namespace B2BackupUtility.Proxies
                 {
                     lock (lockObject)
                     {
-                        SendNotification(FailedToPruneFile, deletionResult, null);
+                        this.Critical($"Failed to prune file. Reason: {deletionResult}");
                     }
                 }
                 else
                 {
                     lock (lockObject)
                     {
-                        SendNotification(FinishedPruningFile, fileNameNotAccountedFor, null);
+                        this.Info($"Pruned shard: {fileNameNotAccountedFor}");
                     }
                 }
             });

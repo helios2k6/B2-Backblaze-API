@@ -19,6 +19,7 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+using B2BackupUtility.Utils;
 using PureMVC.Interfaces;
 using PureMVC.Patterns.Command;
 using System;
@@ -29,14 +30,10 @@ namespace B2BackupUtility.Commands
     /// <summary>
     /// Generates and prints a new encryption key and IV
     /// </summary>
-    public sealed class GenerateEncryptionKey : SimpleCommand
+    public sealed class GenerateEncryptionKey : SimpleCommand, ILogNotifier
     {
         #region public properties
         public static string CommandNotification => "Generate Encryption Key";
-
-        public static string EncryptionKeyNotification => "Generated Encryption Key";
-
-        public static string InitializationVectorNotification => "Generated Initialization Vector";
 
         public static string CommandSwitch => "--generate-encryption-key";
 
@@ -46,6 +43,7 @@ namespace B2BackupUtility.Commands
         #region public methods
         public override void Execute(INotification notification)
         {
+            this.Debug(CommandNotification);
             using (Aes aes = Aes.Create())
             {
                 byte[] key = aes.Key;
@@ -55,8 +53,8 @@ namespace B2BackupUtility.Commands
                 string ivAsString = Convert.ToBase64String(iv);
 
                 // Send out notififcations that will be printed later
-                SendNotification(EncryptionKeyNotification, keyAsString, null);
-                SendNotification(InitializationVectorNotification, ivAsString, null);
+                this.Critical($"Encryption key: {keyAsString}");
+                this.Critical($"Initialization Vector: {ivAsString}");
             }
         }
         #endregion

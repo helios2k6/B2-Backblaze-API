@@ -21,6 +21,7 @@
 
 using B2BackupUtility.Mediators;
 using B2BackupUtility.Proxies;
+using B2BackupUtility.Utils;
 using PureMVC.Interfaces;
 using PureMVC.Patterns.Command;
 
@@ -29,7 +30,7 @@ namespace B2BackupUtility.Commands
     /// <summary>
     /// Initializes the view
     /// </summary>
-    public sealed class InitializeView : SimpleCommand
+    public sealed class InitializeView : SimpleCommand, ILogNotifier
     {
         #region public properties
         public static string CommandNotification => "Initialize View";
@@ -54,6 +55,8 @@ namespace B2BackupUtility.Commands
             }
 
             Facade.RegisterMediator(new ConsoleMediator(logLevel));
+
+            this.Debug("View is initialized");
         }
         #endregion
     }

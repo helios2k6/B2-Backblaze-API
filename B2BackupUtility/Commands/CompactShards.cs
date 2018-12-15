@@ -20,6 +20,7 @@
  */
 
 using B2BackupUtility.Proxies;
+using B2BackupUtility.Utils;
 using PureMVC.Interfaces;
 using PureMVC.Patterns.Command;
 
@@ -29,7 +30,7 @@ namespace B2BackupUtility.Commands
     /// Compact files that are the same but have different Shard IDs into a single set of
     /// Shard IDs
     /// </summary>
-    public sealed class CompactShards : SimpleCommand
+    public sealed class CompactShards : SimpleCommand, ILogNotifier
     {
         #region public properties
         public static string CommandNotification => "Compact Shards";
@@ -44,6 +45,7 @@ namespace B2BackupUtility.Commands
         #region public methods
         public override void Execute(INotification notification)
         {
+            this.Debug(CommandNotification);
             AuthorizationSessionProxy authorizationSessionProxy = (AuthorizationSessionProxy)Facade.RetrieveProxy(AuthorizationSessionProxy.Name);
             ProgramArgumentsProxy programArgProxy = (ProgramArgumentsProxy)Facade.RetrieveProxy(ProgramArgumentsProxy.Name);
             CompactShardsProxy compactShardsProxy = (CompactShardsProxy)Facade.RetrieveProxy(CompactShardsProxy.Name);

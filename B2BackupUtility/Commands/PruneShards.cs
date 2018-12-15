@@ -21,6 +21,7 @@
 
 
 using B2BackupUtility.Proxies;
+using B2BackupUtility.Utils;
 using PureMVC.Interfaces;
 using PureMVC.Patterns.Command;
 
@@ -29,7 +30,7 @@ namespace B2BackupUtility.Commands
     /// <summary>
     /// Prune extraneous shards
     /// </summary>
-    public sealed class PruneShards : SimpleCommand
+    public sealed class PruneShards : SimpleCommand, ILogNotifier
     {
         #region public properties
         public static string CommandNotification => "Prune Shards";
@@ -42,6 +43,7 @@ namespace B2BackupUtility.Commands
         #region public methods
         public override void Execute(INotification notification)
         {
+            this.Debug(CommandNotification);
             AuthorizationSessionProxy authorizationSessionProxy = (AuthorizationSessionProxy)Facade.RetrieveProxy(AuthorizationSessionProxy.Name);
             PruneFileShardProxy pruneFileShardProxy = (PruneFileShardProxy)Facade.RetrieveProxy(PruneFileShardProxy.Name);
 

@@ -20,6 +20,7 @@
  */
 
 using B2BackupUtility.Proxies;
+using B2BackupUtility.Utils;
 using PureMVC.Interfaces;
 using PureMVC.Patterns.Command;
 using System.Collections.Generic;
@@ -27,12 +28,10 @@ using System.Linq;
 
 namespace B2BackupUtility.Commands
 {
-    public sealed class DeleteFiles : SimpleCommand
+    public sealed class DeleteFiles : SimpleCommand, ILogNotifier
     {
         #region private fields
         public static string CommandNotification => "Delete Files";
-
-        public static string FinishedCommandNotification => "Finished Deleting Files";
 
         public static string CommandSwitch => "--delete-files";
 
@@ -44,6 +43,7 @@ namespace B2BackupUtility.Commands
         #region public methods
         public override void Execute(INotification notification)
         {
+            this.Debug(CommandNotification);
             AuthorizationSessionProxy authorizationProxy =
                 (AuthorizationSessionProxy)Facade.RetrieveProxy(AuthorizationSessionProxy.Name);
             DeleteFileProxy deleteFileProxy = (DeleteFileProxy)Facade.RetrieveProxy(DeleteFileProxy.Name);
@@ -53,13 +53,14 @@ namespace B2BackupUtility.Commands
                 deleteFileProxy.DeleteFile(() => authorizationProxy.AuthorizationSession, file);
             }
 
-            SendNotification(FinishedCommandNotification, null, null);
+            this.Info("Finished deleting all files");
         }
         #endregion
 
         #region private methods
         private IEnumerable<Database.File> GetFilesToDelete()
         {
+            this.Debug("Getting files to delete");
             ProgramArgumentsProxy programArgsProxy = (ProgramArgumentsProxy)Facade.RetrieveProxy(ProgramArgumentsProxy.Name);
             IEnumerable<string> fileIDs = programArgsProxy.GetArgsUntilNextSwitch(FileIDsOption);
 

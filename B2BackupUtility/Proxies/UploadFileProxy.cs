@@ -23,6 +23,7 @@ using B2BackblazeBridge.Core;
 using B2BackupUtility.Database;
 using B2BackupUtility.Proxies.Exceptions;
 using B2BackupUtility.UploadManagers;
+using B2BackupUtility.Utils;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -36,19 +37,10 @@ namespace B2BackupUtility.Proxies
     /// <summary>
     /// The proxy that's in charge of uploading files to the remote file system
     /// </summary>
-    public sealed class UploadFileProxy : BaseRemoteFileSystemProxy
+    public sealed class UploadFileProxy : BaseRemoteFileSystemProxy, ILogNotifier
     {
         #region public properties
         public static string Name => "Upload File Proxy";
-        public static string BeginUploadFile => "Begin Upload File";
-        public static string FailedToUploadFile => "Failed To Upload File";
-        public static string FailedToUploadFileManifest => "Failed To Upload File Manifest";
-        public static string FileTierChanged => "File Tier Changed";
-        public static string FinishUploadFile => "Finished Uploading File";
-        public static string SkippedUploadFile => "Skip Uploading File";
-        public static string UploadFolderDryRun => "Upload Folder Dry Run";
-        public static string UploadProgress => "Upload Progress";
-        public static string UploadingFileManifest => "Uploading File Manifest";
         #endregion
 
         #region private fields
@@ -89,6 +81,7 @@ namespace B2BackupUtility.Proxies
             bool dryRun
         )
         {
+            this.Debug($"Adding folder: {localFolderPath} to {rootDestinationFolder}");
             UploadFiles(
                 authorizationSessionGenerator,
                 GetFilesToUpload(Path.GetFullPath(localFolderPath), rootDestinationFolder, shouldOverride) ,
@@ -110,6 +103,7 @@ namespace B2BackupUtility.Proxies
             bool shouldOverride
         )
         {
+            this.Debug($"Adding local file: {localFilePath} to {remoteDestinationPath}");
             if (shouldOverride == false && TryGetFileByName(remoteDestinationPath, out Database.File existingFile))
             {
                 throw new FailedToUploadFileException("Cannot override existing remote file");
@@ -138,7 +132,7 @@ namespace B2BackupUtility.Proxies
                 {
                     builder.AppendLine($"{absoluteToDestinationPath.Key} -> {absoluteToDestinationPath.Value}");
                 }
-                SendNotification(UploadFolderDryRun, builder.ToString(), null);
+                this.Info($"DRY RUN. {builder.ToString()}");
                 return;
             }
 
@@ -177,7 +171,7 @@ namespace B2BackupUtility.Proxies
                         if (localFilesThatHaveAlreadyStarted.Contains(localFile) == false)
                         {
                             localFilesThatHaveAlreadyStarted.Add(localFile);
-                            SendNotification(BeginUploadFile, localFile, null);
+                            this.Info($"Begin uploading file: {localFile}");
                         }
                     }
                 }
@@ -186,11 +180,7 @@ namespace B2BackupUtility.Proxies
                 {
                     lock (localLockObject)
                     {
-                        SendNotification(
-                            FailedToUploadFile,
-                            $"{uploadIDsToLocalFilePath[eventArgs.UploadID]} | {eventArgs.UploadResult.ToString()}",
-                            null
-                        );
+                        this.Critical($"Failed to upload file. {uploadIDsToLocalFilePath[eventArgs.UploadID]} | {eventArgs.UploadResult.ToString()}");
                     }
                 }
 
@@ -212,7 +202,7 @@ namespace B2BackupUtility.Proxies
                         int totalNumberOfShards = localFilePathToUploadIDs[localFilePath].Count;
                         if (totalNumberOfShards == currentNumberOfUploadedShards)
                         {
-                            SendNotification(FinishUploadFile, localFilePath, null);
+                            this.Info($"Finished uploading file: {localFilePath}");
 
                             string[] orderedShardIDs = new string[uploadEvents.Count];
                             string[] orderedShardHashes = new string[uploadEvents.Count];
@@ -251,7 +241,7 @@ namespace B2BackupUtility.Proxies
                             {
                                 if (TryUploadFileDatabaseManifest(authorizationSessionGenerator()) == false)
                                 {
-                                    SendNotification(FailedToUploadFileManifest, null, null);
+                                    this.Critical("Failed to upload file manifest. Going to do it on the next try");
                                     uploadedManifest = true;
                                 }
                             }
@@ -259,7 +249,7 @@ namespace B2BackupUtility.Proxies
                         else
                         {
                             double percentFinished = (double)currentNumberOfUploadedShards / totalNumberOfShards * 100.0;
-                            SendNotification(UploadProgress, $"{localFilePath} - {percentFinished:N2}% uploaded", null);
+                            this.Info($"{localFilePath} - {percentFinished:N2}% uploaded");
                         }
                     }
                 }
@@ -268,11 +258,7 @@ namespace B2BackupUtility.Proxies
                 {
                     lock (localLockObject)
                     {
-                        SendNotification(
-                            FileTierChanged,
-                            $"{uploadIDsToLocalFilePath[eventArgs.UploadID]} -> {eventArgs.NewUploadTier}",
-                            null
-                        );
+                        this.Warning($"File tier changed. {uploadIDsToLocalFilePath[eventArgs.UploadID]} -> {eventArgs.NewUploadTier}");
                     }
                 }
 
@@ -300,11 +286,12 @@ namespace B2BackupUtility.Proxies
                 // Ensure that we've uploaded the file manifest and if not upload it again
                 if (uploadedManifest == false)
                 {
-                    SendNotification(UploadingFileManifest, "Uploading file manifest", null);
+                    this.Verbose("Uploading file mainfest");
                     while (TryUploadFileDatabaseManifest(authorizationSessionGenerator()) == false)
                     {
                         Thread.Sleep(TimeSpan.FromSeconds(10));
                     }
+                    this.Verbose("Successfully uploaded file manifest");
                 }
             }
         }

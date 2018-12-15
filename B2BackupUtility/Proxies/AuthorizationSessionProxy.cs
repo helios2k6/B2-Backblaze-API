@@ -22,6 +22,7 @@
 using B2BackblazeBridge.Actions;
 using B2BackblazeBridge.Core;
 using B2BackupUtility.Proxies.Exceptions;
+using B2BackupUtility.Utils;
 using PureMVC.Patterns.Proxy;
 using System;
 
@@ -30,7 +31,7 @@ namespace B2BackupUtility.Proxies
     /// <summary>
     /// A proxy for the authorization session for this program
     /// </summary>
-    public sealed class AuthorizationSessionProxy : Proxy
+    public sealed class AuthorizationSessionProxy : Proxy, ILogNotifier
     {
         #region private fields
         private static TimeSpan OneHour => TimeSpan.FromMinutes(60);
@@ -83,6 +84,7 @@ namespace B2BackupUtility.Proxies
         /// <param name="applicationKey">The application key</param>
         private BackblazeB2AuthorizationSession CreateNewAuthorizationSession()
         {
+            this.Debug("Creating new authorization session");
             AuthorizeAccountAction authorizeAccountAction =
                 new AuthorizeAccountAction(_config.ApplicationKeyID, _config.ApplicationKey);
             BackblazeB2ActionResult<BackblazeB2AuthorizationSession> authorizationSessionResult = authorizeAccountAction.Execute();

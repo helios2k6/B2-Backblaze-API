@@ -20,6 +20,7 @@
  */
 
 using B2BackupUtility.Proxies;
+using B2BackupUtility.Utils;
 using PureMVC.Interfaces;
 using PureMVC.Patterns.Command;
 
@@ -28,7 +29,7 @@ namespace B2BackupUtility.Commands
     /// <summary>
     /// Initializes the the download proxy
     /// </summary>
-    public sealed class InitializeDownloadProxy : SimpleCommand
+    public sealed class InitializeDownloadProxy : SimpleCommand, ILogNotifier
     {
         #region public properties
         public static string CommandNotification => "Initialize Download Arguments";
@@ -37,6 +38,7 @@ namespace B2BackupUtility.Commands
         #region public methods
         public override void Execute(INotification notification)
         {
+            this.Debug(CommandNotification);
             ConfigProxy configProxy = (ConfigProxy)Facade.RetrieveProxy(ConfigProxy.Name);
             Facade.RegisterProxy(new DownloadFileProxy(configProxy.Config));
         }

@@ -19,6 +19,7 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+using B2BackupUtility.Utils;
 using PureMVC.Patterns.Command;
 
 namespace B2BackupUtility.Commands
@@ -26,7 +27,7 @@ namespace B2BackupUtility.Commands
     /// <summary>
     /// Starts this application
     /// </summary>
-    public sealed class StartApplication : MacroCommand
+    public sealed class StartApplication : MacroCommand, ILogNotifier
     {
         #region public properties
         public static string CommandNotification => "Start Application";
@@ -38,6 +39,7 @@ namespace B2BackupUtility.Commands
             AddSubCommand(() => new InitializeProgramArguments());
             AddSubCommand(() => new InitializeView());
             AddSubCommand(() => new StartSelectedProgram());
+            this.Debug("Started the application");
         }
         #endregion
     }

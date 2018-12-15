@@ -22,6 +22,7 @@
 using B2BackblazeBridge.Actions;
 using B2BackblazeBridge.Core;
 using B2BackupUtility.Proxies.Exceptions;
+using B2BackupUtility.Utils;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -31,14 +32,10 @@ using static B2BackblazeBridge.Core.BackblazeB2ListFilesResult;
 
 namespace B2BackupUtility.Proxies
 {
-    public sealed class DeleteFileProxy : BaseRemoteFileSystemProxy
+    public sealed class DeleteFileProxy : BaseRemoteFileSystemProxy, ILogNotifier
     {
         #region public properties
         public static string Name => "Delete File Proxy";
-
-        public static string BeginDeletingFile => "Begin Deleting File";
-        public static string FailedToDeleteFile => "Failed To Delete File";
-        public static string FinishedDeletingFile => "Finished Deleting File";
         #endregion
 
         #region ctor
@@ -59,18 +56,13 @@ namespace B2BackupUtility.Proxies
         /// <param name="authorizationSessionGenerator">A generator function for the authorization session</param>
         public void DeleteAllFiles(Func<BackblazeB2AuthorizationSession> authorizationSessionGenerator)
         {
+            this.Debug("Begin deleting all files");
             RemoveAllFiles();
             IEnumerable<FileResult> rawB2FileList = GetRawB2FileNames(authorizationSessionGenerator());
             object lockObject = new object();
             Parallel.ForEach(rawB2FileList, rawB2File =>
             {
                 CancellationEventRouter.GlobalCancellationToken.ThrowIfCancellationRequested();
-
-                lock (lockObject)
-                {
-                    SendNotification(BeginDeletingFile, rawB2File.FileName, null);
-                }
-
                 DeleteFileAction deleteFileAction =
                     new DeleteFileAction(authorizationSessionGenerator(), rawB2File.FileID, rawB2File.FileName);
                 BackblazeB2ActionResult<BackblazeB2DeleteFileResult> deletionResult = deleteFileAction.Execute();
@@ -78,14 +70,14 @@ namespace B2BackupUtility.Proxies
                 {
                     lock (lockObject)
                     {
-                        SendNotification(FailedToDeleteFile, deletionResult, null);
+                        this.Critical($"Failed to delete file {rawB2File.FileName}. Reason: {deletionResult}");
                     }
                 }
                 else
                 {
                     lock (lockObject)
                     {
-                        SendNotification(FinishedDeletingFile, rawB2File.FileName, null);
+                        this.Info($"Deleted file: {rawB2File.FileName}");
                     }
                 }
             });
@@ -101,6 +93,7 @@ namespace B2BackupUtility.Proxies
             Database.File file
         )
         {
+            this.Debug($"Begin deleting file: {file.FileName}");
             // Remove entry in the File Manifest
             RemoveFile(file);
 
@@ -129,7 +122,6 @@ namespace B2BackupUtility.Proxies
                 IEnumerable<FileResult> rawB2FileList = listFilesActionResult.Result.Files;
                 IDictionary<string, FileResult> fileNameToFileResult = rawB2FileList.ToDictionary(k => k.FileName, v => v);
 
-                SendNotification(BeginDeletingFile, file.FileName, null);
                 foreach (string shardID in file.FileShardIDs)
                 {
                     if (fileNameToFileResult.TryGetValue(shardID, out FileResult fileShardToDelete))
@@ -140,7 +132,7 @@ namespace B2BackupUtility.Proxies
                         BackblazeB2ActionResult<BackblazeB2DeleteFileResult> deletionResult = deleteFileAction.Execute();
                         if (deletionResult.HasErrors)
                         {
-                            SendNotification(FailedToDeleteFile, deletionResult, null);
+                            this.Critical($"Failed to delete file. Reason: {deletionResult}");
                         }
                     }
                 }
@@ -151,7 +143,7 @@ namespace B2BackupUtility.Proxies
                 Thread.Sleep(5);
             }
 
-            SendNotification(FinishedDeletingFile, file.FileName, null);
+            this.Info($"Deleted file: {file.FileName}");
         }
         #endregion
     }

@@ -20,6 +20,7 @@
  */
 
 using B2BackupUtility.Proxies;
+using B2BackupUtility.Utils;
 using PureMVC.Interfaces;
 using PureMVC.Patterns.Command;
 
@@ -28,15 +29,13 @@ namespace B2BackupUtility.Commands
     /// <summary>
     /// Renames a file in the file database manifest
     /// </summary>
-    public sealed class RenameFile : SimpleCommand
+    public sealed class RenameFile : SimpleCommand, ILogNotifier
     {
         #region private fields
         #endregion
 
         #region public properties
         public static string CommandNotification => "Rename File";
-
-        public static string FinishedCommandNotification => "Finished Renaming File";
 
         public static string CommandSwitch => "--rename-file";
 
@@ -50,6 +49,7 @@ namespace B2BackupUtility.Commands
         #region public methods
         public override void Execute(INotification notification)
         {
+            this.Debug(CommandNotification);
             Database.File file = GetFile();
             string newFileName = GetNewFileName();
             AuthorizationSessionProxy authorizationProxy = (AuthorizationSessionProxy)Facade.RetrieveProxy(AuthorizationSessionProxy.Name);

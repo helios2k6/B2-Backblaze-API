@@ -23,12 +23,13 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using B2BackupUtility.Proxies;
+using B2BackupUtility.Utils;
 using PureMVC.Interfaces;
 using PureMVC.Patterns.Command;
 
 namespace B2BackupUtility.Commands
 {
-    public sealed class DownloadFiles : SimpleCommand
+    public sealed class DownloadFiles : SimpleCommand, ILogNotifier
     {
         #region public properties
         public static string CommandNotification => "Download Files";
@@ -45,6 +46,7 @@ namespace B2BackupUtility.Commands
         #region public methods
         public override void Execute(INotification notification)
         {
+            this.Debug(CommandNotification);
             AuthorizationSessionProxy authorizationProxy =
                 (AuthorizationSessionProxy)Facade.RetrieveProxy(AuthorizationSessionProxy.Name);
             DownloadFileProxy downloadFileProxy = (DownloadFileProxy)Facade.RetrieveProxy(DownloadFileProxy.Name);
@@ -59,7 +61,7 @@ namespace B2BackupUtility.Commands
                 );
             }
 
-            SendNotification(FinishedCommandNotification, null, null);
+            this.Info(FinishedCommandNotification);
         }
         #endregion
 
@@ -91,6 +93,7 @@ namespace B2BackupUtility.Commands
 
         private IEnumerable<Database.File> GetFilesToDownload()
         {
+            this.Debug("Getting files to download");
             ProgramArgumentsProxy programArgsProxy = (ProgramArgumentsProxy)Facade.RetrieveProxy(ProgramArgumentsProxy.Name);
             IEnumerable<string> fileIDs = programArgsProxy.GetArgsUntilNextSwitch(FileIDsOption);
 
@@ -111,7 +114,7 @@ namespace B2BackupUtility.Commands
                         $"Could not find file entry for file ID {fileID}"
                     );
                 }
-
+                this.Debug($"Adding file: {file}");
                 databaseFiles.Add(file);
             }
 

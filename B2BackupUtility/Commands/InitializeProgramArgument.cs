@@ -20,6 +20,7 @@
  */
 
 using B2BackupUtility.Proxies;
+using B2BackupUtility.Utils;
 using PureMVC.Interfaces;
 using PureMVC.Patterns.Command;
 using System.Collections.Generic;
@@ -29,7 +30,7 @@ namespace B2BackupUtility.Commands
     /// <summary>
     /// Initialize the program arguments proxy
     /// </summary>
-    public sealed class InitializeProgramArguments : SimpleCommand
+    public sealed class InitializeProgramArguments : SimpleCommand, ILogNotifier
     {
         #region public properties
         public static string CommandNotification => "Initialize Program Arguments";

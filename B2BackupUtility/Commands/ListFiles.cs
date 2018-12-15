@@ -20,6 +20,7 @@
  */
 
 using B2BackupUtility.Proxies;
+using B2BackupUtility.Utils;
 using PureMVC.Interfaces;
 using PureMVC.Patterns.Command;
 using System.Collections.Generic;
@@ -31,12 +32,10 @@ namespace B2BackupUtility.Commands
     /// <summary>
     /// This lists the files that are currently on the server
     /// </summary>
-    public sealed class ListFiles : SimpleCommand
+    public sealed class ListFiles : SimpleCommand, ILogNotifier
     {
         #region public properties
         public static string CommandNotification => "List Files";
-
-        public static string AllFilesListNotification => "All Files List";
 
         public static string CommandSwitch => "--list-files";
 
@@ -46,8 +45,9 @@ namespace B2BackupUtility.Commands
         #region public methods
         public override void Execute(INotification notification)
         {
+            this.Debug(CommandNotification);
             RemoteFileSystemProxy remoteFileSystemProxy = (RemoteFileSystemProxy)Facade.RetrieveProxy(RemoteFileSystemProxy.Name);
-            SendNotification(AllFilesListNotification, BuildStringFromFiles(remoteFileSystemProxy.AllFiles), null);
+            this.Info(BuildStringFromFiles(remoteFileSystemProxy.AllFiles));
         }
         #endregion
 

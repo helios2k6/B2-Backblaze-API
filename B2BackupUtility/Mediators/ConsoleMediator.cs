@@ -20,14 +20,11 @@
  */
 
 using B2BackblazeBridge.Core;
-using B2BackupUtility.Commands;
-using B2BackupUtility.Proxies;
 using B2BackupUtility.Proxies.Exceptions;
 using PureMVC.Interfaces;
 using PureMVC.Patterns.Mediator;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text;
 
 namespace B2BackupUtility.Mediators
@@ -38,69 +35,6 @@ namespace B2BackupUtility.Mediators
     public sealed class ConsoleMediator : Mediator
     {
         #region private fields
-        private static readonly IDictionary<string, LogLevel> NotifLogLevels = new Dictionary<string, LogLevel>
-        {
-            // Critical messsages
-            { CancellationEventRouter.CancellationEvent, LogLevel.CRITICAL },
-            { CancellationEventRouter.ImmediateCancellationEvent, LogLevel.CRITICAL },
-            { PrintHelp.HelpStringNotification, LogLevel.CRITICAL },
-            { StartSelectedProgram.FailedCommandNotification, LogLevel.CRITICAL },
-
-            // Warning messages
-            { DeleteFileProxy.FailedToDeleteFile, LogLevel.WARNING},
-            { UploadFileProxy.FailedToUploadFile, LogLevel.WARNING },
-            { UploadFileProxy.FailedToUploadFileManifest, LogLevel.WARNING },
-            { PruneFileShardProxy.FailedToPruneFile, LogLevel.WARNING },
-
-            // Info level messages
-            { CheckFileManifestProxy.BeginCheckFileManifest, LogLevel.INFO },
-            { CheckFileManifestProxy.ShardIDNotAccountedFor, LogLevel.INFO },
-            { CheckFileManifestProxy.FinishedCheckFileManifest, LogLevel.INFO },
-            { CompactShardsProxy.BeginCompactingShards, LogLevel.INFO },
-            { CompactShardsProxy.CompactingFileShards, LogLevel.INFO },
-            { CompactShardsProxy.FinishedCompactingShards, LogLevel.INFO },
-            { DeleteFileProxy.FinishedDeletingFile, LogLevel.INFO },
-            { DeleteFiles.FinishedCommandNotification, LogLevel.INFO },
-            { DownloadFile.FinishedCommandNotification, LogLevel.INFO },
-            { DownloadFileProxy.DownloadedShard, LogLevel.INFO },
-            { DownloadFiles.FinishedCommandNotification, LogLevel.INFO },
-            { GenerateEncryptionKey.EncryptionKeyNotification, LogLevel.INFO },
-            { GenerateEncryptionKey.InitializationVectorNotification, LogLevel.INFO },
-            { ListFiles.AllFilesListNotification, LogLevel.INFO },
-            { PruneFileShardProxy.FinishedPruningFile, LogLevel.INFO },
-            { UploadFileProxy.BeginUploadFile, LogLevel.INFO },
-            { UploadFileProxy.FinishUploadFile, LogLevel.INFO },
-            { UploadFileProxy.FileTierChanged, LogLevel.INFO },
-            { UploadFileProxy.SkippedUploadFile, LogLevel.INFO },
-            { UploadFileProxy.UploadFolderDryRun, LogLevel.INFO },
-            { UploadFileProxy.UploadProgress, LogLevel.INFO },
-            { UploadFileProxy.UploadingFileManifest, LogLevel.INFO },
-
-            // Verbose messages
-            { DeleteFileProxy.BeginDeletingFile, LogLevel.VERBOSE },
-
-            // Debug messages
-            { CheckFileManifest.CommandNotification, LogLevel.DEBUG },
-            { DeleteAllFiles.CommandNotification, LogLevel.DEBUG },
-            { DeleteFile.CommandNotification, LogLevel.DEBUG },
-            { DeleteFiles.CommandNotification, LogLevel.DEBUG },
-            { DownloadFile.CommandNotification, LogLevel.DEBUG },
-            { DownloadFileManifest.CommandNotification, LogLevel.DEBUG },
-            { DownloadFiles.CommandNotification, LogLevel.DEBUG },
-            { GenerateEncryptionKey.CommandNotification, LogLevel.DEBUG },
-            { InitializeAuthorizationSession.CommandNotification, LogLevel.DEBUG },
-            { InitializeConfig.CommandNotification, LogLevel.DEBUG },
-            { InitializeDownloadProxy.CommandNotification, LogLevel.DEBUG },
-            { InitializeModel.CommandNotification, LogLevel.DEBUG },
-            { InitializeRemoteFileSystem.CommandNotification, LogLevel.DEBUG },
-            { ListFiles.CommandNotification, LogLevel.DEBUG },
-            { PrintHelp.CommandNotification, LogLevel.DEBUG },
-            { PruneFileShardProxy.BeginPruneFile, LogLevel.DEBUG },
-            { StartSelectedProgram.CommandNotification, LogLevel.DEBUG },
-            { UploadFile.CommandNotification, LogLevel.DEBUG },
-            { UploadFolder.CommandNotification, LogLevel.DEBUG },
-        };
-
         private static readonly IDictionary<LogLevel, string> LogLevelToPrefix = new Dictionary<LogLevel, string>
         {
             { LogLevel.DEBUG, "DEBUG" },
@@ -112,6 +46,8 @@ namespace B2BackupUtility.Mediators
         #endregion
 
         #region public properties
+        public static string ConsoleLogNotification => "Console Log";
+
         public static string Name => "Console Mediator";
 
         public static string DebugLevelSwitch => "--debug";
@@ -135,17 +71,20 @@ namespace B2BackupUtility.Mediators
         #region public methods
         public override void HandleNotification(INotification notification)
         {
-            if (NotifLogLevels.TryGetValue(notification.Name, out LogLevel logLevel) && _logLevel <= logLevel)
+            if (notification.Name.Equals(ConsoleLogNotification, StringComparison.Ordinal))
             {
-                string messageFromNotification = GetLogMessageFromNotification(notification);
-                string connector = string.IsNullOrWhiteSpace(messageFromNotification) ? string.Empty : " - ";
-                Console.Error.WriteLine($"[{LogLevelToPrefix[logLevel]}][{DateTime.Now}][{notification.Name}]{connector}{messageFromNotification}");
+                if (Enum.TryParse(notification.Type, out LogLevel logLevel))
+                {
+                    string messageFromNotification = GetLogMessageFromNotification(notification);
+                    string connector = string.IsNullOrWhiteSpace(messageFromNotification) ? string.Empty : " - ";
+                    Console.Error.WriteLine($"[{LogLevelToPrefix[logLevel]}][{DateTime.Now}]{connector}{messageFromNotification}");
+                }
             }
         }
 
         public override string[] ListNotificationInterests()
         {
-            return NotifLogLevels.Keys.ToArray();
+            return new[] { ConsoleLogNotification };
         }
         #endregion
 

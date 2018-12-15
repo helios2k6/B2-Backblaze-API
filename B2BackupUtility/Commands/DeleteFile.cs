@@ -20,6 +20,7 @@
  */
 
 using B2BackupUtility.Proxies;
+using B2BackupUtility.Utils;
 using PureMVC.Interfaces;
 using PureMVC.Patterns.Command;
 using System;
@@ -29,7 +30,7 @@ namespace B2BackupUtility.Commands
     /// <summary>
     /// The Delete File command 
     /// </summary>
-    public sealed class DeleteFile : SimpleCommand
+    public sealed class DeleteFile : SimpleCommand, ILogNotifier
     {
         #region public properties
         public static string CommandNotification => "Delete File";
@@ -46,6 +47,7 @@ namespace B2BackupUtility.Commands
         #region public methods
         public override void Execute(INotification notification)
         {
+            this.Debug(CommandNotification);
             AuthorizationSessionProxy authorizationSessionProxy = (AuthorizationSessionProxy)Facade.RetrieveProxy(AuthorizationSessionProxy.Name);
             DeleteFileProxy deleteFileProxy = (DeleteFileProxy)Facade.RetrieveProxy(DeleteFileProxy.Name);
 
@@ -56,6 +58,7 @@ namespace B2BackupUtility.Commands
         #region private methods
         private Database.File GetFileToDelete()
         {
+            this.Debug("Getting file to delete");
             ProgramArgumentsProxy programArgsProxy = (ProgramArgumentsProxy)Facade.RetrieveProxy(ProgramArgumentsProxy.Name);
             bool hasFileID = programArgsProxy.TryGetArgument(FileIDOption, out string fileToDeleteByID);
             bool hasFileName = programArgsProxy.TryGetArgument(FileNameOption, out string fileToDeleteByName);

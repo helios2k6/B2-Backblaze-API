@@ -20,6 +20,7 @@
  */
 
 using B2BackupUtility.Proxies;
+using B2BackupUtility.Utils;
 using PureMVC.Interfaces;
 using PureMVC.Patterns.Command;
 
@@ -28,7 +29,7 @@ namespace B2BackupUtility.Commands
     /// <summary>
     /// Downloads the file manifest
     /// </summary>
-    public sealed class DownloadFileManifest : SimpleCommand
+    public sealed class DownloadFileManifest : SimpleCommand, ILogNotifier
     {
         #region public properties
         public static string CommandNotification => "Download File Manifest";
@@ -43,6 +44,7 @@ namespace B2BackupUtility.Commands
         #region public methods
         public override void Execute(INotification notification)
         {
+            this.Debug(CommandNotification);
             DownloadFileManifestProxy proxy = (DownloadFileManifestProxy)Facade.RetrieveProxy(DownloadFileManifestProxy.Name);
             proxy.DownloadFileManifest();
         }

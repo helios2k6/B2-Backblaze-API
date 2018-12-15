@@ -20,7 +20,9 @@
  */
 using B2BackblazeBridge.Actions;
 using B2BackblazeBridge.Core;
+using B2BackupUtility.Mediators;
 using B2BackupUtility.Proxies.Exceptions;
+using B2BackupUtility.Utils;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -31,14 +33,10 @@ namespace B2BackupUtility.Proxies
     /// <summary>
     /// Proxy that checks the integrity of the file shards on the B2 server
     /// </summary>
-    public sealed class CheckFileManifestProxy : BaseRemoteFileSystemProxy
+    public sealed class CheckFileManifestProxy : BaseRemoteFileSystemProxy, ILogNotifier
     {
         #region public properties
         public static string Name => "Check File Manifest Proxy";
-
-        public static string BeginCheckFileManifest => "Begin Check File Manifest";
-        public static string ShardIDNotAccountedFor => "Shard ID Not Accounted For";
-        public static string FinishedCheckFileManifest => "Finished Check File Manifest";
         #endregion
 
         #region ctor
@@ -57,7 +55,7 @@ namespace B2BackupUtility.Proxies
         /// <param name="authorizationSessionGenerator">The generator for an authorization session</param>
         public void CheckFileManifest(Func<BackblazeB2AuthorizationSession> authorizationSessionGenerator)
         {
-            SendNotification(BeginCheckFileManifest, null, null);
+            this.Info("Checking file manifest");
             // Get just the file names on the server
             ListFilesAction listFilesAction = ListFilesAction.CreateListFileActionForFileNames(authorizationSessionGenerator(), Config.BucketID, true);
             BackblazeB2ActionResult<BackblazeB2ListFilesResult> listFilesActionResult = listFilesAction.Execute();
@@ -98,16 +96,16 @@ namespace B2BackupUtility.Proxies
                 {
                     stringBuilder.Append($"{file} | ");
                 }
-                SendNotification(ShardIDNotAccountedFor, $"Shard ID {shardIDNotAccountedFor} for file(s): {stringBuilder.ToString()}", null);
+                this.Critical($"Shard ID {shardIDNotAccountedFor} for file(s): {stringBuilder.ToString()}");
             }
 
             if (allShardIDsAccountedFor)
             {
-                SendNotification(FinishedCheckFileManifest, "All Shard IDs Accounted For", null);
+                this.Info("All Shard IDs accounted for");
             }
             else
             {
-                SendNotification(FinishedCheckFileManifest, "Some Shard IDs Are Not Accounted For", null);
+                this.Info("Some Shard IDs Are Not Accounted For");
             }
         }
         #endregion

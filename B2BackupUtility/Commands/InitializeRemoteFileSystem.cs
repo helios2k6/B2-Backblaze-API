@@ -21,6 +21,7 @@
 
 using B2BackblazeBridge.Core;
 using B2BackupUtility.Proxies;
+using B2BackupUtility.Utils;
 using PureMVC.Interfaces;
 using PureMVC.Patterns.Command;
 
@@ -29,7 +30,7 @@ namespace B2BackupUtility.Commands
     /// <summary>
     /// Initializes all remote file system proxies
     /// </summary>
-    public sealed class InitializeRemoteFileSystem : SimpleCommand
+    public sealed class InitializeRemoteFileSystem : SimpleCommand, ILogNotifier
     {
         #region public properties
         public static string CommandNotification => "Initialize File Database Manifest";
@@ -38,6 +39,7 @@ namespace B2BackupUtility.Commands
         #region public methods
         public override void Execute(INotification notification)
         {
+            this.Debug(CommandNotification);
             AuthorizationSessionProxy authorizationSessionProxy = (AuthorizationSessionProxy)Facade.RetrieveProxy(AuthorizationSessionProxy.Name);
             ConfigProxy configProxy = (ConfigProxy)Facade.RetrieveProxy(ConfigProxy.Name);
 

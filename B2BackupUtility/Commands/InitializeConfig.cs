@@ -20,6 +20,7 @@
  */
 
 using B2BackupUtility.Proxies;
+using B2BackupUtility.Utils;
 using PureMVC.Interfaces;
 using PureMVC.Patterns.Command;
 
@@ -28,7 +29,7 @@ namespace B2BackupUtility.Commands
     /// <summary>
     /// This command initializes the config proxy
     /// </summary>
-    public sealed class InitializeConfig : SimpleCommand
+    public sealed class InitializeConfig : SimpleCommand, ILogNotifier
     {
         #region public properties
         public static string CommandNotification => "Initialize Config";
@@ -39,6 +40,7 @@ namespace B2BackupUtility.Commands
         #region public methods
         public override void Execute(INotification notification)
         {
+            this.Debug(CommandNotification);
             ProgramArgumentsProxy argProxy = (ProgramArgumentsProxy)Facade.RetrieveProxy(ProgramArgumentsProxy.Name);
             if (argProxy.TryGetArgument(CommandOption, out string configArgument))
             {

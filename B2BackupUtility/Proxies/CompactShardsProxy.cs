@@ -20,6 +20,7 @@
  */
 
 using B2BackblazeBridge.Core;
+using B2BackupUtility.Utils;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -31,16 +32,10 @@ namespace B2BackupUtility.Proxies
     /// Proxy that will compact duplicate files by redirecting their shards to a common
     /// set of shards
     /// </summary>
-    public sealed class CompactShardsProxy : BaseRemoteFileSystemProxy
+    public sealed class CompactShardsProxy : BaseRemoteFileSystemProxy, ILogNotifier
     {
         #region public properties
         public static string Name => "Compact Shards Proxy";
-
-        public static string BeginCompactingShards => "Begin compacting shards";
-
-        public static string CompactingFileShards => "Compacting file shards";
-
-        public static string FinishedCompactingShards => "Finished compacting shards";
         #endregion
 
         #region ctor
@@ -58,7 +53,7 @@ namespace B2BackupUtility.Proxies
             bool dryRun
         )
         {
-            SendNotification(BeginCompactingShards, null, null);
+            this.Debug("Compacting file shards");
             ISet<ISet<Database.File>> fileGroupsByContents = new HashSet<ISet<Database.File>>();
             foreach (Database.File file in FileDatabaseManifestFiles)
             {
@@ -94,7 +89,7 @@ namespace B2BackupUtility.Proxies
                 Database.File prototypeFile = fileGroup.First();
                 foreach (Database.File otherFile in fileGroup.Where(f => ReferenceEquals(f, prototypeFile) == false))
                 {
-                    SendNotification(CompactingFileShards, $"{otherFile.FileName} compacted with {prototypeFile.FileName}", null);
+                    this.Verbose($"{otherFile.FileName} is now using shards from {prototypeFile.FileName}");
                     RemoveFile(otherFile);
                     otherFile.FileShardIDs = prototypeFile.FileShardIDs;
                     AddFile(otherFile);
@@ -109,7 +104,7 @@ namespace B2BackupUtility.Proxies
                 }
             }
 
-            SendNotification(FinishedCompactingShards, null, null);
+            this.Info("Finished compacting file shards");
         }
         #endregion
     }

@@ -20,6 +20,7 @@
  */
 
 using B2BackupUtility.Proxies;
+using B2BackupUtility.Utils;
 using PureMVC.Interfaces;
 using PureMVC.Patterns.Command;
 using System;
@@ -29,7 +30,7 @@ namespace B2BackupUtility.Commands
     /// <summary>
     /// Initializes the authorization session
     /// </summary>
-    public sealed class InitializeAuthorizationSession : SimpleCommand
+    public sealed class InitializeAuthorizationSession : SimpleCommand, ILogNotifier
     {
         #region private static properties
         private static TimeSpan OneHour => TimeSpan.FromMinutes(60);
@@ -42,6 +43,7 @@ namespace B2BackupUtility.Commands
         #region public methods
         public override void Execute(INotification notification)
         {
+            this.Debug(CommandNotification);
             ConfigProxy configProxy = (ConfigProxy)Facade.RetrieveProxy(ConfigProxy.Name);
             Facade.RegisterProxy(new AuthorizationSessionProxy(configProxy.Config));
         }

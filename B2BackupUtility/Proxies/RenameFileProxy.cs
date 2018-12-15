@@ -21,6 +21,7 @@
 
 using B2BackblazeBridge.Core;
 using B2BackupUtility.Proxies.Exceptions;
+using B2BackupUtility.Utils;
 using System.Threading;
 
 namespace B2BackupUtility.Proxies
@@ -28,7 +29,7 @@ namespace B2BackupUtility.Proxies
     /// <summary>
     /// Proxy for renaming a file in the file manifest
     /// </summary>
-    public sealed class RenameFileProxy : BaseRemoteFileSystemProxy
+    public sealed class RenameFileProxy : BaseRemoteFileSystemProxy, ILogNotifier
     {
         #region public properties
         public static string Name => "Rename File Proxy";
@@ -55,6 +56,7 @@ namespace B2BackupUtility.Proxies
             string newFilePath
         )
         {
+            this.Info($"Renaming file: {file.FileName} -> {newFilePath}");
             // Ensure that the new file name doesn't conflict with something else
             if (TryGetFileByName(newFilePath, out Database.File _))
             {
@@ -68,6 +70,7 @@ namespace B2BackupUtility.Proxies
             {
                 Thread.Sleep(5);
             };
+            this.Info("Finished renaming file");
         }
         #endregion
     }

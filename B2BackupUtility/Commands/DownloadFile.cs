@@ -20,6 +20,7 @@
  */
 
 using B2BackupUtility.Proxies;
+using B2BackupUtility.Utils;
 using PureMVC.Interfaces;
 using PureMVC.Patterns.Command;
 using System;
@@ -30,7 +31,7 @@ namespace B2BackupUtility.Commands
     /// <summary>
     /// Download a file from the B2 Backblaze server
     /// </summary>
-    public sealed class DownloadFile : SimpleCommand
+    public sealed class DownloadFile : SimpleCommand, ILogNotifier
     {
         #region public properties
         public static string CommandNotification => "Download File";
@@ -51,19 +52,21 @@ namespace B2BackupUtility.Commands
         #region public methods
         public override void Execute(INotification notification)
         {
+            this.Debug(CommandNotification);
             AuthorizationSessionProxy authorizationProxy = (AuthorizationSessionProxy)Facade.RetrieveProxy(AuthorizationSessionProxy.Name);
             Database.File fileToDownload = GetFile();
             string localFileDestination = GetDestinationOfFile(fileToDownload);
 
             DownloadFileProxy downloadFileProxy = (DownloadFileProxy)Facade.RetrieveProxy(DownloadFileProxy.Name);
             downloadFileProxy.DownloadFile(authorizationProxy.AuthorizationSession, fileToDownload, localFileDestination);
-            SendNotification(FinishedCommandNotification, $"Finished downloading file {fileToDownload}", null);
+            this.Info($"Finished downloading file: {fileToDownload}");
         }
         #endregion
 
         #region private methods
         private string GetDestinationOfFile(Database.File remoteFileToDownload)
         {
+            this.Debug($"Getting destination of file {remoteFileToDownload}");
             ProgramArgumentsProxy programArgsProxy = (ProgramArgumentsProxy)Facade.RetrieveProxy(ProgramArgumentsProxy.Name);
             if (programArgsProxy.TryGetArgument(DestinationOption, out string localFileDestination) == false)
             {
@@ -72,12 +75,13 @@ namespace B2BackupUtility.Commands
                     Path.GetFileName(remoteFileToDownload.FileName)
                 );
             }
-
+            this.Debug($"Destination file is: {localFileDestination}");
             return localFileDestination;
         }
 
         private Database.File GetFile()
         {
+            this.Debug("Getting file to download");
             ProgramArgumentsProxy programArgsProxy = (ProgramArgumentsProxy)Facade.RetrieveProxy(ProgramArgumentsProxy.Name);
             bool hasFileID = programArgsProxy.TryGetArgument(FileIDOption, out string fileToDownloadByID);
             bool hasFileName = programArgsProxy.TryGetArgument(FileNameOption, out string fileToDownloadByName);
@@ -89,8 +93,10 @@ namespace B2BackupUtility.Commands
             RemoteFileSystemProxy remoteFileSystemProxy = (RemoteFileSystemProxy)Facade.RetrieveProxy(RemoteFileSystemProxy.Name);
             if (hasFileID)
             {
+                this.Debug("Searching by File ID");
                 if (remoteFileSystemProxy.TryGetFileByID(fileToDownloadByID, out Database.File file))
                 {
+                    this.Debug($"Found: {file}");
                     return file;
                 }
 
@@ -99,8 +105,10 @@ namespace B2BackupUtility.Commands
 
             if (hasFileName)
             {
+                this.Debug("Searching by file name");
                 if (remoteFileSystemProxy.TryGetFileByName(fileToDownloadByName, out Database.File file))
                 {
+                    this.Debug($"Found: {file}");
                     return file;
                 }
 

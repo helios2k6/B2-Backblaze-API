@@ -19,6 +19,7 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+using B2BackupUtility.Utils;
 using PureMVC.Patterns.Command;
 
 namespace B2BackupUtility.Commands
@@ -26,12 +27,13 @@ namespace B2BackupUtility.Commands
     /// <summary>
     /// Initializes the model
     /// </summary>
-    public sealed class InitializeModel : MacroCommand
+    public sealed class InitializeModel : MacroCommand, ILogNotifier
     {
         public static string CommandNotification => "Initialize All Program State";
 
         protected override void InitializeMacroCommand()
         {
+            this.Debug(CommandNotification);
             AddSubCommand(() => new InitializeConfig());
             AddSubCommand(() => new InitializeAuthorizationSession());
             AddSubCommand(() => new InitializeRemoteFileSystem());

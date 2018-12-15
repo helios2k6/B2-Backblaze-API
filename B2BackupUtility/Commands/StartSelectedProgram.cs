@@ -20,6 +20,7 @@
  */
 
 using B2BackupUtility.Proxies;
+using B2BackupUtility.Utils;
 using PureMVC.Interfaces;
 using PureMVC.Patterns.Command;
 using System;
@@ -31,7 +32,7 @@ namespace B2BackupUtility.Commands
     /// Selects the associated program command that was passed in
     /// (e.g. "--upload-file", "--list-files", etc...)
     /// </summary>
-    public sealed class StartSelectedProgram : SimpleCommand
+    public sealed class StartSelectedProgram : SimpleCommand, ILogNotifier
     {
         #region private static fields
         private static IDictionary<string, CommandType> CommandSwitchToActionMap => new Dictionary<string, CommandType>
@@ -71,24 +72,24 @@ namespace B2BackupUtility.Commands
 
         #region public properties
         public static string CommandNotification => "Start Selected Program Command";
-
-        public static string FailedCommandNotification => "Failed To Start Selected Program";
         #endregion
 
         #region public methods
         public override void Execute(INotification notification)
         {
+            this.Debug(CommandNotification);
             ProgramArgumentsProxy programArgsProxy = (ProgramArgumentsProxy)Facade.RetrieveProxy(ProgramArgumentsProxy.Name);
             CommandType command = CommandType.UNKNOWN;
             if (TryGetCommand(programArgsProxy.ProgramArguments, out command))
             {
+                this.Debug($"Got command: {command}");
                 InitializeModelIfNecessary(command);
                 HookUpCancellationToken(command);
                 SendNotification(CommandTypeToNotification[command], null, null);
             }
             else
             {
-                SendNotification(FailedCommandNotification, "Could not find command", null);
+                this.Critical("Could not find command");
                 SendNotification(PrintHelp.CommandNotification, null, null);
             }
         }

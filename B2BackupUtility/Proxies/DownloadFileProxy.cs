@@ -24,6 +24,7 @@ using B2BackblazeBridge.Core;
 using B2BackupUtility.Database;
 using B2BackupUtility.Encryption;
 using B2BackupUtility.Proxies.Exceptions;
+using B2BackupUtility.Utils;
 using Newtonsoft.Json;
 using PureMVC.Patterns.Proxy;
 using System;
@@ -41,7 +42,7 @@ namespace B2BackupUtility.Proxies
     /// <summary>
     /// Handles downloading and saving a file from the B2 Backblaze server
     /// </summary>
-    public sealed class DownloadFileProxy : Proxy
+    public sealed class DownloadFileProxy : Proxy, ILogNotifier
     {
         #region private fields
         private readonly IDictionary<Database.File, string> _fileToLocalFilePath;
@@ -50,8 +51,6 @@ namespace B2BackupUtility.Proxies
 
         #region public properties
         public static string Name => "Download File Proxy";
-
-        public static string DownloadedShard => "Downloaded Shard";
         #endregion
 
         #region ctor
@@ -79,6 +78,7 @@ namespace B2BackupUtility.Proxies
             string destination
         )
         {
+            this.Debug($"Downloading file: {file.FileName}");
             if (System.IO.File.Exists(destination))
             {
                 throw new InvalidOperationException($"Cannot override file {destination}.");
@@ -116,6 +116,10 @@ namespace B2BackupUtility.Proxies
                         BackblazeB2ActionResult<BackblazeB2DownloadFileResult> downloadResult = fileShardDownload.Execute();
                         if (downloadResult.HasErrors)
                         {
+                            lock (notificationLock)
+                            {
+                                this.Critical($"Exception occurred during downloading a file shard: {downloadResult}");
+                            }
                             loopState.Stop();
                             throw new FailedToDownloadFileException
                             {
@@ -126,7 +130,7 @@ namespace B2BackupUtility.Proxies
                         long totalDownloaded = Interlocked.Increment(ref currentShardsDownloaded);
                         lock (notificationLock)
                         {
-                            SendNotification(DownloadedShard, $"{file.FileName} download progress: {totalDownloaded} / {file.FileShardIDs.Length} downloaded", null);
+                            this.Info($"{file.FileName} download progress: {totalDownloaded} / {file.FileShardIDs.Length} downloaded");
                         }
                     }
                 }
@@ -140,8 +144,10 @@ namespace B2BackupUtility.Proxies
             long currentShard = 0;
             using (FileStream outputFileStream = System.IO.File.Create(destination))
             {
+                this.Info("Piecing file together");
                 foreach (string fileShardPath in localFileShardIDPathsAndIndices.OrderBy(t => t.Item2).Select(t => t.Item1))
                 {
+                    this.Verbose($"Adding shard: {currentShard}");
                     // Load the bytes into memory
                     byte[] decryptedBytes = EncryptionHelpers.DecryptBytes(
                         System.IO.File.ReadAllBytes(fileShardPath),
