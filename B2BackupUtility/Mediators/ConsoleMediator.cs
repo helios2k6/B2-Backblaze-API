@@ -71,14 +71,11 @@ namespace B2BackupUtility.Mediators
         #region public methods
         public override void HandleNotification(INotification notification)
         {
-            if (notification.Name.Equals(ConsoleLogNotification, StringComparison.Ordinal))
+            if (notification.Name.Equals(ConsoleLogNotification, StringComparison.Ordinal) && Enum.TryParse(notification.Type, out LogLevel logLevel) && logLevel >= _logLevel)
             {
-                if (Enum.TryParse(notification.Type, out LogLevel logLevel))
-                {
-                    string messageFromNotification = GetLogMessageFromNotification(notification);
-                    string connector = string.IsNullOrWhiteSpace(messageFromNotification) ? string.Empty : " - ";
-                    Console.Error.WriteLine($"[{LogLevelToPrefix[logLevel]}][{DateTime.Now}]{connector}{messageFromNotification}");
-                }
+                string messageFromNotification = GetLogMessageFromNotification(notification);
+                string connector = string.IsNullOrWhiteSpace(messageFromNotification) ? string.Empty : " - ";
+                Console.Error.WriteLine($"[{LogLevelToPrefix[logLevel]}][{DateTime.Now}]{connector}{messageFromNotification}");
             }
         }
 
