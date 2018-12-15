@@ -94,10 +94,10 @@ namespace B2BackupUtility.Proxies
         /// <summary>
         /// Deletes a file off the remote file system
         /// </summary>
-        /// <param name="authorizationSession">The authorization session</param>
+        /// <param name="authorizationSessionGenerator">The generator function that returns an authorization session</param>
         /// <param name="file">The file to delete</param>
         public void DeleteFile(
-            BackblazeB2AuthorizationSession authorizationSession,
+            Func<BackblazeB2AuthorizationSession> authorizationSessionGenerator,
             Database.File file
         )
         {
@@ -117,7 +117,7 @@ namespace B2BackupUtility.Proxies
             if (filesThatShareTheSameShards.Any() == false)
             {
                 // Get the raw B2 File List so we can get the B2 file IDs of the file shards
-                ListFilesAction listFilesAction = ListFilesAction.CreateListFileActionForFileNames(authorizationSession, Config.BucketID, true);
+                ListFilesAction listFilesAction = ListFilesAction.CreateListFileActionForFileNames(authorizationSessionGenerator(), Config.BucketID, true);
                 BackblazeB2ActionResult<BackblazeB2ListFilesResult> listFilesActionResult = listFilesAction.Execute();
                 if (listFilesActionResult.HasErrors)
                 {
@@ -135,7 +135,7 @@ namespace B2BackupUtility.Proxies
                     if (fileNameToFileResult.TryGetValue(shardID, out FileResult fileShardToDelete))
                     {
                         DeleteFileAction deleteFileAction =
-                            new DeleteFileAction(authorizationSession, fileShardToDelete.FileID, fileShardToDelete.FileName);
+                            new DeleteFileAction(authorizationSessionGenerator(), fileShardToDelete.FileID, fileShardToDelete.FileName);
 
                         BackblazeB2ActionResult<BackblazeB2DeleteFileResult> deletionResult = deleteFileAction.Execute();
                         if (deletionResult.HasErrors)
@@ -146,7 +146,7 @@ namespace B2BackupUtility.Proxies
                 }
             }
 
-            while (TryUploadFileDatabaseManifest(authorizationSession) == false)
+            while (TryUploadFileDatabaseManifest(authorizationSessionGenerator()) == false)
             {
                 Thread.Sleep(5);
             }

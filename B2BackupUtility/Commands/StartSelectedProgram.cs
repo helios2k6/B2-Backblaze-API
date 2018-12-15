@@ -39,7 +39,7 @@ namespace B2BackupUtility.Commands
             { CheckFileManifest.CommandSwitch, CommandType.CHECK_FILE_MANIFEST },
             { CompactShards.CommandSwitch, CommandType.COMPACT_SHARDS },
             { DeleteAllFiles.CommandSwitch, CommandType.DELETE_ALL_FILES },
-            { DeleteFile.CommandSwitch, CommandType.DELETE },
+            { DeleteFile.CommandSwitch, CommandType.DELETE_FILE },
             { DownloadFile.CommandSwitch, CommandType.DOWNLOAD_FILE },
             { DownloadFileManifest.CommandSwitch, CommandType.DOWNLOAD_FILE_MANIFEST },
             { DownloadFiles.CommandSwitch, CommandType.DOWNLOAD_FILES },

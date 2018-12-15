@@ -50,13 +50,17 @@ namespace B2BackupUtility.Commands
         /// </summary>
         DOWNLOAD_FILE_MANIFEST,
         /// <summary>
-        /// Delete file command
-        /// </summary>
-        DELETE,
-        /// <summary>
         /// Delete all files in the Bucket
         /// </summary>
         DELETE_ALL_FILES,
+        /// <summary>
+        /// Delete file command
+        /// </summary>
+        DELETE_FILE,
+        /// <summary>
+        /// Delete multiple files
+        /// </summary>
+        DELETE_FILES,
         /// <summary>
         /// Generate the encryption key and 
         /// initialization vector

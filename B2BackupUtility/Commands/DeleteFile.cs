@@ -40,7 +40,7 @@ namespace B2BackupUtility.Commands
 
         public static string FileIDOption => "--file-id";
 
-        public static CommandType CommandType => CommandType.DELETE;
+        public static CommandType CommandType => CommandType.DELETE_FILE;
         #endregion
 
         #region public methods
@@ -49,7 +49,7 @@ namespace B2BackupUtility.Commands
             AuthorizationSessionProxy authorizationSessionProxy = (AuthorizationSessionProxy)Facade.RetrieveProxy(AuthorizationSessionProxy.Name);
             DeleteFileProxy deleteFileProxy = (DeleteFileProxy)Facade.RetrieveProxy(DeleteFileProxy.Name);
 
-            deleteFileProxy.DeleteFile(authorizationSessionProxy.AuthorizationSession, GetFileToDelete());
+            deleteFileProxy.DeleteFile(() => authorizationSessionProxy.AuthorizationSession, GetFileToDelete());
         }
         #endregion
 

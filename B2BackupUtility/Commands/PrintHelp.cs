@@ -43,7 +43,7 @@ namespace B2BackupUtility.Commands
         #endregion
 
         #region private properties
-        private static string HeaderText => "B2 Backup Utility v8.2";
+        private static string HeaderText => "B2 Backup Utility v8.3";
 
         private static string InstructionText => "Usage: <this program> <necessary switches> <action> [options]";
 
@@ -64,6 +64,7 @@ namespace B2BackupUtility.Commands
             { CompactShards.CommandSwitch, new[] { CompactShards.DryRunOption } },
             { DeleteAllFiles.CommandSwitch, Enumerable.Empty<string>() },
             { DeleteFile.CommandSwitch, new[] { DeleteFile.FileNameOption, DeleteFile.FileIDOption } },
+            { DeleteFiles.CommandSwitch, new[] { DeleteFiles.FileIDsOption } },
             { DownloadFile.CommandSwitch, new[] { DownloadFile.FileNameOption, DownloadFile.FileIDOption, DownloadFile.DestinationOption } },
             { DownloadFileManifest.CommandSwitch, Enumerable.Empty<string>() },
             { DownloadFiles.CommandSwitch, new[] { DownloadFiles.FileIDsOption }},

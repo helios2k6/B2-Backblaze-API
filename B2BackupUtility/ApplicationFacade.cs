@@ -38,6 +38,7 @@ namespace B2BackupUtility
             RegisterCommand(CompactShards.CommandNotification, () => new CompactShards());
             RegisterCommand(DeleteAllFiles.CommandNotification, () => new DeleteAllFiles());
             RegisterCommand(DeleteFile.CommandNotification, () => new DeleteFile());
+            RegisterCommand(DeleteFiles.CommandNotification, () => new DeleteFiles());
             RegisterCommand(DownloadFile.CommandNotification, () => new DownloadFile());
             RegisterCommand(DownloadFileManifest.CommandNotification, () => new DownloadFileManifest());
             RegisterCommand(DownloadFiles.CommandNotification, () => new DownloadFiles());
