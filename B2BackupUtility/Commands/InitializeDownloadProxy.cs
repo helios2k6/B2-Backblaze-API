@@ -32,7 +32,7 @@ namespace B2BackupUtility.Commands
     public sealed class InitializeDownloadProxy : SimpleCommand, ILogNotifier
     {
         #region public properties
-        public static string CommandNotification => "Initialize Download Arguments";
+        public static string CommandNotification => "Initialize Download Proxy";
         #endregion
 
         #region public methods

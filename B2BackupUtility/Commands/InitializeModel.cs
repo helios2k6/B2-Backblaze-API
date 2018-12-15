@@ -29,7 +29,7 @@ namespace B2BackupUtility.Commands
     /// </summary>
     public sealed class InitializeModel : MacroCommand, ILogNotifier
     {
-        public static string CommandNotification => "Initialize All Program State";
+        public static string CommandNotification => "Initialize Model";
 
         protected override void InitializeMacroCommand()
         {

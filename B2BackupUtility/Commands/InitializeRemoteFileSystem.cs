@@ -33,7 +33,7 @@ namespace B2BackupUtility.Commands
     public sealed class InitializeRemoteFileSystem : SimpleCommand, ILogNotifier
     {
         #region public properties
-        public static string CommandNotification => "Initialize File Database Manifest";
+        public static string CommandNotification => "Initialize Remote File System";
         #endregion
 
         #region public methods
