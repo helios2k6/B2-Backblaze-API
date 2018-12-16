@@ -37,7 +37,9 @@ namespace B2BackupUtility.Commands
 
         public static string FileIDsOption => "--file-ids";
 
-        public static CommandType CommandType => CommandType.DOWNLOAD_FILES;
+        public static string DryRunOption => "--dry-run";
+
+        public static CommandType CommandType => CommandType.DELETE_FILES;
         #endregion
 
         #region public methods
@@ -47,10 +49,19 @@ namespace B2BackupUtility.Commands
             AuthorizationSessionProxy authorizationProxy =
                 (AuthorizationSessionProxy)Facade.RetrieveProxy(AuthorizationSessionProxy.Name);
             DeleteFileProxy deleteFileProxy = (DeleteFileProxy)Facade.RetrieveProxy(DeleteFileProxy.Name);
+            ProgramArgumentsProxy programArgsProxy = (ProgramArgumentsProxy)Facade.RetrieveProxy(ProgramArgumentsProxy.Name);
+            bool isDryRun = programArgsProxy.DoesOptionExist(DryRunOption);
             foreach (Database.File file in GetFilesToDelete())
             {
                 CancellationEventRouter.GlobalCancellationToken.ThrowIfCancellationRequested();
-                deleteFileProxy.DeleteFile(() => authorizationProxy.AuthorizationSession, file);
+                if (isDryRun == false)
+                {
+                    deleteFileProxy.DeleteFile(() => authorizationProxy.AuthorizationSession, file);
+                }
+                else
+                {
+                    this.Info($"[DRY-RUN|: Would have deleted file: {file.FileName}");
+                }
             }
 
             this.Info("Finished deleting all files");

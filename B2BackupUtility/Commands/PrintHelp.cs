@@ -63,7 +63,7 @@ namespace B2BackupUtility.Commands
             { CompactShards.CommandSwitch, new[] { CompactShards.DryRunOption } },
             { DeleteAllFiles.CommandSwitch, Enumerable.Empty<string>() },
             { DeleteFile.CommandSwitch, new[] { DeleteFile.FileNameOption, DeleteFile.FileIDOption } },
-            { DeleteFiles.CommandSwitch, new[] { DeleteFiles.FileIDsOption } },
+            { DeleteFiles.CommandSwitch, new[] { DeleteFiles.DryRunOption, DeleteFiles.FileIDsOption } },
             { DownloadFile.CommandSwitch, new[] { DownloadFile.FileNameOption, DownloadFile.FileIDOption, DownloadFile.DestinationOption } },
             { DownloadFileManifest.CommandSwitch, Enumerable.Empty<string>() },
             { DownloadFiles.CommandSwitch, new[] { DownloadFiles.FileIDsOption }},
