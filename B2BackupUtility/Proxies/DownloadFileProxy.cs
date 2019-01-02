@@ -138,6 +138,7 @@ namespace B2BackupUtility.Proxies
             FileResult remoteFile
         )
         {
+            this.Verbose($"Starting download of: {fileShardID}");
             using (DownloadFileAction fileShardDownload =
                 new DownloadFileAction(authorizationSession, filePathDestination, remoteFile.FileID))
             {
