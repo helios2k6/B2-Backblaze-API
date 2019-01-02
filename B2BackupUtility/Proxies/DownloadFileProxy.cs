@@ -110,6 +110,7 @@ namespace B2BackupUtility.Proxies
                     else
                     {
                         loopState.Stop();
+                        throw new FailedToDownloadFileException($"Could not download shard due to a B2 exception");
                     }
                 }
                 else
@@ -141,11 +142,10 @@ namespace B2BackupUtility.Proxies
                 BackblazeB2ActionResult<BackblazeB2DownloadFileResult> downloadResult = fileShardDownload.Execute();
                 if (downloadResult.HasErrors)
                 {
-                    this.Critical($"Exception occurred during downloading a file shard: {downloadResult}. Retrying later.");
+                    this.Critical($"Exception occurred during downloading a file shard: {downloadResult}.");
                     return false;
                 }
             }
-            this.Verbose($"Downloaded shard {fileShardID}");
             return true;
         }
 
