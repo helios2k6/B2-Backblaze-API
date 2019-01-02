@@ -78,60 +78,38 @@ namespace B2BackupUtility.Proxies
             string destination
         )
         {
-            this.Debug($"Downloading file: {file.FileName}");
+            this.Verbose($"Downloading file: {file.FileName}");
             if (System.IO.File.Exists(destination))
             {
                 throw new InvalidOperationException($"Cannot override file {destination}.");
             }
 
-            ListFilesAction listFilesAction = ListFilesAction.CreateListFileActionForFileNames(authorizationSession, _config.BucketID, true);
-            BackblazeB2ActionResult<BackblazeB2ListFilesResult> listFilesActionResult = listFilesAction.Execute();
-            if (listFilesActionResult.HasErrors)
-            {
-                throw new FailedToGetListOfFilesOnB2Exception
-                {
-                    BackblazeErrorDetails = listFilesActionResult.Errors,
-                };
-            }
+            IDictionary<string, FileResult> fileNameToFileResultMap = GetShardIDToFileResultMapping(authorizationSession);
 
-            IDictionary<string, FileResult> fileNameToFileResultMap = listFilesActionResult.Result.Files.ToDictionary(k => k.FileName, v => v);
             ConcurrentBag<Tuple<string, long>> localFileShardIDPathsAndIndices = new ConcurrentBag<Tuple<string, long>>();
             long currentShardsDownloaded = 0;
-            object notificationLock = new object();
-            Parallel.ForEach(file.FileShardIDs, (fileShardID, loopState, currentShardIndex) =>
+            Parallel.ForEach(
+                file.FileShardIDs,
+                new ParallelOptions { MaxDegreeOfParallelism = 3 },
+                (fileShardID, loopState, currentShardIndex) =>
             {
                 if (loopState.ShouldExitCurrentIteration || loopState.IsExceptional || loopState.IsStopped)
                 {
                     return;
                 }
 
-                string shardFilePath = Path.Combine(Directory.GetCurrentDirectory(), fileShardID);
+                string shardFilePath = GetShardIDFilePath(fileShardID);
                 localFileShardIDPathsAndIndices.Add(Tuple.Create(shardFilePath, currentShardIndex));
-
                 if (fileNameToFileResultMap.TryGetValue(fileShardID, out FileResult b2FileShard))
                 {
-                    using (DownloadFileAction fileShardDownload =
-                        new DownloadFileAction(authorizationSession, shardFilePath, b2FileShard.FileID))
+                    if (TryDownloadFileShard(authorizationSession, shardFilePath, fileShardID, b2FileShard))
                     {
-                        BackblazeB2ActionResult<BackblazeB2DownloadFileResult> downloadResult = fileShardDownload.Execute();
-                        if (downloadResult.HasErrors)
-                        {
-                            lock (notificationLock)
-                            {
-                                this.Critical($"Exception occurred during downloading a file shard: {downloadResult}");
-                            }
-                            loopState.Stop();
-                            throw new FailedToDownloadFileException
-                            {
-                                BackblazeErrorDetails = downloadResult.Errors,
-                            };
-                        }
-
                         long totalDownloaded = Interlocked.Increment(ref currentShardsDownloaded);
-                        lock (notificationLock)
-                        {
-                            this.Info($"{file.FileName} download progress: {totalDownloaded} / {file.FileShardIDs.Length} downloaded");
-                        }
+                        this.Info($"{file.FileName} download progress: {totalDownloaded} / {file.FileShardIDs.Length} downloaded");
+                    }
+                    else
+                    {
+                        loopState.Stop();
                     }
                 }
                 else
@@ -141,6 +119,62 @@ namespace B2BackupUtility.Proxies
                 }
             });
 
+            ReconstructFile(destination, localFileShardIDPathsAndIndices);
+        }
+        #endregion
+        #region private methods
+        private static string GetShardIDFilePath(string fileShardID)
+        {
+            return Path.Combine(Directory.GetCurrentDirectory(), fileShardID);
+        }
+
+        private bool TryDownloadFileShard(
+            BackblazeB2AuthorizationSession authorizationSession,
+            string fileShardID,
+            string filePathDestination,
+            FileResult remoteFile
+        )
+        {
+            using (DownloadFileAction fileShardDownload =
+                new DownloadFileAction(authorizationSession, filePathDestination, remoteFile.FileID))
+            {
+                BackblazeB2ActionResult<BackblazeB2DownloadFileResult> downloadResult = fileShardDownload.Execute();
+                if (downloadResult.HasErrors)
+                {
+                    this.Critical($"Exception occurred during downloading a file shard: {downloadResult}. Retrying later.");
+                    return false;
+                }
+            }
+            this.Verbose($"Downloaded shard {fileShardID}");
+            return true;
+        }
+
+        private IDictionary<string, FileResult> GetShardIDToFileResultMapping(
+            BackblazeB2AuthorizationSession authorizationSession
+        )
+        {
+            ListFilesAction listFilesAction = ListFilesAction.CreateListFileActionForFileNames(
+                authorizationSession,
+                _config.BucketID,
+                true
+            );
+            BackblazeB2ActionResult<BackblazeB2ListFilesResult> listFilesActionResult = listFilesAction.Execute();
+            if (listFilesActionResult.HasErrors)
+            {
+                throw new FailedToGetListOfFilesOnB2Exception
+                {
+                    BackblazeErrorDetails = listFilesActionResult.Errors,
+                };
+            }
+
+            return listFilesActionResult.Result.Files.ToDictionary(k => k.FileName, v => v);
+        }
+
+        private void ReconstructFile(
+            string destination,
+            IEnumerable<Tuple<string, long>> localFileShardIDPathsAndIndices
+        )
+        {
             long currentShard = 0;
             using (FileStream outputFileStream = System.IO.File.Create(destination))
             {

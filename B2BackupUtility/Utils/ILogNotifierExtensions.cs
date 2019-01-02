@@ -97,7 +97,10 @@ namespace B2BackupUtility.Utils
 
         public static void CoreLog(ILogNotifier notifier, string message, LogLevel logLevel)
         {
-            notifier.SendNotification(ConsoleMediator.ConsoleLogNotification, message, logLevel.ToString());
+            lock(notifier)
+            {
+                notifier.SendNotification(ConsoleMediator.ConsoleLogNotification, message, logLevel.ToString());
+            }
         }
         #endregion
     }

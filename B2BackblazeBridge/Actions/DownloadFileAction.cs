@@ -52,18 +52,36 @@ namespace B2BackblazeBridge.Actions
 
         #region private fields
         private static readonly string DownloadByIDURL = "/b2api/v1/b2_download_file_by_id";
-
         private static readonly int BufferSize = 64 * 1024; // 64 kibibytes
 
-        private bool disposedValue;
-
+        private bool _disposedValue;
+        private int _maxRetries;
         private readonly BackblazeB2AuthorizationSession _authorizationSession;
-
         private readonly Stream _outputStream;
-
         private readonly IdentifierType _downloadIdentifierType;
-
         private readonly string _identifier;
+        #endregion
+
+        #region public properties
+        /// <summary>
+        /// Max numbner of times to attempt to download the file. Default is 3
+        /// </summary>
+        public int MaxRetries
+        {
+            get
+            {
+                return _maxRetries;
+            }
+            set
+            {
+                if (value <= 0)
+                {
+                    throw new ArgumentOutOfRangeException("MaxRetries must be greater than 0");
+                }
+
+                _maxRetries = value;
+            }
+        }
         #endregion
 
         #region ctor
@@ -81,7 +99,8 @@ namespace B2BackblazeBridge.Actions
             IdentifierType downloadIdentifierType
         ) : base(CancellationToken.None)
         {
-            disposedValue = false;
+            MaxRetries = 3;
+            _disposedValue = false;
             _authorizationSession = authorizationSession;
             _outputStream = outputStream;
             _downloadIdentifierType = downloadIdentifierType;
@@ -243,6 +262,32 @@ namespace B2BackblazeBridge.Actions
             return SendWebRequestAndDeserialize(webRequest, null);
         }
 
+        private BackblazeB2ActionResult<BackblazeB2DownloadFileResult> DownloadFileImpl(
+            HttpWebRequest request,
+            byte[] payload
+        )
+        {
+            BackblazeB2ActionResult<BackblazeB2DownloadFileResult> result;
+            int i = 0;
+            do
+            {
+                result = SendWebRequestAndDeserialize(request, payload);
+                if (result.HasResult)
+                {
+                    return result;
+                }
+                else
+                {
+                    TimeSpan backoff = CalculateExponentialBackoffSleepTime(i);
+                    Thread.Sleep(backoff);
+                }
+                i++;
+            }
+            while (i < MaxRetries && result.HasErrors);
+
+            return result;
+        }
+
         private string GetDownloadByFileURL()
         {
             return _authorizationSession.DownloadURL + "/file/" + Uri.EscapeDataString(_identifier);
@@ -251,14 +296,14 @@ namespace B2BackblazeBridge.Actions
         #region IDisposable Support
         private void Dispose(bool disposing)
         {
-            if (!disposedValue)
+            if (!_disposedValue)
             {
                 if (disposing)
                 {
                     _outputStream.Dispose();
                 }
 
-                disposedValue = true;
+                _disposedValue = true;
             }
         }
 
