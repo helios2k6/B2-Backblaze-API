@@ -21,6 +21,7 @@
 
 using B2BackblazeBridge.Actions;
 using B2BackblazeBridge.Core;
+using B2BackupUtility.Commands;
 using B2BackupUtility.Database;
 using B2BackupUtility.Encryption;
 using B2BackupUtility.Proxies.Exceptions;
@@ -121,6 +122,7 @@ namespace B2BackupUtility.Proxies
             });
 
             ReconstructFile(destination, localFileShardIDPathsAndIndices);
+            VerifyFile(file, destination);
         }
         #endregion
         #region private methods
@@ -206,6 +208,15 @@ namespace B2BackupUtility.Proxies
 
                     System.IO.File.Delete(fileShardPath);
                 }
+            }
+        }
+
+        private void VerifyFile(Database.File remoteFile, string localFilePath)
+        {
+            string sha1File = SHA1FileHashStore.Instance.ComputeSHA1(localFilePath);
+            if (remoteFile.SHA1.Equals(sha1File, StringComparison.OrdinalIgnoreCase) == false)
+            {
+                this.Critical($"File SHA-1 does not match!");
             }
         }
         #endregion
