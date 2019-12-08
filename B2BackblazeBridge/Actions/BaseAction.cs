@@ -119,11 +119,10 @@ namespace B2BackblazeBridge.Actions
         }
 
         /// <summary>
-        /// Create an HTTP Web Request with the given URL and, optionally, set the 
+        /// Create an HTTP Web Request with the given URL and set the 
         /// content type to JSON
         /// </summary>
         /// <param name="apiUrl">The URL to use</param>
-        /// <param name="setToJson"Whether to set the content type to JSON></param>
         /// <returns>A newly constructed HTTP Web Request</returns>
         protected HttpWebRequest GetHttpWebRequest(string apiUrl)
         {
