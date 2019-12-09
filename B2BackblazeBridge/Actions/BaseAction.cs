@@ -154,8 +154,8 @@ namespace B2BackblazeBridge.Actions
         /// <summary>
         /// Calculate the amount of time to suspend the current thread 
         /// </summary>
-        /// <param name="attemptNumber"></param>
-        /// <returns></returns>
+        /// <param name="attemptNumber">Which attempt you're trying to send.</param>
+        /// <returns>The amount of time to wait before sending another request</returns>
         protected TimeSpan CalculateExponentialBackoffSleepTime(int attemptNumber)
         {
             if (attemptNumber == 1)
