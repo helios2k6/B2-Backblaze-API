@@ -46,6 +46,10 @@ namespace B2BackupUtility.Commands
             {
                 Facade.RegisterProxy(new ConfigProxy(configArgument));
             }
+            else
+            {
+                throw new TerminateProgramException("No config file was provided");
+            }
         }
         #endregion
     }

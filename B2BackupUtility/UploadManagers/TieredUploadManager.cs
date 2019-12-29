@@ -65,8 +65,6 @@ namespace B2BackupUtility.UploadManagers
         private const int DefaultMidLaneUploadConnections = 5;
         private const int DefaultMidLaneUploadAttempts = 3;
 
-        private const int DefaultSlowLandUploadAttempts = 10;
-
         private const long DefaultMaxMemoryAllowed = 6442450944; // 6 gibibytes
 
         private readonly Func<BackblazeB2AuthorizationSession> _authorizationSessionGenerator;

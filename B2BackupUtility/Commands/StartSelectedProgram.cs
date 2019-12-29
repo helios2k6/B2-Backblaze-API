@@ -81,8 +81,7 @@ namespace B2BackupUtility.Commands
         {
             this.Debug(CommandNotification);
             ProgramArgumentsProxy programArgsProxy = (ProgramArgumentsProxy)Facade.RetrieveProxy(ProgramArgumentsProxy.Name);
-            CommandType command = CommandType.UNKNOWN;
-            if (TryGetCommand(programArgsProxy.ProgramArguments, out command))
+            if (TryGetCommand(programArgsProxy.ProgramArguments, out CommandType command))
             {
                 this.Debug($"Got command: {command}");
                 InitializeModelIfNecessary(command);
