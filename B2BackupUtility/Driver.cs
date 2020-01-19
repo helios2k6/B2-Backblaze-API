@@ -22,6 +22,7 @@
 using B2BackupUtility.Commands;
 using PureMVC.Interfaces;
 using PureMVC.Patterns.Facade;
+using System;
 
 namespace B2BackupUtility
 {
@@ -41,8 +42,16 @@ namespace B2BackupUtility
 
         public static void Main(string[] args)
         {
-            ApplicationFacade = Facade.GetInstance(() => new ApplicationFacade());
-            ApplicationFacade.SendNotification(StartApplication.CommandNotification, args, null);
+            try
+            {
+                ApplicationFacade = Facade.GetInstance(() => new ApplicationFacade());
+                ApplicationFacade.SendNotification(StartApplication.CommandNotification, args, null);
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine($"A serious exception has occured: {ex.ToString()}");
+                throw new Exception("Rethrowing main exception", ex);
+            }
         }
     }
 }
