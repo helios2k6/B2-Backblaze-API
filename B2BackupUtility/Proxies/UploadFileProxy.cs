@@ -157,7 +157,7 @@ namespace B2BackupUtility.Proxies
 
                 // This part is tricky because all of these event handlers will be executed on background threads. Because of this,
                 // we will need to lock the SendNotification call in order to prevent any race conditions or data corruption. We 
-                // know the main thread is blocked on these background threads because has called the "Wait()" method.
+                // know the main thread is blocked on these background threads because we have called the "Wait()" method.
                 object localLockObject = new object();
                 IDictionary<string, ISet<UploadManagerEventArgs>> localFileToFileShardIDs = new Dictionary<string, ISet<UploadManagerEventArgs>>();
                 ISet<string> localFilesThatHaveAlreadyStarted = new HashSet<string>();

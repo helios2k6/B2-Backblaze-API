@@ -262,32 +262,6 @@ namespace B2BackblazeBridge.Actions
             return SendWebRequestAndDeserialize(webRequest, null);
         }
 
-        private BackblazeB2ActionResult<BackblazeB2DownloadFileResult> DownloadFileImpl(
-            HttpWebRequest request,
-            byte[] payload
-        )
-        {
-            BackblazeB2ActionResult<BackblazeB2DownloadFileResult> result;
-            int i = 0;
-            do
-            {
-                result = SendWebRequestAndDeserialize(request, payload);
-                if (result.HasResult)
-                {
-                    return result;
-                }
-                else
-                {
-                    TimeSpan backoff = CalculateExponentialBackoffSleepTime(i);
-                    Thread.Sleep(backoff);
-                }
-                i++;
-            }
-            while (i < MaxRetries && result.HasErrors);
-
-            return result;
-        }
-
         private string GetDownloadByFileURL()
         {
             return _authorizationSession.DownloadURL + "/file/" + Uri.EscapeDataString(_identifier);

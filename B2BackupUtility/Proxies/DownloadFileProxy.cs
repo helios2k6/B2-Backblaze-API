@@ -21,7 +21,6 @@
 
 using B2BackblazeBridge.Actions;
 using B2BackblazeBridge.Core;
-using B2BackupUtility.Commands;
 using B2BackupUtility.Database;
 using B2BackupUtility.Encryption;
 using B2BackupUtility.Proxies.Exceptions;
@@ -46,8 +45,8 @@ namespace B2BackupUtility.Proxies
     public sealed class DownloadFileProxy : Proxy, ILogNotifier
     {
         #region private fields
-        private readonly IDictionary<Database.File, string> _fileToLocalFilePath;
         private readonly Config _config;
+        private IDictionary<string, FileResult> _shardIDToFilePath;
         #endregion
 
         #region public properties
@@ -61,7 +60,6 @@ namespace B2BackupUtility.Proxies
         /// <param name="config">The program config</param>
         public DownloadFileProxy(Config config) : base(Name, null)
         {
-            _fileToLocalFilePath = new Dictionary<Database.File, string>();
             _config = config;
         }
         #endregion
@@ -71,8 +69,8 @@ namespace B2BackupUtility.Proxies
         /// Downloads a file from the B2 Backblaze server, throwing an exception if 
         /// this fails
         /// </summary>
-        /// <param name="file"></param>
-        /// <param name="destination"></param>
+        /// <param name="file">The file to download</param>
+        /// <param name="destination">The destination of the downloaded file</param>
         public void DownloadFile(
             BackblazeB2AuthorizationSession authorizationSession,
             Database.File file,
@@ -85,7 +83,10 @@ namespace B2BackupUtility.Proxies
                 throw new InvalidOperationException($"Cannot override file {destination}.");
             }
 
-            IDictionary<string, FileResult> fileNameToFileResultMap = GetShardIDToFileResultMapping(authorizationSession);
+            if (_shardIDToFilePath == null)
+            {
+                _shardIDToFilePath = GetShardIDToFileResultMapping(authorizationSession);
+            }
 
             ConcurrentBag<Tuple<string, long>> localFileShardIDPathsAndIndices = new ConcurrentBag<Tuple<string, long>>();
             long currentShardsDownloaded = 0;
@@ -101,7 +102,7 @@ namespace B2BackupUtility.Proxies
 
                 string shardFilePath = GetShardIDFilePath(fileShardID);
                 localFileShardIDPathsAndIndices.Add(Tuple.Create(shardFilePath, currentShardIndex));
-                if (fileNameToFileResultMap.TryGetValue(fileShardID, out FileResult b2FileShard))
+                if (_shardIDToFilePath.TryGetValue(fileShardID, out FileResult b2FileShard))
                 {
                     if (TryDownloadFileShard(authorizationSession, shardFilePath, fileShardID, b2FileShard))
                     {
