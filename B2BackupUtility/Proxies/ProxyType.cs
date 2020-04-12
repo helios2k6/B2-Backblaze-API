@@ -19,39 +19,22 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-using B2BackupUtility.Commands;
-using PureMVC.Interfaces;
-using PureMVC.Patterns.Facade;
-using System;
-
-namespace B2BackupUtility
+namespace B2BackupUtility.Proxies
 {
     /// <summary>
-    /// The entry point for this utility program
+    /// Denotes the type of proxy this is
     /// </summary>
-    public static class Driver
+    public enum ProxyType
     {
         /// <summary>
-        /// The facade instance for this application
+        /// An Application level Proxy. This proxy corresponds to a top-level action
+        /// that the user can initiate.
         /// </summary>
-        public static IFacade ApplicationFacade
-        {
-            get;
-            private set;
-        }
-
-        public static void Main(string[] args)
-        {
-            try
-            {
-                ApplicationFacade = Facade.GetInstance(() => new ApplicationFacade());
-                ApplicationFacade.SendNotification(StartApplication.CommandNotification, args, null);
-            }
-            catch (Exception ex)
-            {
-                Console.Out.WriteLine($"A serious exception has occured: {ex.ToString()}");
-                throw new Exception("Rethrowing main exception", ex);
-            }
-        }
+        APPLICATION,
+        /// <summary>
+        /// An Assistance level Proxy. This proxy corresponds to a "helper" proxy that
+        /// can be initialized for any action.
+        /// </summary>
+        ASSISTANCE,
     }
 }

@@ -75,7 +75,7 @@ namespace B2BackupUtility.Mediators
             {
                 string messageFromNotification = GetLogMessageFromNotification(notification);
                 string connector = string.IsNullOrWhiteSpace(messageFromNotification) ? string.Empty : " - ";
-                Console.Error.WriteLine($"[{LogLevelToPrefix[logLevel]}][{DateTime.Now}]{connector}{messageFromNotification}");
+                Console.Out.WriteLine($"[{LogLevelToPrefix[logLevel]}][{DateTime.Now}]{connector}{messageFromNotification}");
             }
         }
 

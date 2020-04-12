@@ -19,39 +19,33 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-using B2BackupUtility.Commands;
-using PureMVC.Interfaces;
-using PureMVC.Patterns.Facade;
-using System;
+using B2BackupUtility.Utils;
+using PureMVC.Patterns.Proxy;
 
-namespace B2BackupUtility
+namespace B2BackupUtility.Proxies
 {
     /// <summary>
-    /// The entry point for this utility program
+    /// The base Proxy class for all Proxies
     /// </summary>
-    public static class Driver
+    public abstract class BaseProxy : Proxy, ILogNotifier
     {
+        #region ctor
         /// <summary>
-        /// The facade instance for this application
+        /// Standard ctor for proxy .
         /// </summary>
-        public static IFacade ApplicationFacade
+        /// <param name="proxyName">The name of this proxy.</param>
+        /// <param name="proxyType">The type of Proxy this is.</param>
+        public BaseProxy(string proxyName, ProxyType proxyType) : base(proxyName)
         {
-            get;
-            private set;
+            ProxyType = proxyType;
         }
+        #endregion
 
-        public static void Main(string[] args)
-        {
-            try
-            {
-                ApplicationFacade = Facade.GetInstance(() => new ApplicationFacade());
-                ApplicationFacade.SendNotification(StartApplication.CommandNotification, args, null);
-            }
-            catch (Exception ex)
-            {
-                Console.Out.WriteLine($"A serious exception has occured: {ex.ToString()}");
-                throw new Exception("Rethrowing main exception", ex);
-            }
-        }
+        #region public properties
+        /// <summary>
+        /// The type of Proxy this is.
+        /// </summary>
+        public ProxyType ProxyType { get; private set; }
+        #endregion
     }
 }
