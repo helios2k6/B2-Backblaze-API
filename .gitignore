@@ -3,5 +3,5 @@ bin*
 obj*
 *.suo
 .*
-.vs/B2 Backblaze Api/v15/Server/sqlite3/storage.ide-shm
 .vs/
+.vscode/
