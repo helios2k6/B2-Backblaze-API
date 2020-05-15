@@ -137,6 +137,10 @@ namespace B2BackupUtility.Proxies
                     }
                 }
             }
+            else
+            {
+                this.Info($"File {file.FileName} shares file shares with another file. Will not perform a hard-delete. Removing from file manifest instead");
+            }
 
             while (TryUploadFileDatabaseManifest(authorizationSessionGenerator()) == false)
             {
