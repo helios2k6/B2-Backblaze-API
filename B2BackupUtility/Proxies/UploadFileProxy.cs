@@ -84,7 +84,7 @@ namespace B2BackupUtility.Proxies
             this.Debug($"Adding folder: {localFolderPath} to {rootDestinationFolder}");
             UploadFiles(
                 authorizationSessionGenerator,
-                GetFilesToUpload(Path.GetFullPath(localFolderPath), rootDestinationFolder, shouldOverride) ,
+                GetFilesToUpload(Path.GetFullPath(localFolderPath), rootDestinationFolder, shouldOverride),
                 dryRun
             );
         }
@@ -132,7 +132,7 @@ namespace B2BackupUtility.Proxies
                 {
                     builder.AppendLine($"{absoluteToDestinationPath.Key} -> {absoluteToDestinationPath.Value}");
                 }
-                this.Info($"DRY RUN. {builder.ToString()}");
+                this.Info($"DRY RUN. {builder}");
                 return;
             }
 

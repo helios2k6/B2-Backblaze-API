@@ -30,7 +30,7 @@ namespace B2BackupUtility.MemoryManagement
     /// </summary>
     public sealed class MultinodeMemoryManagementSystem : IDisposable
     {
-        private static Lazy<MultinodeMemoryManagementSystem> SingletonInstanceLazy = new Lazy<MultinodeMemoryManagementSystem>(() => new MultinodeMemoryManagementSystem());
+        private static readonly Lazy<MultinodeMemoryManagementSystem> SingletonInstanceLazy = new Lazy<MultinodeMemoryManagementSystem>(() => new MultinodeMemoryManagementSystem());
 
         private bool _isDisposed;
         private ImmutableDictionary<string, SharedResourceMemoryGovernor> _memoryCapacityLedger;
