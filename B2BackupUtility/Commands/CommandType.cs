@@ -32,6 +32,10 @@ namespace B2BackupUtility.Commands
         /// </summary>
         CHECK_FILE_MANIFEST,
         /// <summary>
+        /// Clean up any incomplete uploads to B2 Backblaze
+        /// </summary>
+        CLEAN_UP_UNFINISHED_UPLOADS,
+        /// <summary>
         /// Compact the Shard IDs of all files that are
         /// identical such that they all have the same Shard
         /// IDs

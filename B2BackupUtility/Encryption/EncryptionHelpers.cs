@@ -39,26 +39,22 @@ namespace B2BackupUtility.Encryption
         /// <returns>The encrypted bytes</returns>
         public static byte[] EncryptBytes(byte[] bytes, string encryptionKey, string initializationVector)
         {
-            using (Aes aesAlg = Aes.Create())
+            using Aes aesAlg = Aes.Create();
+            aesAlg.Key = Convert.FromBase64String(encryptionKey);
+            aesAlg.IV = Convert.FromBase64String(initializationVector);
+
+            ICryptoTransform encryptor = aesAlg.CreateEncryptor(aesAlg.Key, aesAlg.IV);
+
+            using MemoryStream msEncrypt = new MemoryStream();
+            using CryptoStream csEncrypt = new CryptoStream(msEncrypt, encryptor, CryptoStreamMode.Write);
+            // It's important we dispose of the BinaryWriter before attempting to read from the 
+            // memory stream with the encrypted bytes
+            using (BinaryWriter swEncrypt = new BinaryWriter(csEncrypt))
             {
-                aesAlg.Key = Convert.FromBase64String(encryptionKey);
-                aesAlg.IV = Convert.FromBase64String(initializationVector);
-
-                ICryptoTransform encryptor = aesAlg.CreateEncryptor(aesAlg.Key, aesAlg.IV);
-
-                using (MemoryStream msEncrypt = new MemoryStream())
-                using (CryptoStream csEncrypt = new CryptoStream(msEncrypt, encryptor, CryptoStreamMode.Write))
-                {
-                    // It's important we dispose of the BinaryWriter before attempting to read from the 
-                    // memory stream with the encrypted bytes
-                    using (BinaryWriter swEncrypt = new BinaryWriter(csEncrypt))
-                    {
-                        //Write all data to the stream.
-                        swEncrypt.Write(bytes);
-                    }
-                    return msEncrypt.ToArray();
-                }
+                //Write all data to the stream.
+                swEncrypt.Write(bytes);
             }
+            return msEncrypt.ToArray();
         }
 
         /// <summary>
@@ -76,28 +72,26 @@ namespace B2BackupUtility.Encryption
                 ICryptoTransform decryptor = aesAlg.CreateDecryptor(aesAlg.Key, aesAlg.IV);
 
                 // Create the streams used for decryption.
-                using (MemoryStream msDecrypt = new MemoryStream(bytes))
-                using (CryptoStream csDecrypt = new CryptoStream(msDecrypt, decryptor, CryptoStreamMode.Read))
-                using (BinaryReader srDecrypt = new BinaryReader(csDecrypt))
+                using MemoryStream msDecrypt = new MemoryStream(bytes);
+                using CryptoStream csDecrypt = new CryptoStream(msDecrypt, decryptor, CryptoStreamMode.Read);
+                using BinaryReader srDecrypt = new BinaryReader(csDecrypt);
+                byte[] buffer = new byte[DefaultBufferSize];
+                List<byte> returnValues = new List<byte>();
+                while (true)
                 {
-                    byte[] buffer = new byte[DefaultBufferSize];
-                    List<byte> returnValues = new List<byte>();
-                    while (true)
+                    int bytesRead = srDecrypt.Read(buffer, 0, DefaultBufferSize);
+                    if (bytesRead < 1)
                     {
-                        int bytesRead = srDecrypt.Read(buffer, 0, DefaultBufferSize);
-                        if (bytesRead < 1)
-                        {
-                            break;
-                        }
-
-                        for (int i = 0; i < bytesRead; i++)
-                        {
-                            returnValues.Add(buffer[i]);
-                        }
+                        break;
                     }
 
-                    return returnValues.ToArray();
+                    for (int i = 0; i < bytesRead; i++)
+                    {
+                        returnValues.Add(buffer[i]);
+                    }
                 }
+
+                return returnValues.ToArray();
             }
         }
     }

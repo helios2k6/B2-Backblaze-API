@@ -19,22 +19,42 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+using B2BackblazeBridge.Core;
+using B2BackupUtility.Utils;
+using PureMVC.Patterns.Proxy;
+using System;
+
 namespace B2BackupUtility.Proxies
 {
     /// <summary>
-    /// Denotes the type of proxy this is
+    /// Proxy that will delete all unfinished uploads.
     /// </summary>
-    public enum ProxyType
+    public sealed class CleanUpUnfinishedUploadsProxy : Proxy, ILogNotifier
     {
+        #region public properties
+        public static string Name => "Clean Up Unfinished Uploads Proxy";
+        #endregion
+
+        #region private fields
+        private readonly Config _config;
+        #endregion
+
+        #region ctor
+        public CleanUpUnfinishedUploadsProxy(Config config) : base(Name, null)
+        {
+            _config = config;
+        }
+        #endregion
+
+        #region public methods
         /// <summary>
-        /// An Application level Proxy. This proxy corresponds to a top-level action
-        /// that the user can initiate.
+        /// Clean up all unfinished uploads.
         /// </summary>
-        APPLICATION,
-        /// <summary>
-        /// An Assistance level Proxy. This proxy corresponds to a "helper" proxy that
-        /// can be initialized for any action.
-        /// </summary>
-        ASSISTANCE,
+        /// <param name="authorizationSessionGenerator">The generator for authorization sessions</param>
+        public void CleanUpUnfinishedUploads(Func<BackblazeB2AuthorizationSession> authorizationSessionGenerator)
+        {
+
+        }
+        #endregion
     }
 }

@@ -85,8 +85,8 @@ namespace B2BackblazeBridge.Actions
             string url = _method == ListFileMethod.FILE_NAMES ? ListFileNamesAPIURL : ListFileVersionsAPIURL;
             string startFileName = null;
             string startFileID = null;
-            BackblazeB2ActionResult<BackblazeB2ListFilesResult> currentResult = null;
             IEnumerable<BackblazeB2ListFilesResult.FileResult> fileResults = Enumerable.Empty<BackblazeB2ListFilesResult.FileResult>();
+            BackblazeB2ActionResult<BackblazeB2ListFilesResult> currentResult;
             do
             {
                 currentResult = ExecuteWebRequestImpl(url, startFileName, startFileID, _method);

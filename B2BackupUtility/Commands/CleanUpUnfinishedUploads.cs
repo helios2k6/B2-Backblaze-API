@@ -19,33 +19,31 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+using B2BackupUtility.Proxies;
 using B2BackupUtility.Utils;
-using PureMVC.Patterns.Proxy;
+using PureMVC.Interfaces;
+using PureMVC.Patterns.Command;
 
-namespace B2BackupUtility.Proxies
+namespace B2BackupUtility.Commands
 {
-    /// <summary>
-    /// The base Proxy class for all Proxies
-    /// </summary>
-    public abstract class BaseProxy : Proxy, ILogNotifier
+    public sealed class CleanUpUnfinishedUploads : SimpleCommand, ILogNotifier
     {
-        #region ctor
-        /// <summary>
-        /// Standard ctor for proxy .
-        /// </summary>
-        /// <param name="proxyName">The name of this proxy.</param>
-        /// <param name="proxyType">The type of Proxy this is.</param>
-        public BaseProxy(string proxyName, ProxyType proxyType) : base(proxyName)
-        {
-            ProxyType = proxyType;
-        }
+        #region public properties
+        public static string CommandNotification => "Clean Up Unfinished Uploads";
+
+        public static string CommandSwitch => "--clean-up-unfinished-uploads";
+
+        public static CommandType CommandType => CommandType.CLEAN_UP_UNFINISHED_UPLOADS;
         #endregion
 
-        #region public properties
-        /// <summary>
-        /// The type of Proxy this is.
-        /// </summary>
-        public ProxyType ProxyType { get; private set; }
+        #region public methods
+        public override void Execute(INotification notification)
+        {
+            this.Debug(CommandNotification);
+            AuthorizationSessionProxy authorizationSessionProxy = (AuthorizationSessionProxy)Facade.RetrieveProxy(AuthorizationSessionProxy.Name);
+            CleanUpUnfinishedUploadsProxy cleanUpUnfinishedUploadsProxy = (CleanUpUnfinishedUploadsProxy)Facade.RetrieveProxy(CleanUpUnfinishedUploadsProxy.Name);
+            cleanUpUnfinishedUploadsProxy.CleanUpUnfinishedUploads(() => authorizationSessionProxy.AuthorizationSession);
+        }
         #endregion
     }
 }

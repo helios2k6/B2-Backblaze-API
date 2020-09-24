@@ -126,6 +126,7 @@ namespace B2BackupUtility.Proxies
             VerifyFile(file, destination);
         }
         #endregion
+
         #region private methods
         private static string GetShardIDFilePath(string fileShardID)
         {
