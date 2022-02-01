@@ -49,7 +49,7 @@ namespace B2BackupUtility
             }
             catch (Exception ex)
             {
-                Console.Out.WriteLine($"A serious exception has occured: {ex.ToString()}");
+                Console.Out.WriteLine($"A serious exception has occured: {ex}");
                 throw new Exception("Rethrowing main exception", ex);
             }
         }

@@ -66,7 +66,7 @@ namespace B2BackupUtility.Proxies
 
         #region ctor
         /// <summary>
-        /// Construcs a new Authorization Session Proxy
+        /// Constructs a new Authorization Session Proxy
         /// </summary>
         /// <param name="config"></param>
         public AuthorizationSessionProxy(Config config) : base(Name, null)

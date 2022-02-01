@@ -42,16 +42,16 @@ namespace B2BackupUtility.Commands
         #endregion
 
         #region private properties
-        private static string HeaderText => "B2 Backup Utility v8.5";
+        private static string HeaderText => "B2 Backup Utility v9.0";
 
         private static string InstructionText => "Usage: <this program> <necessary switches> <action> [options]";
 
-        private static IEnumerable<string> NecessaryOptions => new string[]
+        private static IEnumerable<string> NecessaryOptions => new[]
         {
             ConfigProxy.ConfigArgument,
         };
 
-        private static IEnumerable<string> LoggerOptions => new string[]
+        private static IEnumerable<string> LoggerOptions => new[]
         {
             ConsoleMediator.VerboseLevelSwitch,
             ConsoleMediator.DebugLevelSwitch,

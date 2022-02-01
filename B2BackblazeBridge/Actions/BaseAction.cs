@@ -92,12 +92,12 @@ namespace B2BackblazeBridge.Actions
                 throw new ArgumentException("File path cannot begin with a forward slash");
             }
 
-            if (rawRemotePath[rawRemotePath.Length - 1] == '/')
+            if (rawRemotePath[^1] == '/')
             {
                 throw new ArgumentException("File path cannot end with a forward slash");
             }
 
-            if (rawRemotePath.IndexOf("//") != -1)
+            if (rawRemotePath.IndexOf("//", StringComparison.Ordinal) != -1)
             {
                 throw new ArgumentException("File path cannot have any double forward slashes in it");
             }
@@ -138,17 +138,15 @@ namespace B2BackblazeBridge.Actions
         /// <returns>A string representing the SHA1 hash</returns>
         protected string ComputeSHA1Hash(byte[] data)
         {
-            using (SHA1 shaHash = SHA1.Create())
+            using SHA1 shaHash = SHA1.Create();
+            byte[] hashData = shaHash.ComputeHash(data, 0, data.Length);
+            StringBuilder sb = new StringBuilder();
+            foreach (byte b in hashData)
             {
-                byte[] hashData = shaHash.ComputeHash(data, 0, data.Length);
-                StringBuilder sb = new StringBuilder();
-                foreach (byte b in hashData)
-                {
-                    sb.Append(b.ToString("x2"));
-                }
-
-                return sb.ToString();
+                sb.Append(b.ToString("x2"));
             }
+
+            return sb.ToString();
         }
 
         /// <summary>
@@ -158,27 +156,21 @@ namespace B2BackblazeBridge.Actions
         /// <returns>The amount of time to wait before sending another request</returns>
         protected TimeSpan CalculateExponentialBackoffSleepTime(int attemptNumber)
         {
-            if (attemptNumber == 1)
+            switch (attemptNumber)
             {
-                return TimeSpan.FromSeconds(_random.Next(5, 10));
+                case 1:
+                    return TimeSpan.FromSeconds(_random.Next(5, 10));
+                case 2:
+                    return _random.Next(0, 4) switch
+                    {
+                        0 => TimeSpan.FromSeconds(10),
+                        1 => TimeSpan.FromSeconds(15),
+                        2 => TimeSpan.FromSeconds(30),
+                        _ => TimeSpan.FromSeconds(60)
+                    };
+                default:
+                    return TimeSpan.FromSeconds(_random.Next(15, 60));
             }
-
-            if (attemptNumber == 2)
-            {
-                switch (_random.Next(0, 4))
-                {
-                    case 0:
-                        return TimeSpan.FromSeconds(10);
-                    case 1:
-                        return TimeSpan.FromSeconds(15);
-                    case 2:
-                        return TimeSpan.FromSeconds(30);
-                    default:
-                        return TimeSpan.FromSeconds(60);
-                }
-            }
-
-            return TimeSpan.FromSeconds(_random.Next(15, 60));
         }
 
         /// <summary>
@@ -195,25 +187,21 @@ namespace B2BackblazeBridge.Actions
         {
             if (webRequest == null)
             {
-                throw new ArgumentNullException("webRequest");
+                throw new ArgumentNullException(nameof(webRequest));
             }
 
             try
             {
                 if (payload != null)
                 {
-                    using (Stream stream = webRequest.GetRequestStream())
-                    {
-                        stream.Write(payload, 0, payload.Length);
-                    }
+                    using Stream stream = webRequest.GetRequestStream();
+                    stream.Write(payload, 0, payload.Length);
                 }
 
-                using (HttpWebResponse response = webRequest.GetResponse() as HttpWebResponse)
-                {
-                    return new BackblazeB2ActionResult<T>(
-                        HandleSuccessfulWebRequest(response)
-                    );
-                }
+                using HttpWebResponse response = webRequest.GetResponse() as HttpWebResponse;
+                return new BackblazeB2ActionResult<T>(
+                    HandleSuccessfulWebRequest(response)
+                );
             }
             catch (WebException ex)
             {
@@ -238,10 +226,8 @@ namespace B2BackblazeBridge.Actions
         /// <returns></returns>
         protected virtual T HandleSuccessfulWebRequest(HttpWebResponse response)
         {
-            using (StreamReader reader = new StreamReader(response.GetResponseStream()))
-            {
-                return JsonConvert.DeserializeObject<T>(reader.ReadToEnd());
-            }
+            using StreamReader reader = new StreamReader(response.GetResponseStream());
+            return JsonConvert.DeserializeObject<T>(reader.ReadToEnd());
         }
 
         /// <summary>
@@ -253,24 +239,21 @@ namespace B2BackblazeBridge.Actions
         protected virtual BackblazeB2ActionErrorDetails HandleErrorWebRequest(HttpWebRequest originalRequest, WebException ex)
         {
             HttpWebResponse response = (HttpWebResponse)ex.Response;
-            if (response != null)
-            {
-                using (StreamReader reader = new StreamReader(response.GetResponseStream()))
-                {
-                    return JsonConvert.DeserializeObject<BackblazeB2ActionErrorDetails>(reader.ReadToEnd());
-                }
-            }
-            else
+            if (response == null)
             {
                 return new BackblazeB2ActionErrorDetails
                 {
-                    Status = (int)ex.Status,
+                    Status = (int) ex.Status,
                     Code = "Unknown B2 Error",
                     Message = ex.Message,
                     InnerException = ex,
                     RequestURI = originalRequest.RequestUri,
                 };
             }
+
+            using StreamReader reader = new StreamReader(response.GetResponseStream());
+            return JsonConvert.DeserializeObject<BackblazeB2ActionErrorDetails>(reader.ReadToEnd());
+
         }
         #endregion
     }
